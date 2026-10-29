@@ -17,7 +17,7 @@ class TransportTests(unittest.TestCase):
                 with self.assertRaises((CertificationHold,OSError)):
                     collect_https("https://official.nba.com/test",d,
                                   allowed_hosts={"official.nba.com"},
-                                  collector_version="test")
+                                  collector_version="test",experimental=True)
                 connect.assert_not_called()
     def test_invalid_url_does_not_resolve(self):
         with tempfile.TemporaryDirectory() as d:
@@ -25,7 +25,7 @@ class TransportTests(unittest.TestCase):
                 with self.assertRaises(CertificationHold):
                     collect_https("https://127.0.0.1/test",d,
                                   allowed_hosts={"official.nba.com"},
-                                  collector_version="test")
+                                  collector_version="test",experimental=True)
                 lookup.assert_not_called()
 if __name__=="__main__":
     unittest.main()
