@@ -13,12 +13,12 @@ class DNSPreflightTests(unittest.TestCase):
                     with self.assertRaises(CertificationHold):
                         collect_https("https://official.nba.com/data",d,
                                       allowed_hosts={"official.nba.com"},
-                                      collector_version="test")
+                                      collector_version="test",experimental=True)
     def test_malformed_port_fails_closed(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(CertificationHold):
                 collect_https("https://official.nba.com:bad/data",d,
                               allowed_hosts={"official.nba.com"},
-                              collector_version="test")
+                              collector_version="test",experimental=True)
 if __name__=="__main__":
     unittest.main()
