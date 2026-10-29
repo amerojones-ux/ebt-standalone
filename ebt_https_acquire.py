@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHandler
+from http.client import HTTPSConnection
 from ebt_certification import CertificationHold
 
 def collect_https(url, destination, *, allowed_hosts, collector_version,
@@ -49,13 +50,32 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
             raise CertificationHold("invalid resolved address") from exc
         if not addr.is_global:
             raise CertificationHold("nonpublic resolved address prohibited")
+    approved_ips={ipaddress.ip_address(answer[4][0]).compressed for answer in answers}
     root=Path(destination).resolve()
     root.mkdir(parents=True,exist_ok=True)
     req=Request(url,headers={"User-Agent":"EBT-BlackDiamond-EvidenceCollector/1.0"})
     class NoRedirect(HTTPRedirectHandler):
         def redirect_request(self, request, fp, code, msg, headers, newurl):
             raise CertificationHold("redirect prohibited")
-    opener=build_opener(NoRedirect(),HTTPSHandler(context=ssl.create_default_context()))
+    class PinnedConnection(HTTPSConnection):
+        def connect(self):
+            # Preserve TLS hostname verification and SNI, but pin TCP target.
+            import socket as _socket
+            current=_socket.getaddrinfo(self.host,self.port,type=_socket.SOCK_STREAM)
+            for candidate in current:
+                if ipaddress.ip_address(candidate[4][0]).compressed not in approved_ips:
+                    raise CertificationHold("DNS answer changed before connection")
+            address=next(iter(sorted(approved_ips)))
+            self.sock=_socket.create_connection((address,self.port),self.timeout,
+                                               self.source_address)
+            if self._tunnel_host:
+                raise CertificationHold("proxy tunneling prohibited")
+            self.sock=self._context.wrap_socket(self.sock,server_hostname=self.host)
+    class PinnedHTTPSHandler(HTTPSHandler):
+        def https_open(self,req):
+            return self.do_open(lambda host,**kw: PinnedConnection(
+                host,context=ssl.create_default_context(),**kw),req)
+    opener=build_opener(NoRedirect(),PinnedHTTPSHandler())
     try:
         # System CA trust; redirects prohibited before any secondary request.
         with opener.open(req,timeout=timeout_seconds) as response:
@@ -95,4 +115,4 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
     return {"capture_id":digest,"receipt_path":str(receipt_path),
             "integrity_verified":True,"provider_truth_verified":False,
             "authorization_independently_verified":False,
-            "dns_rebinding_protection_verified":False}
+            "dns_rebinding_protection_verified":True}
