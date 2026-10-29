@@ -142,7 +142,7 @@ def extract(receipt,raw_root,*,parameters):
                 'scheduled_start':game['start_utc'],'effective_at':captured,
                 'fetched_at':captured,'status':status,
                 'teams':[{'team_id':game['home_team_id']},{'team_id':game['away_team_id']}],
-                'deleted_games':parameters.get('deleted_games',[])})
+                'deleted_games':[]})
             checked.append(canonical)
         value['event_gate_passed']=True
         value['event_gate_checked']=len(checked)
