@@ -5,18 +5,18 @@ from ebt_certification import (CertificationHold, identity_check, availability_c
 class CertificationTests(unittest.TestCase):
     def test_identity_requires_corrob(self):
         event = {"event_id":"g", "team_ids":["a","b"]}
-        player = {"player_id":"p","event_id":"g","team_id":"a","identity_corrob":True}
+        player = {"player_id":"p","event_id":"g","team_id":"a","identity_corrob":True,"corroboration_capture_ids":["source-a","source-b"]}
         self.assertTrue(identity_check(event, player))
-        for change in ({"identity_corrob":False},{"team_id":"c"},{"event_id":"other"}):
+        for change in ({"identity_corrob":False},{"team_id":"c"},{"event_id":"other"},{"corroboration_capture_ids":["source-a","source-a"]}):
             with self.subTest(change=change), self.assertRaises(CertificationHold):
                 identity_check(event, {**player, **change})
 
     def test_availability_freshness_and_cutoff(self):
         r = {"official_verified":True,"status":"available",
              "published_at":"2026-10-28T12:00:00Z",
-             "retrieved_at":"2026-10-28T12:01:00Z"}
+             "retrieved_at":"2026-10-28T12:01:00Z","capture_id":"official-report-1"}
         self.assertTrue(availability_check(r, cutoff="2026-10-28T12:05:00Z",max_age_seconds=600))
-        for change in ({"official_verified":False},{"status":"questionable"},
+        for change in ({"official_verified":False},{"capture_id":""},{"status":"questionable"},
                        {"published_at":"2026-10-27T12:00:00Z"},
                        {"retrieved_at":"2026-10-28T12:06:00Z"}):
             with self.subTest(change=change), self.assertRaises(CertificationHold):
@@ -30,10 +30,10 @@ class CertificationTests(unittest.TestCase):
              "prediction_created_at":"2026-10-28T10:00:00Z",
              "scheduled_start":"2026-10-28T23:00:00Z",
              "outcome_final_at":"2026-10-29T02:00:00Z",
-             "certification_status":"independently_reviewed","outcome_verified":True}
+             "certification_status":"independently_reviewed","outcome_verified":True,"outcome_capture_id":"official-final-1"}
         self.assertTrue(historical_certification(r))
         for change in ({"certification_status":"claimed"},
-                       {"outcome_verified":False},
+                       {"outcome_verified":False},{"outcome_capture_id":""},
                        {"feature_asof":"2026-10-28T23:01:00Z"},
                        {"source_capture_ids":[]}):
             with self.subTest(change=change), self.assertRaises(CertificationHold):
