@@ -23,8 +23,12 @@ TeamRankings is the primary team-level statistical hub. Official league evidence
 
 V2 screen estimates and conditional posterior quantiles remain research. Validated Black Diamond forecast grading requires calibrated probability >=87%, lower bound >=80%, positive central/adverse cushion and all predeclared evidence/stress/scenario gates. Wager approval separately requires verified current operator terms and positive EV. No real candidate is approved here.
 
-No production/database/credit-platform changes, external messages, wagering or automated deployment are included. Existing source workbooks, historical records and account data remain outside this public repository. Source-ingestion adapters, fitted model, independent evidence verification, calibration and prop cards are pending implementation.
+No production/database/credit-platform changes, external messages, wagering or automated deployment are included. Existing source workbooks, historical records and account data remain outside this public repository. This research code still requires live provider acceptance, independent evidence verification, a validated fitted model and prop-card integration.
 
 ## Evidence ingestion
 
-`python3 ebt_cli.py evidence --help` exposes an offline captured-source manifest review. It checks source-domain policy, explicit expected-field coverage, timestamp/cutoff/freshness rules, local raw-capture hashes, metric units/windows, source conflicts and official OUT status. It preserves all valid source snapshots and holds missing/rejected/conflicting fields. These checks do not establish source truth or approve a forecast. See [the schema and limitations](docs/EVIDENCE_INGESTION.md). Live fetch/extraction adapters remain pending.
+`python3 ebt_cli.py evidence --help` exposes an offline captured-source manifest review. It checks source-domain policy, explicit expected-field coverage, timestamp/cutoff/freshness rules, local raw-capture hashes, metric units/windows, source conflicts and official OUT status. It preserves all valid source snapshots and holds missing/rejected/conflicting fields. These checks do not establish source truth or approve a forecast. See [the schema and limitations](docs/EVIDENCE_INGESTION.md).
+
+## Collection, extraction and calibration
+
+`collect`, `extract` and `calibrate` CLI commands provide a bounded public-source collector, capture-bound TeamRankings/NBA extraction, and a temporal isotonic calibration assessment. Access denials, parse ambiguity and insufficient certified history remain HOLD. These adapters do not yet form an independently verified live forecasting pipeline. See [supported endpoints, usage and acceptance limits](docs/COLLECTION_CALIBRATION.md).

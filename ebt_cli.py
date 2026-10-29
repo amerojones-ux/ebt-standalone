@@ -1,20 +1,12 @@
 """Offline JSON/CSV review; never fetches data or publishes decisions."""
 import argparse,csv,hashlib,io,json,sys
-from decimal import Decimal
 from pathlib import Path
 from collections import Counter,defaultdict
 from ebt_validation import qualify,evaluate_holdout
 from ebt_evidence import ingest
-
-def strict_json(text):
-    def unique(pairs):
-        result={}
-        for key,value in pairs:
-            if key in result:raise ValueError('duplicate JSON key: '+key)
-            result[key]=value
-        return result
-    def invalid(value):raise ValueError('nonfinite JSON number: '+value)
-    return json.loads(text,object_pairs_hook=unique,parse_constant=invalid,parse_float=Decimal)
+from ebt_json import strict_json
+from ebt_collect import collect,extract,verify_extraction
+from ebt_calibration import assessment
 
 def archive_report(path):
     raw=Path(path).read_bytes()
@@ -40,11 +32,22 @@ def main(argv=None):
     a=sub.add_parser('qualify');a.add_argument('input');a.add_argument('--now',required=True);a.add_argument('--max-quote-age-seconds',type=int,required=True)
     a=sub.add_parser('holdout');a.add_argument('input')
     a=sub.add_parser('evidence');a.add_argument('input');a.add_argument('--requirements',required=True);a.add_argument('--raw-root',required=True);a.add_argument('--cutoff',required=True);a.add_argument('--max-age-seconds',type=int,required=True);a.add_argument('--policy',default=str(Path(__file__).parent/'config'/'source_policy.json'))
+    a=sub.add_parser('collect');a.add_argument('url');a.add_argument('--destination',required=True);a.add_argument('--timeout',type=int,default=10)
+    a=sub.add_parser('extract');a.add_argument('input');a.add_argument('--raw-root',required=True);a.add_argument('--parameters',required=True);a.add_argument('--verify-claim')
+    a=sub.add_parser('calibrate');a.add_argument('input');a.add_argument('--validation',required=True);a.add_argument('--settings',required=True)
     args=p.parse_args(argv)
     try:
         if args.mode=='archive':result=archive_report(args.input)
         elif args.mode=='evidence':
             result=ingest(strict_json(Path(args.input).read_text()),strict_json(Path(args.requirements).read_text()),raw_root=args.raw_root,cutoff=args.cutoff,max_age_seconds=args.max_age_seconds,policy=strict_json(Path(args.policy).read_text()))
+        elif args.mode=='collect':result=collect(args.url,args.destination,timeout=args.timeout)
+        elif args.mode=='extract':
+            receipt=strict_json(Path(args.input).read_text());parameters=strict_json(Path(args.parameters).read_text())
+            result=extract(receipt,args.raw_root,parameters=parameters)
+            if args.verify_claim:
+                claim=strict_json(Path(args.verify_claim).read_text())
+                result={'extraction_matches':verify_extraction(receipt,args.raw_root,claim,parameters),'source_truth_verified':False,'forecast_approved':False}
+        elif args.mode=='calibrate':result=assessment(strict_json(Path(args.input).read_text()),strict_json(Path(args.validation).read_text()),**strict_json(Path(args.settings).read_text()))
         else:
             rows=strict_json(Path(args.input).read_text())
             if not isinstance(rows,list):raise ValueError('JSON array required')
