@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHandler
+from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHandler, ProxyHandler
 from http.client import HTTPSConnection
 from ebt_certification import CertificationHold
 
@@ -75,7 +75,7 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
         def https_open(self,req):
             return self.do_open(lambda host,**kw: PinnedConnection(
                 host,context=ssl.create_default_context(),**kw),req)
-    opener=build_opener(NoRedirect(),PinnedHTTPSHandler())
+    opener=build_opener(ProxyHandler({}),NoRedirect(),PinnedHTTPSHandler())
     try:
         # System CA trust; redirects prohibited before any secondary request.
         with opener.open(req,timeout=timeout_seconds) as response:
@@ -115,4 +115,4 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
     return {"capture_id":digest,"receipt_path":str(receipt_path),
             "integrity_verified":True,"provider_truth_verified":False,
             "authorization_independently_verified":False,
-            "dns_rebinding_protection_verified":True}
+            "dns_rebinding_protection_verified":False}
