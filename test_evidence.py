@@ -48,6 +48,9 @@ class EvidenceTests(unittest.TestCase):
         req=copy.deepcopy(self.requirement);req['event_id']='event-2';self.assertEqual(self.run_ingest(req=[req])['fields'][0]['verdict'],'HOLD')
     def test_duplicate_records_do_not_pass(self):
         self.assertEqual(self.run_ingest([self.record,self.record])['fields'][0]['verdict'],'HOLD')
+    def test_duplicate_id_holds_both_fields(self):
+        other=copy.deepcopy(self.record);other['subject_id']='player-2';req={k:other[k] for k in self.requirement}
+        result=self.run_ingest([self.record,other],[self.requirement,req]);self.assertTrue(all(r['verdict']=='HOLD' for r in result['fields']))
     def test_malformed_record_id(self):
         self.record['record_id']=[];self.assertTrue(self.run_ingest()['rejected_records'])
     def test_missing_subject_id(self):
@@ -65,6 +68,7 @@ class EvidenceTests(unittest.TestCase):
         with patch.object(pathlib.Path,'read_bytes',autospec=True,side_effect=read) as reader:
             report=self.run_ingest([self.record,other]);self.assertEqual(reader.call_count,1)
         self.assertEqual(report['fields'][0]['verdict'],'RESEARCH_INPUT')
+        self.assertEqual(report['valid_records'],2);self.assertEqual(report['unique_valid_capture_hashes'],1)
     def test_new_snapshot_replaces_older_same_time_conflict(self):
         a=copy.deepcopy(self.record);b=copy.deepcopy(self.record)
         a.update(record_id='a',effective_at='2026-10-28T17:58:00Z',value='OUT');b.update(record_id='b',effective_at='2026-10-28T17:58:00Z',value='QUESTIONABLE')

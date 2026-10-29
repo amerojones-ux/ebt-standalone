@@ -83,13 +83,17 @@ def ingest(records,requirements,*,raw_root,cutoff,max_age_seconds,policy):
             if kind not in KINDS or not isinstance(domains,list) or any(not nonempty(d) for d in domains):raise ValueError('invalid source-kind domain policy')
     required=[field_key(r) for r in requirements]
     if len(set(required))!=len(required):raise ValueError('duplicate required field')
-    valid=[];rejected=[];seen=set();groups=defaultdict(list);invalid_groups=set();captures={}
+    valid=[];rejected=[];seen={};groups=defaultdict(list);invalid_groups=set();captures={}
     for index,record in enumerate(records):
         normalized,errors=validate_record(record,raw_root=raw_root,cutoff=cutoff,max_age_seconds=max_age_seconds,policy=policy,_captures=captures)
         identity=record.get('record_id') if isinstance(record,dict) else None
         if nonempty(identity):
-            if identity in seen:errors.append('duplicate record_id')
-            seen.add(identity)
+            if identity in seen:
+                errors.append('duplicate record_id')
+                if seen[identity] is not None:invalid_groups.add(seen[identity])
+            else:
+                try:seen[identity]=field_key(record)
+                except ValueError:seen[identity]=None
         if errors:
             rejected.append({'index':index,'errors':errors})
             try:invalid_groups.add(field_key(record))
@@ -119,7 +123,7 @@ def ingest(records,requirements,*,raw_root,cutoff,max_age_seconds,policy):
         verdict='HOLD' if reasons else 'RESEARCH_INPUT'
         if fact=='participation' and any(r['source_kind']=='official' and r['value']=='OUT' for r in options):verdict='REJECT'
         output.append({'field_key':list(key),'verdict':verdict,'selected_record_id':selected['record_id'] if selected else None,'selected_value':selected['value'] if selected else None,'source_record_ids':[r['record_id'] for r in ranked],'conflict':conflict,'reasons':reasons})
-    return {'schema_version':'1.0','mode':'OFFLINE_CAPTURE_REVIEW','policy_version':policy['version'],'cutoff':cutoff,'max_age_seconds':max_age_seconds,'required_fields':len(required),'valid_captures':len(valid),'rejected_records':rejected,'fields':output,'records':valid,'source_truth_verified':False,'forecast_approved':False,'coverage':'Only explicitly required fields; no slate completeness inferred.'}
+    return {'schema_version':'1.0','mode':'OFFLINE_CAPTURE_REVIEW','policy_version':policy['version'],'cutoff':cutoff,'max_age_seconds':max_age_seconds,'required_fields':len(required),'valid_records':len(valid),'unique_valid_capture_hashes':len({r['raw_sha256'] for r in valid}),'rejected_records':rejected,'fields':output,'records':valid,'source_truth_verified':False,'forecast_approved':False,'coverage':'Only explicitly required fields; no slate completeness inferred.'}
 
 def signature(record):
     if record['fact'] in ('team_stat','player_stat'):
