@@ -134,6 +134,7 @@ def extract(receipt,raw_root,*,parameters):
     value=tr_table(body,**parameters) if adapter=='teamrankings_table' else nba_scoreboard(body,**parameters)
     if adapter=='nba_scoreboard':
         # Fail closed before a scoreboard extraction can reach downstream research.
+        # Capture time is a structural placeholder, not a source publication time.
         captured=clock(receipt['retrieved_at']).isoformat()
         checked=[]
         for game in value['games']:
@@ -144,7 +145,7 @@ def extract(receipt,raw_root,*,parameters):
                 'teams':[{'team_id':game['home_team_id']},{'team_id':game['away_team_id']}],
                 'deleted_games':[]})
             checked.append(canonical)
-        value['event_gate_passed']=True
+        value['event_gate_passed']=bool(checked)
         value['event_gate_checked']=len(checked)
         value['event_gate_scope']='structural_only_not_independently_verified'
     return {'adapter':adapter,'adapter_version':'1.0','raw_sha256':receipt['raw_sha256'],'parameters':parameters,'extracted':value,'extraction_reproducible':True,'source_truth_verified':False,'forecast_approved':False}
