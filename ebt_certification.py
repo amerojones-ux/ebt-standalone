@@ -32,11 +32,16 @@ def identity_check(event, player):
         raise CertificationHold("player event mismatch")
     if player.get("identity_corrob") is not True:
         raise CertificationHold("independent identity corroboration missing")
+    # Caller assertions cannot constitute independent certification.
+    if not isinstance(player.get("corroboration_capture_ids"), list) or len(player["corroboration_capture_ids"]) < 2 or len(set(player["corroboration_capture_ids"])) < 2:
+        raise CertificationHold("two distinct corroboration captures required")
     return True
 
 def availability_check(report, *, cutoff, max_age_seconds):
     if not isinstance(report, dict) or report.get("official_verified") is not True:
         raise CertificationHold("official availability evidence missing")
+    if not isinstance(report.get("capture_id"), str) or not report["capture_id"].strip():
+        raise CertificationHold("availability capture missing")
     if report.get("status") not in {"available", "out", "questionable", "doubtful", "probable"}:
         raise CertificationHold("unrecognized availability")
     if type(max_age_seconds) is not int or max_age_seconds <= 0:
@@ -71,6 +76,8 @@ def historical_certification(record):
         raise CertificationHold("independent historical certification missing")
     if record.get("outcome_verified") is not True:
         raise CertificationHold("outcome not verified")
+    if not isinstance(record.get("outcome_capture_id"), str) or not record["outcome_capture_id"].strip():
+        raise CertificationHold("outcome capture missing")
     return True
 
 def release_gate(*, access_authorized=False, history_certified=False,
