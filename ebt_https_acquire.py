@@ -17,7 +17,9 @@ from http.client import HTTPSConnection
 from ebt_certification import CertificationHold
 
 def collect_https(url, destination, *, allowed_hosts, collector_version,
-                  timeout_seconds=15, max_bytes=2_000_000):
+                  timeout_seconds=15, max_bytes=2_000_000, experimental=False):
+    if experimental is not True:
+        raise CertificationHold("collector experimental: explicit opt-in required")
     if not isinstance(url,str):
         raise CertificationHold("URL required")
     try:
