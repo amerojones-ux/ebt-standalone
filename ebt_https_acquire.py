@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHandler
 from ebt_certification import CertificationHold
 
 def collect_https(url, destination, *, allowed_hosts, collector_version,
@@ -29,9 +29,13 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
     root=Path(destination).resolve()
     root.mkdir(parents=True,exist_ok=True)
     req=Request(url,headers={"User-Agent":"EBT-BlackDiamond-EvidenceCollector/1.0"})
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self, request, fp, code, msg, headers, newurl):
+            raise CertificationHold("redirect prohibited")
+    opener=build_opener(NoRedirect(),HTTPSHandler(context=ssl.create_default_context()))
     try:
-        # System CA trust; no disabling certificate validation.
-        with urlopen(req,timeout=timeout_seconds,context=ssl.create_default_context()) as response:
+        # System CA trust; redirects prohibited before any secondary request.
+        with opener.open(req,timeout=timeout_seconds) as response:
             final=urlsplit(response.geturl())
             if final.scheme!="https" or final.hostname not in allowed_hosts or final.port not in (None,443) or final.username or final.password:
                 raise CertificationHold("redirected outside allowlist")
