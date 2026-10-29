@@ -18,6 +18,9 @@ def run_assessment(train=None,test=None,**changes):
     return assessment(train if train is not None else [row(1,'.1','HIT'),row(2,'.2','MISS'),row(3,'.3','HIT')],test if test is not None else [row(4,'.15','HIT',True),row(5,'.4','MISS',True)],**args)
 
 class CollectionTests(unittest.TestCase):
+    def test_malformed_receipt_and_claim_fail_cleanly(self):
+        with self.assertRaises(ValueError):extract([],'.',parameters=PARAM)
+        with self.assertRaises(ValueError):verify_extraction({},'.',[])
     def test_capture_and_extraction_are_bound(self):
         def fetch(url,timeout,max_bytes):return (b'User-agent: *\nDisallow:\n','text/plain') if url.endswith('robots.txt') else (HTML,'text/html')
         with tempfile.TemporaryDirectory() as d:

@@ -120,6 +120,7 @@ def nba_scoreboard(body,*,expected_date):
     return {'league_date':expected_date,'games':games,'feed_rows':len(games),'independent_schedule_corroboration':False}
 
 def extract(receipt,raw_root,*,parameters):
+    if not isinstance(receipt,dict):raise ValueError('capture receipt object required')
     if receipt.get('status')!='COLLECTED' or receipt.get('schema_version')!='1.0':raise ValueError('successful capture receipt required')
     adapter=source_kind(receipt['url'])
     if adapter!=receipt['adapter']:raise ValueError('source/adapter mismatch')
@@ -133,5 +134,6 @@ def extract(receipt,raw_root,*,parameters):
     return {'adapter':adapter,'adapter_version':'1.0','raw_sha256':receipt['raw_sha256'],'parameters':parameters,'extracted':value,'extraction_reproducible':True,'source_truth_verified':False,'forecast_approved':False}
 
 def verify_extraction(receipt,raw_root,claim,expected_parameters=None):
+    if not isinstance(claim,dict):raise ValueError('extraction claim object required')
     if expected_parameters is not None and claim.get('parameters')!=expected_parameters:return False
     return extract(receipt,raw_root,parameters=claim['parameters'])==claim
