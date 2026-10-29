@@ -2,6 +2,7 @@
 import hashlib,json,math
 import os,fcntl
 from decimal import Decimal
+from fractions import Fraction
 from datetime import datetime,timezone
 
 def clock(value):
@@ -17,7 +18,10 @@ def number(x):
     return n
 
 def probability(x):
-    p=float(number(x))
+    return float(exact_probability(x))
+
+def exact_probability(x):
+    p=number(x)
     if not 0<=p<=1: raise ValueError('probability outside [0,1]')
     return p
 
@@ -52,8 +56,8 @@ def qualify(row,*,now,max_quote_age_seconds):
         if not locked<=issued<=n<event:issues.append('pregame_time_order')
         if clock(row['calibration_training_end'])>=locked:issues.append('calibration_leakage')
         if not isinstance(row.get('market_key'),str) or not row['market_key'].strip():issues.append('market_identity')
-        p,lo=probability(row['calibrated_p']),probability(row['lower_bound'])
-        if lo>p or p<.87 or lo<.80:issues.append('calibrated_probability_gate')
+        p,lo=exact_probability(row['calibrated_p']),exact_probability(row['lower_bound'])
+        if lo>p or p<Decimal('.87') or lo<Decimal('.80'):issues.append('calibrated_probability_gate')
         if number(row['central_cushion'])<=0 or number(row['adverse_cushion'])<=0:issues.append('cushion_gate')
         for purpose in ('baseline','adversarial','scenario'):
             run=row['runs'][purpose]
@@ -73,10 +77,11 @@ def qualify(row,*,now,max_quote_age_seconds):
         age=(n-clock(q['retrieved_at'])).total_seconds()
         if not 0<=age<=max_quote_age_seconds:wager_issues.append('quote_freshness')
         if clock(q['retrieved_at'])<clock(row['model_locked_at']):wager_issues.append('market_before_model_lock')
-        odds=float(number(q['decimal_odds']))
-        if not math.isfinite(odds) or odds<=1 or row.get('settlement_rules_verified') is not True: wager_issues.append('price_or_rules')
-        win,push,loss=map(probability,(row['win_p'],row['push_p'],row['loss_p']))
-        if abs(win+push+loss-1)>1e-9 or abs(win-probability(row['calibrated_p']))>1e-9:wager_issues.append('probability_semantics')
+        raw_odds=number(q['decimal_odds'])
+        odds=Fraction(raw_odds)
+        if not math.isfinite(float(raw_odds)) or odds<=1 or row.get('settlement_rules_verified') is not True: wager_issues.append('price_or_rules')
+        win,push,loss=(Fraction(exact_probability(row[k])) for k in ('win_p','push_p','loss_p'))
+        if win+push+loss!=1 or win!=Fraction(exact_probability(row['calibrated_p'])):wager_issues.append('probability_semantics')
         if win*(odds-1)-loss<=0:wager_issues.append('nonpositive_ev')
     except (KeyError,ValueError,TypeError,AttributeError,ArithmeticError):wager_issues.append('missing_or_invalid_quote')
     return {'forecast':forecast,'wager':'APPROVED' if not issues and not wager_issues else 'NOT APPROVED','issues':issues+wager_issues}
@@ -86,7 +91,9 @@ def evaluate_holdout(rows):
     if not rows:raise ValueError('empty evaluation')
     seen=set();scored=[]
     for r in rows:
+        if not isinstance(r,dict):raise ValueError('holdout record must be an object')
         key=r['forecast_id']
+        if not isinstance(key,str) or not key.strip():raise ValueError('nonempty forecast_id required')
         if key in seen:raise ValueError('duplicate forecast_id')
         seen.add(key)
         if r.get('certified') is not True:raise ValueError('uncertified outcome')
@@ -102,6 +109,7 @@ def record_hash(record):
 def validate_chain(records):
     last='0'*64;ids=set()
     for r in records:
+        if not isinstance(r,dict) or not isinstance(r.get('id'),str) or not r['id'].strip():raise ValueError('invalid ledger record')
         if r['id'] in ids or r['previous_sha256']!=last:raise ValueError('chain discontinuity or duplicate id')
         ids.add(r['id']);expected=record_hash({k:v for k,v in r.items() if k!='sha256'})
         if r['sha256']!=expected:raise ValueError('record tampering')

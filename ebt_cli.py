@@ -4,6 +4,16 @@ from pathlib import Path
 from collections import Counter,defaultdict
 from ebt_validation import qualify,evaluate_holdout
 
+def strict_json(text):
+    def unique(pairs):
+        result={}
+        for key,value in pairs:
+            if key in result:raise ValueError('duplicate JSON key: '+key)
+            result[key]=value
+        return result
+    def invalid(value):raise ValueError('nonfinite JSON number: '+value)
+    return json.loads(text,object_pairs_hook=unique,parse_constant=invalid)
+
 def archive_report(path):
     raw=Path(path).read_bytes()
     rows=list(csv.DictReader(raw.decode('utf-8-sig').splitlines()))
@@ -25,7 +35,7 @@ def main(argv=None):
     try:
         if args.mode=='archive':result=archive_report(args.input)
         else:
-            rows=json.loads(Path(args.input).read_text())
+            rows=strict_json(Path(args.input).read_text())
             if not isinstance(rows,list):raise ValueError('JSON array required')
             if args.mode=='holdout':
                 result=evaluate_holdout(rows)

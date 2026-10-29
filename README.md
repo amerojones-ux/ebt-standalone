@@ -11,6 +11,10 @@ python3 -m unittest -v
 python3 ebt_cli.py --help
 ```
 
+GitHub Actions runs the synthetic regression suite on Python 3.11 and 3.13 for pull requests and branch pushes. Its token is read-only, checkout credentials are not persisted, and both action dependencies are pinned to verified commit SHAs. No secrets, forecast schedules or deployments are used.
+
+Approval thresholds, probability reconciliation and EV comparisons use decimal/rational arithmetic to avoid floating-point rounding at qualification boundaries. CLI JSON rejects duplicate keys and nonfinite constants. A successful command exit means the requested review ran; inspect each record's HOLD/REJECT/approval result rather than treating exit zero as approval.
+
 Validation includes strict/inclusive settlement, directional cushion, evidence-completeness gates, matching quote and EV checks, temporal holdout scoring and local hash-linked audit appends. All unit fixtures are synthetic. Caller assertions and hashes are not independently authenticated. Passing tests does not validate forecast accuracy or production readiness.
 
 TeamRankings is the primary team-level statistical hub. Official league evidence governs schedules, roster identity and participation. Market prices are compared only after an independent model is locked; they never validate the forecast.
