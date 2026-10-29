@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "competitions": {
+    "NBA": {"official": ["nba.com"], "teamrankings": ["teamrankings.com"], "secondary": ["espn.com", "covers.com", "statmuse.com"]},
+    "WNBA": {"official": ["wnba.com", "nba.com"], "secondary": ["espn.com", "covers.com", "statmuse.com"]},
+    "NFL": {"official": ["nfl.com"], "teamrankings": ["teamrankings.com"], "secondary": ["espn.com", "covers.com", "statmuse.com"]},
+    "MLB": {"official": ["mlb.com"], "teamrankings": ["teamrankings.com"], "secondary": ["espn.com", "covers.com", "statmuse.com"]},
+    "NHL": {"official": ["nhl.com"], "secondary": ["espn.com", "covers.com", "statmuse.com"]}
+  }
+}

@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 from collections import Counter,defaultdict
 from ebt_validation import qualify,evaluate_holdout
+from ebt_evidence import ingest
 
 def strict_json(text):
     def unique(pairs):
@@ -38,9 +39,12 @@ def main(argv=None):
     a=sub.add_parser('archive');a.add_argument('input')
     a=sub.add_parser('qualify');a.add_argument('input');a.add_argument('--now',required=True);a.add_argument('--max-quote-age-seconds',type=int,required=True)
     a=sub.add_parser('holdout');a.add_argument('input')
+    a=sub.add_parser('evidence');a.add_argument('input');a.add_argument('--requirements',required=True);a.add_argument('--raw-root',required=True);a.add_argument('--cutoff',required=True);a.add_argument('--max-age-seconds',type=int,required=True);a.add_argument('--policy',default=str(Path(__file__).parent/'config'/'source_policy.json'))
     args=p.parse_args(argv)
     try:
         if args.mode=='archive':result=archive_report(args.input)
+        elif args.mode=='evidence':
+            result=ingest(strict_json(Path(args.input).read_text()),strict_json(Path(args.requirements).read_text()),raw_root=args.raw_root,cutoff=args.cutoff,max_age_seconds=args.max_age_seconds,policy=strict_json(Path(args.policy).read_text()))
         else:
             rows=strict_json(Path(args.input).read_text())
             if not isinstance(rows,list):raise ValueError('JSON array required')
