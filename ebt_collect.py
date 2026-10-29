@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit,parse_qs,urljoin
 from ebt_json import strict_json
 from ebt_validation import clock,number
+from ebt_event_gate import validate_event_record
 
 AGENT='EBT-Sports-Research/0.1'
 NBA_URL='https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json'
@@ -131,6 +132,21 @@ def extract(receipt,raw_root,*,parameters):
     body=path.read_bytes()
     if hashlib.sha256(body).hexdigest()!=receipt['raw_sha256'] or len(body)!=receipt['bytes']:raise ValueError('capture integrity mismatch')
     value=tr_table(body,**parameters) if adapter=='teamrankings_table' else nba_scoreboard(body,**parameters)
+    if adapter=='nba_scoreboard':
+        # Fail closed before a scoreboard extraction can reach downstream research.
+        captured=clock(receipt['retrieved_at']).isoformat()
+        checked=[]
+        for game in value['games']:
+            status={1:'scheduled',2:'inprogress',3:'closed'}[game['status_code']]
+            canonical=validate_event_record({'event_id':game['event_id'],
+                'scheduled_start':game['start_utc'],'effective_at':captured,
+                'fetched_at':captured,'status':status,
+                'teams':[{'team_id':game['home_team_id']},{'team_id':game['away_team_id']}],
+                'deleted_games':parameters.get('deleted_games',[])})
+            checked.append(canonical)
+        value['event_gate_passed']=True
+        value['event_gate_checked']=len(checked)
+        value['event_gate_scope']='structural_only_not_independently_verified'
     return {'adapter':adapter,'adapter_version':'1.0','raw_sha256':receipt['raw_sha256'],'parameters':parameters,'extracted':value,'extraction_reproducible':True,'source_truth_verified':False,'forecast_approved':False}
 
 def verify_extraction(receipt,raw_root,claim,expected_parameters=None):
