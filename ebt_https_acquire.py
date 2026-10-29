@@ -5,6 +5,8 @@ still require external review. Never bypass HTTP access controls.
 """
 import hashlib
 import json
+import ipaddress
+import socket
 import ssl
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,8 +19,14 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
                   timeout_seconds=15, max_bytes=2_000_000):
     if not isinstance(url,str):
         raise CertificationHold("URL required")
-    parts=urlsplit(url)
-    if parts.scheme!="https" or parts.username or parts.password or parts.fragment or parts.port not in (None,443) or parts.hostname not in allowed_hosts:
+    try:
+        parts=urlsplit(url)
+        port=parts.port
+    except ValueError as exc:
+        raise CertificationHold("malformed URL") from exc
+    if not isinstance(allowed_hosts,(set,frozenset)) or not allowed_hosts:
+        raise CertificationHold("explicit host allowlist required")
+    if parts.scheme!="https" or parts.username or parts.password or parts.fragment or port not in (None,443) or parts.hostname not in allowed_hosts:
         raise CertificationHold("URL not allowlisted")
     if type(max_bytes) is not int or not 0<max_bytes<=10_000_000:
         raise CertificationHold("invalid capture limit")
@@ -26,6 +34,21 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
         raise CertificationHold("invalid timeout")
     if not isinstance(collector_version,str) or not collector_version.strip():
         raise CertificationHold("collector version required")
+    # DNS preflight is only a screening measure: urllib resolves again later.
+    # A pinned-address transport is required before treating this as SSRF-safe.
+    try:
+        answers=socket.getaddrinfo(parts.hostname,443,type=socket.SOCK_STREAM)
+    except (socket.gaierror,OSError) as exc:
+        raise CertificationHold("DNS lookup failed") from exc
+    if not answers:
+        raise CertificationHold("DNS lookup empty")
+    for answer in answers:
+        try:
+            addr=ipaddress.ip_address(answer[4][0])
+        except ValueError as exc:
+            raise CertificationHold("invalid resolved address") from exc
+        if not addr.is_global:
+            raise CertificationHold("nonpublic resolved address prohibited")
     root=Path(destination).resolve()
     root.mkdir(parents=True,exist_ok=True)
     req=Request(url,headers={"User-Agent":"EBT-BlackDiamond-EvidenceCollector/1.0"})
@@ -71,4 +94,5 @@ def collect_https(url, destination, *, allowed_hosts, collector_version,
             json.dump(receipt,stream,sort_keys=True)
     return {"capture_id":digest,"receipt_path":str(receipt_path),
             "integrity_verified":True,"provider_truth_verified":False,
-            "authorization_independently_verified":False}
+            "authorization_independently_verified":False,
+            "dns_rebinding_protection_verified":False}
