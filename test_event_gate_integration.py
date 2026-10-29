@@ -34,6 +34,14 @@ class ExtractionGateIntegrationTests(unittest.TestCase):
         self.assertFalse(result["forecast_approved"])
         self.assertFalse(result["source_truth_verified"])
 
+    def test_empty_scoreboard_not_marked_validated(self):
+        board = sample()
+        board['scoreboard']['games'] = []
+        result = self.run_extract(board)
+        self.assertFalse(result['extracted']['event_gate_passed'])
+        self.assertEqual(result['extracted']['event_gate_checked'], 0)
+        self.assertFalse(result['forecast_approved'])
+
     def test_late_scheduled_capture_holds(self):
         with self.assertRaises(ValueError):
             self.run_extract(sample(), retrieved="2026-10-31T00:00:00Z")
