@@ -4,7 +4,7 @@ from ebt_validation import *
 def valid():
     r={k:True for k in EVIDENCE};r.update(issued_at='2026-10-28T18:00:00Z',model_locked_at='2026-10-28T17:59:00Z',event_start='2026-10-28T23:00:00Z',calibration_training_end='2026-10-27T00:00:00Z',calibrated_p=.90,lower_bound=.82,central_cushion=3,adverse_cushion=1,market_key='SYNTHETIC|GE|6',settlement_rules_verified=True,win_p=.90,push_p=0,loss_p=.10)
     r['runs']={k:dict(trials=100000,hits=90000,input_sha256='a'*64,code_sha256='b'*64,seed=1) for k in ('baseline','adversarial','scenario')}
-    r['quote']=dict(operator_verified=True,market_key=r['market_key'],retrieved_at='2026-10-28T18:00:00Z',decimal_odds=1.2)
+    r['quote']=dict(operator_verified=True,market_key=r['market_key'],quoted_at='2026-10-28T18:00:00Z',retrieved_at='2026-10-28T18:00:00Z',decimal_odds=1.2)
     return r
 def q(r):return qualify(r,now='2026-10-28T18:01:00Z',max_quote_age_seconds=120)
 class Tests(unittest.TestCase):

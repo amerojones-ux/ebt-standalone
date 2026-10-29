@@ -15,6 +15,8 @@ GitHub Actions runs the synthetic regression suite on Python 3.11 and 3.13 for p
 
 Approval thresholds, probability reconciliation and EV comparisons use decimal/rational arithmetic to avoid floating-point rounding at qualification boundaries. CLI JSON rejects duplicate keys and nonfinite constants. A successful command exit means the requested review ran; inspect each record's HOLD/REJECT/approval result rather than treating exit zero as approval.
 
+JSON decimal tokens retain their precision from ingestion through qualification. Operator quotes require `quoted_at` (effective observation/publication time) and `retrieved_at` separately; rereading an old quote does not refresh its validity. Unknown effective times remain pending. CSV archive review rejects duplicate columns, malformed row widths and blank identity fields; source URLs and outcome labels remain unverified claims.
+
 Validation includes strict/inclusive settlement, directional cushion, evidence-completeness gates, matching quote and EV checks, temporal holdout scoring and local hash-linked audit appends. All unit fixtures are synthetic. Caller assertions and hashes are not independently authenticated. Passing tests does not validate forecast accuracy or production readiness.
 
 TeamRankings is the primary team-level statistical hub. Official league evidence governs schedules, roster identity and participation. Market prices are compared only after an independent model is locked; they never validate the forecast.

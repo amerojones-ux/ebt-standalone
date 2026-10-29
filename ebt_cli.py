@@ -1,5 +1,6 @@
 """Offline JSON/CSV review; never fetches data or publishes decisions."""
-import argparse,csv,hashlib,json,sys
+import argparse,csv,hashlib,io,json,sys
+from decimal import Decimal
 from pathlib import Path
 from collections import Counter,defaultdict
 from ebt_validation import qualify,evaluate_holdout
@@ -12,15 +13,21 @@ def strict_json(text):
             result[key]=value
         return result
     def invalid(value):raise ValueError('nonfinite JSON number: '+value)
-    return json.loads(text,object_pairs_hook=unique,parse_constant=invalid)
+    return json.loads(text,object_pairs_hook=unique,parse_constant=invalid,parse_float=Decimal)
 
 def archive_report(path):
     raw=Path(path).read_bytes()
-    rows=list(csv.DictReader(raw.decode('utf-8-sig').splitlines()))
+    reader=csv.DictReader(io.StringIO(raw.decode('utf-8-sig')),strict=True)
+    headers=reader.fieldnames
+    if not headers or len(set(headers))!=len(headers):raise ValueError('missing or duplicate CSV columns')
+    try:rows=list(reader)
+    except csv.Error as error:raise ValueError('invalid CSV syntax') from error
     required={'date','card_version','selection','threshold','rechecked_result','source_primary'}
     if not rows or not required.issubset(rows[0]):raise ValueError('missing archive columns or empty archive')
     seen=set();duplicates=[];boards=defaultdict(list)
     for i,r in enumerate(rows,2):
+        if None in r or any(v is None for v in r.values()):raise ValueError('CSV row width mismatch at record '+str(i))
+        if any(not r[k].strip() for k in ('date','card_version','selection','threshold')):raise ValueError('missing archive identity at record '+str(i))
         key=tuple(r[k] for k in ('date','card_version','selection','threshold'))
         if key in seen:duplicates.append(i)
         seen.add(key);boards[r['card_version']].append(r)

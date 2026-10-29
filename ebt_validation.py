@@ -74,9 +74,10 @@ def qualify(row,*,now,max_quote_age_seconds):
         q=row['quote']
         if q.get('operator_verified') is not True: wager_issues.append('operator_quote')
         if q['market_key']!=row['market_key']:wager_issues.append('quote_market_identity')
-        age=(n-clock(q['retrieved_at'])).total_seconds()
-        if not 0<=age<=max_quote_age_seconds:wager_issues.append('quote_freshness')
-        if clock(q['retrieved_at'])<clock(row['model_locked_at']):wager_issues.append('market_before_model_lock')
+        quoted,retrieved=clock(q['quoted_at']),clock(q['retrieved_at'])
+        age=(n-quoted).total_seconds()
+        if not quoted<=retrieved<=n or not 0<=age<=max_quote_age_seconds:wager_issues.append('quote_freshness')
+        if quoted<clock(row['model_locked_at']):wager_issues.append('market_before_model_lock')
         raw_odds=number(q['decimal_odds'])
         odds=Fraction(raw_odds)
         if not math.isfinite(float(raw_odds)) or odds<=1 or row.get('settlement_rules_verified') is not True: wager_issues.append('price_or_rules')
@@ -99,9 +100,14 @@ def evaluate_holdout(rows):
         if r.get('certified') is not True:raise ValueError('uncertified outcome')
         if not clock(r['training_end'])<clock(r['issued_at'])<clock(r['event_start'])<=clock(r['outcome_available_at']):raise ValueError('temporal leakage')
         if r['result'] not in ('HIT','MISS'):raise ValueError('separate push/void/pending outcomes')
-        p=probability(r['p']);y=int(r['result']=='HIT');scored.append((p,y))
-    log_terms=[-math.log(p if y else 1-p) if 0<(p if y else 1-p)<=1 else math.inf for p,y in scored]
-    return {'n':len(scored),'brier':sum((p-y)**2 for p,y in scored)/len(scored),'log_loss':sum(log_terms)/len(scored),'calibration_certified':False}
+        p=Fraction(exact_probability(r['p']));y=int(r['result']=='HIT');scored.append((p,y))
+    log_terms=[]
+    for p,y in scored:
+        outcome=p if y else 1-p
+        if outcome==0:log_terms.append(math.inf)
+        elif outcome>Fraction(1,2):log_terms.append(-math.log1p(-float(1-outcome)))
+        else:log_terms.append(math.log(outcome.denominator)-math.log(outcome.numerator))
+    return {'n':len(scored),'brier':sum(float((p-y)**2) for p,y in scored)/len(scored),'log_loss':sum(log_terms)/len(scored),'calibration_certified':False}
 
 def record_hash(record):
     return hashlib.sha256(json.dumps(record,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
