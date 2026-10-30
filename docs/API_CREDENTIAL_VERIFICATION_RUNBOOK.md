@@ -10,7 +10,7 @@ The seven secrets must exist in the GitHub Actions repository settings:
 - EBT_WEATHER_API_KEY
 - EBT_SPORTRADAR_API_KEY
 
-The `.github/workflows/api-secret-presence.yml` workflow uses only GitHub Actions boolean expressions to check that each secret is nonempty. It never injects actual secret values into a shell process, never prints them and never contacts an API. It is restricted to development-branch pushes or manual dispatch. A successful run establishes **presence only**, not key validity or permissions.
+The `.github/workflows/api-secret-presence.yml` workflow uses only GitHub Actions boolean expressions to check that each secret is nonempty. It never injects actual secret values into a shell process, never prints them and never contacts an API. It is restricted to explicit manual dispatch after code review; it does not run on pushes or pull requests, reducing the risk of unreviewed workflow changes accessing secrets. A successful run establishes **presence only**, not key validity or permissions.
 
 Do not paste keys into issue comments, logs, terminal commands, client-side code or commits.
 
@@ -34,4 +34,4 @@ Provider-by-provider matrix:
 Before model activation require verified official identity mapping, permitted historical coverage, immutable as-of snapshots, independent opponent-adjusted projections, V7.1 three-engine simulations and calibrated out-of-time performance. Betting lines must not contaminate independent projections. No production or wager activation from this workflow.
 
 ## GitHub execution note
-GitHub may restrict newly added workflow files and manual dispatch to the default branch. Do not merge the draft PR solely to make manual dispatch available. Review and inspect GitHub Actions for the branch's push-triggered presence check; if no run appears, investigate repository Actions settings and workflow permissions. Do not claim a passing check without a completed successful run.
+GitHub may restrict newly added workflow files and manual dispatch to the default branch. Do not merge the draft PR solely to make manual dispatch available. Review the draft PR first. Once the workflow is safely present on the default branch, use its manual Run workflow action; if unavailable, investigate repository Actions settings and workflow permissions. Do not run secret-bearing workflows from untrusted branches. Do not claim a passing check without a completed successful run.
