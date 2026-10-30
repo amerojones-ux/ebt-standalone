@@ -65,7 +65,7 @@ def _validate_spec(spec: ProbeSpec) -> str:
 
 
 def probe_readonly(spec: ProbeSpec, *, secret: str, approved_hostnames: frozenset[str],
-                   opener=None) -> dict:
+                   approved_endpoints: frozenset[str] | None = None, opener=None) -> dict:
     """Run GET only; network must additionally be restricted by runner egress ACL.
 
     approved_hostnames must come from independent reviewed configuration.
@@ -74,6 +74,9 @@ def probe_readonly(spec: ProbeSpec, *, secret: str, approved_hostnames: frozense
     host = _validate_spec(spec)
     if not isinstance(approved_hostnames, frozenset) or host not in approved_hostnames:
         raise ProviderGateError("host not explicitly approved")
+    if (not isinstance(approved_endpoints, frozenset)
+            or spec.endpoint not in approved_endpoints):
+        raise ProviderGateError("exact endpoint not explicitly approved")
     if not isinstance(secret, str) or not secret.strip() or "\r" in secret or "\n" in secret:
         raise ProviderGateError("missing or unsafe secret")
     header = ("X-API-Key" if spec.auth_scheme == "x-api-key" else "Authorization")
