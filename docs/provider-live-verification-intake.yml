@@ -52,7 +52,8 @@ providers:
     status: NOT_TESTED
   weather:
     secret_name: EBT_WEATHER_API_KEY
-    product: WeatherAPI.com_unconfirmed
+    product: WeatherAPI.com
+    vendor_confirmed_by_user: true
     candidate_official_endpoint: https://api.weatherapi.com/v1/current.json
     reviewed_endpoint: pending
     reviewed_auth_scheme: query_key_not_supported_by_current_probe
