@@ -35,3 +35,8 @@ jobs:
         run: python -m unittest discover -v
       - name: Check command-line entry point
         run: python ebt_cli.py --help
+
+      - name: Check research extension command-line entry points
+        run: |
+          python ebt_extensions_cli.py --help
+          python ebt_prop_card_cli.py --help
