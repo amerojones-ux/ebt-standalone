@@ -37,7 +37,13 @@ class ProviderGatewayTests(unittest.TestCase):
         rights = dict.fromkeys(("model_use", "historical_access", "retention", "derived_analytics"), True)
         env = {"EBT_SPORTRADAR_API_KEY": "fake"}
         self.assertEqual(assess_provider("sportradar", rights=rights, environ=env).status, "BLOCKED")
-        self.assertEqual(assess_provider("sportradar", rights=rights, feed_verified=True, environ=env).status, "FOUND")
+        self.assertEqual(assess_provider("sportradar", rights=rights, feed_verified=True, environ=env).status, "BLOCKED")
+
+    def test_unhashable_provider_fails_closed(self):
+        with self.assertRaises(ProviderGateError):
+            assess_provider([], environ={})
+        with self.assertRaises(ProviderGateError):
+            validate_observation({**RECORD, "provider": []}, as_of_utc="2026-10-30T15:05:00Z")
 
     def test_observation_fingerprint_is_deterministic(self):
         a = validate_observation(RECORD, as_of_utc="2026-10-30T15:05:00Z")
