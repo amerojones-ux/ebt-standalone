@@ -9,6 +9,7 @@ from pathlib import Path
 from ebt_json import strict_json
 from extensions.underperformance import evaluate_count_under, audit_locked_unders
 from extensions.streak_intelligence import import_authorized_streak
+from extensions.monte_carlo import three_way_under_mc
 
 
 def main(argv=None):
@@ -16,6 +17,8 @@ def main(argv=None):
     sub=p.add_subparsers(dest='mode',required=True)
     a=sub.add_parser('under',help='Evaluate already locked count distribution')
     a.add_argument('input',help='JSON object with pmf,line and optional normal_baseline, severe_fraction, over_friendly_pmf')
+    a=sub.add_parser('under-mc',help='Run three purpose-distinct offline simulations (>=100k each)')
+    a.add_argument('input',help='JSON: pmfs, line, seeds, trials')
     a=sub.add_parser('under-audit',help='Audit immutable pregame under records')
     a.add_argument('input',help='JSON array of pregame-locked forecast records')
     a=sub.add_parser('streak',help='Local operator-attested CSV streak summary')
@@ -34,6 +37,11 @@ def main(argv=None):
                 raise ValueError('unexpected or missing under fields')
             kw={key:row[key] for key in ('normal_baseline','severe_fraction','over_friendly_pmf') if key in row}
             result=evaluate_count_under(row['pmf'],row['line'],**kw)
+        elif args.mode=='under-mc':
+            row=strict_json(Path(args.input).read_text(encoding='utf-8'))
+            if not isinstance(row,dict) or set(row)!={'pmfs','line','seeds','trials'}:
+                raise ValueError('exact under-mc input schema required')
+            result=three_way_under_mc(row['pmfs'],row['line'],trials=row['trials'],seeds=row['seeds'])
         elif args.mode=='under-audit':
             result=audit_locked_unders(strict_json(Path(args.input).read_text(encoding='utf-8')))
         else:
