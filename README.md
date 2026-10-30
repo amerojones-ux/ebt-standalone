@@ -32,3 +32,10 @@ No production/database/credit-platform changes, external messages, wagering or a
 ## Collection, extraction and calibration
 
 `collect`, `extract` and `calibrate` CLI commands provide a bounded public-source collector, capture-bound TeamRankings/NBA extraction, and a temporal isotonic calibration assessment. Access denials, parse ambiguity and insufficient certified history remain HOLD. These adapters do not yet form an independently verified live forecasting pipeline. See [supported endpoints, usage and acceptance limits](docs/COLLECTION_CALIBRATION.md).
+
+
+## Cross-thread V7/V7.1 reconciliation (review branch, Oct 29 2026)
+
+The authoritative sports Project specification is the **complete attached V7 with appended V7.1 Oct 22 amendment**, not this README or any older installer. Before running forecasts, read [project instruction pointer](docs/PROJECT_INSTRUCTION_POINTER.md), [cross-thread audit](docs/CROSS_THREAD_RECONCILIATION_2026-10-29.md), [research-extension acceptance gates](docs/RESEARCH_EXTENSIONS_ACCEPTANCE.md) and [electric prop-card data/visual contract](docs/PROP_CARD_VISUAL_AND_OUTPUT.md).
+
+The Oct 29 underperformance and rights-safe streak research archives were independently exercised locally (16 and 27 synthetic tests passed). The research source ZIP is stored separately in the user's private project Library; neither prototype is in this repository's live forecasting pipeline and neither establishes model calibration, verified provider rights, current operator odds or approved wagers. The existing offline engine remains unchanged. **Forecast/Wager: HOLD / NOT APPROVED.**
