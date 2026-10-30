@@ -9,10 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import ipaddress
 import json
-import socket
 import ssl
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import Request
 from urllib.error import HTTPError, URLError
 
 from extensions.provider_gateway import PROVIDERS, ProviderGateError
@@ -31,22 +30,28 @@ class ProbeSpec:
 
 
 def _validate_spec(spec: ProbeSpec) -> str:
-    if not isinstance(spec, ProbeSpec) or spec.provider not in PROVIDERS:
+    if not isinstance(spec, ProbeSpec) or not isinstance(spec.provider, str) or spec.provider not in PROVIDERS:
         raise ProviderGateError("invalid provider probe")
-    if spec.auth_scheme not in _ALLOWED_AUTH:
+    if not isinstance(spec.auth_scheme, str) or spec.auth_scheme not in _ALLOWED_AUTH:
         raise ProviderGateError("unsupported authentication scheme")
-    if type(spec.timeout_seconds) not in (int, float) or not 0 < spec.timeout_seconds <= 15:
+    from math import isfinite
+    if type(spec.timeout_seconds) not in (int, float) or not isfinite(spec.timeout_seconds) or not 0 < spec.timeout_seconds <= 15:
         raise ProviderGateError("invalid timeout")
     if not isinstance(spec.endpoint, str) or not isinstance(spec.expected_hostname, str):
         raise ProviderGateError("invalid endpoint")
-    parts = urlsplit(spec.endpoint)
+    try:
+        parts = urlsplit(spec.endpoint)
+        port = parts.port
+    except ValueError as exc:
+        raise ProviderGateError("invalid endpoint URL") from exc
     if (parts.scheme != "https" or parts.username is not None or parts.password is not None
-            or parts.query or parts.fragment or parts.port not in (None, 443)
+            or parts.query or parts.fragment or port not in (None, 443)
             or not parts.hostname or not parts.path.startswith("/")
             or parts.hostname.lower() != spec.expected_hostname.lower()):
         raise ProviderGateError("endpoint must be exact reviewed HTTPS host with no query")
     host = parts.hostname.lower()
-    if host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
+    if (host == "localhost" or host.endswith(".localhost") or host.endswith(".local")
+            or host.endswith(".internal") or "." not in host):
         raise ProviderGateError("private/local endpoint denied")
     try:
         ipaddress.ip_address(host)
