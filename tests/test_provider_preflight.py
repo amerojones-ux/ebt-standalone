@@ -19,6 +19,7 @@ def fixture():
                 "reviewed_endpoint": "pending",
                 "reviewed_auth_scheme": "pending",
                 "entitlements": "pending",
+                "status": "NOT_TESTED",
             } for name, secret in PROVIDERS.items()
         },
     }
@@ -46,6 +47,12 @@ class ProviderPreflightTests(unittest.TestCase):
     def test_rejects_provider_secret_mismatch(self):
         intake = fixture()
         intake["providers"]["weather"]["secret_name"] = "WRONG"
+        with self.assertRaises(ValueError):
+            audit_intake(intake)
+
+    def test_rejects_unverified_live_status_claim(self):
+        intake = fixture()
+        intake["providers"]["weather"]["status"] = "LIVE_VERIFIED"
         with self.assertRaises(ValueError):
             audit_intake(intake)
 
