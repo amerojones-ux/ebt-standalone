@@ -1,0 +1,64 @@
+# Seven-provider live verification intake — research-only
+# Never put API keys, token fragments, customer IDs, URLs with query parameters, or response bodies here.
+# Fill only from reviewed vendor documentation and subscription entitlements.
+# "pending" is intentional: no HTTP 200 response alone can authorize ingestion or forecasting.
+schema_version: 1
+release_gates:
+  forecast: HOLD
+  wager: NOT_APPROVED
+  live_probe_requires:
+    - documented_exact_readonly_endpoint
+    - independently_reviewed_hostname_and_auth
+    - protected_secret_environment
+    - infrastructure_egress_allowlist
+    - explicit_execution_approval
+providers:
+  therundown:
+    secret_name: EBT_THERUNDOWN_API_KEY
+    product: TheRundown
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
+  sportsdata:
+    secret_name: EBT_SPORTSDATA_API_KEY
+    product: SportsDataIO
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
+  theoddsapi:
+    secret_name: EBT_THEODDS_API_KEY
+    product: The Odds API
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
+  apisports:
+    secret_name: EBT_APISPORTS_API_KEY
+    product: API-Sports
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
+  rapidapi:
+    secret_name: EBT_RAPIDAPI_API_KEY
+    product: pending_subscribed_api_name
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
+  weather:
+    secret_name: EBT_WEATHER_API_KEY
+    product: pending_weather_vendor
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
+  sportradar:
+    secret_name: EBT_SPORTRADAR_API_KEY
+    product: Sportradar
+    reviewed_endpoint: pending
+    reviewed_auth_scheme: pending
+    entitlements: pending
+    status: NOT_TESTED
