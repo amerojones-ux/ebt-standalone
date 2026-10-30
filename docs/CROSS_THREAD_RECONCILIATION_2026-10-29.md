@@ -1,0 +1,30 @@
+# Cross-thread additions and actual integration status — October 29, 2026
+
+**Review scope:** available EBT sports conversations/handoff descriptions, authoritative attached V7/V7.1 master, local historical installer ZIPs, Library research packages, and the current GitHub `main` tree. This is a finite evidence-based reconciliation, **not** proof every historical ChatGPT thread or every external project-folder setting was opened. It does not cover the separate credit platform.
+
+| Addition / thread lineage | Located artifact or code | Status in `main` at review | Correct treatment / acceptance action |
+| --- | --- | --- | --- |
+| Authoritative V7 mismatch-first, source intelligence, 3xMC and postgame reverse-engineering, plus V7.1 Oct 22 cushion/audit | ChatGPT Project: `05-EBT_AI_BLACK_DIAMOND_OS_SOURCE_INTELLIGENCE_V7_FULL-1-.txt` | **Project file FOUND; repo full master ABSENT** | Point every workflow to full file; never assume repo README supersedes it. |
+| Independence of projections from sportsbook market, conservative decimal/settlement and audit guards | `ebt_validation.py`, `ebt_evidence.py`, `ebt_calibration.py`, repo docs | **CODE PRESENT**, synthetic/offline status | Keep HOLD until real sources, independent calibration, reproducible MC, final quote and acceptance pass. |
+| Official-first ingestion, source links, TeamRankings and vetted source paths | `ebt_collect.py`, `config/source_policy.json`, `docs/COLLECTION_CALIBRATION.md` | **PARTIAL**; mostly selected NBA endpoints and a five-league policy | Add licensed/authorized sport-specific adapters gradually; explicit BLOCKED/UNAVAILABLE and canonical IDs. No crawling around denials. |
+| Oct 28 V7.1/V2 Work-agent handoff and authoritative workbook | `EBT_BLACK_DIAMOND_START_HERE.md`, `AUTHORITATIVE_EBT_NBA_V7_1_80_PLUS_REVISION.xlsx` described in handoff | **NOT PRESENT in repo** | Retain handoff/workbooks in private project storage; verify versions before reconciling any model coefficients. |
+| Oct 29 all-sports streak cheat sheet | `EBT_Black_Diamond_V7_1_Primary_Streak_Intelligence_2026-10-29.xlsx`; 27-test authorized-feed v3 research archive | **NOT INTEGRATED as code in main** | Stage only in quarantined research; require verified feed rights, final official IDs, source timestamps and independent calibration. Observed streak != future probability. |
+| Oct 29 Gobert-triggered underperformance research | `EBT_Black_Diamond_Underperformance_Engine_V1.zip` with count kernel and historical audit | **NOT INTEGRATED in main**; 16 synthetic tests observed passing locally | Separate P(under exact line), P(below normal), and P(material underperformance); don't invent remembered quote or postgame warning. Require fitted pregame states/credible adverse recovery and out-of-sample calibration. |
+| Oct 27 electric premium prop-card standard | `EBT_AI_Visual_Standard.txt` and image reference in Library | **VISUAL STANDARD NOT IN REPO UI** | Implement readable black/gold/neon template with honest data status, probability source, exact threshold/quote and forecast-vs-wager split. Screenshots are stylistic, not statistical truth. |
+| Daily primary, global slate, hourly identity and postgame automation threads | User's active scheduled ChatGPT tasks, with distinct cadence | **NOT THE REPO'S JOB RUNNER** | Avoid claiming automation tasks trigger repo CI, every game T-25 or data refresh until explicitly connected and verified. |
+| Oct 27–29 exact-threshold postgame audits | Library audit workbooks and append-only board instructions | **NOT IN REPO** | Keep actual private ledgers separate; audit all published/revised thresholds, including misses and pending. Do not infer ROI or certified accuracy. |
+| Earlier V2.6.1, V5, V6, V6.1 installers and legacy source material | Four provided historical ZIP archives, integrity check no corrupt member detected | **HISTORICAL**, not verified as installed in main | Use for migration/feature diff only; legacy project instruction files cannot override V7/V7.1. |
+| Source rights-safe streak v3, temporal approval manifest | `EBT_V7_1_Rights_Safe_Importer_v3_2026-10-29.zip` | **RESEARCH PACKAGE ONLY**, not a licensed provider connection | Require operator-reviewed contract and sports-betting analytics usage approval; no NBA Stats bulk import without permission. |
+
+### Highest-priority correctness gaps (blocking promotion)
+1. Real and permitted data feeds, current official schedule/availability/identity, current operator quotes and stable canonical IDs are NOT independently certified.
+2. A versioned, calibrated player/team distribution trained only on immutable pregame examples is NOT released. The 28/27/16 synthetic test claims are **test counts**, not player-prop prediction quality.
+3. Executed and retained three distinct >=100,000-trial simulations, a separate portfolio joint run, and cohort-specific lower-bound calibration are NOT evidenced for current live candidates.
+4. No documented link between ChatGPT automations, the GitHub Actions synthetic validation harness, project-folder workbook lineage and a safe live deployment.
+5. Public repo scope is source and research tests; private original workbooks, screenshots, provider entitlements and historical candidate ledgers remain out of scope.
+
+### Branch action in this review
+Add versioned **instructions and gap/readiness registry only**, without modifying production services, default model weights, source permissions, observed outcomes, old ledgers, scheduled automations or claiming live approval. The isolated tested prototype bundle is supplied separately for code review. This changes process documentation, **not** research models or probability calibration.
+
+### Evidence caveat
+Some thread facts are from historical user/assistant summaries rather than immutable contents of every past chat; they are marked as such. Current repository state and inspected archive content were checked directly. Inference about whether an external project instruction or Drive folder is updated must not be presented as verification.
