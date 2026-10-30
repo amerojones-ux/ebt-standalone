@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from extensions.underperformance import evaluate_count_under, audit_locked_unders
 from extensions.streak_intelligence import import_authorized_streak, summarize_streak
+from extensions.monte_carlo import three_way_under_mc
 
 
 class UnderTests(unittest.TestCase):
@@ -60,6 +61,25 @@ class UnderTests(unittest.TestCase):
     def test_no_unverified_result(self):
         x={'forecast_id':'f1','event_id':'e1','player_id':'p1','stat':'rebounds','line':9.5,'locked_at':'2026-10-01T15:00:00Z','event_start':'2026-10-01T16:00:00Z','source_available_times':['2026-10-01T14:00:00Z'],'p_under':.7,'settlement':'FINAL','actual':8,'result_verified':False}
         r=audit_locked_unders([x]);self.assertEqual(r['n_pending_or_void'],1);self.assertIsNone(r['brier'])
+
+
+class MonteCarloTests(unittest.TestCase):
+    def test_run_and_reproduce(self):
+        pmfs={'baseline':{'5':'.6','12':'.4'},'adversarial':{'5':'.2','12':'.8'},'scenario':{'5':'.4','12':'.6'}}
+        seeds={'baseline':100,'adversarial':200,'scenario':300}
+        a=three_way_under_mc(pmfs,10.5,trials=100000,seeds=seeds)
+        b=three_way_under_mc(pmfs,10.5,trials=100000,seeds=seeds)
+        self.assertEqual(a['runs'],b['runs'])
+        self.assertEqual(a['runs']['baseline']['trials'],100000)
+        self.assertGreater(a['runs']['baseline']['hits'],a['runs']['adversarial']['hits'])
+        self.assertFalse(a['calibration_verified'])
+        self.assertFalse(a['joint_parlay_test_performed'])
+    def test_insufficient_runs_rejected(self):
+        with self.assertRaises(ValueError):three_way_under_mc({'baseline':{5:1}},10.5,trials=99999,seeds={'baseline':1})
+    def test_same_seed_rejected(self):
+        with self.assertRaises(ValueError):three_way_under_mc({'baseline':{5:1},'adversarial':{5:1},'scenario':{5:1}},10.5,seeds={'baseline':1,'adversarial':1,'scenario':2})
+    def test_corrupt_input_rejected(self):
+        with self.assertRaises(ValueError):three_way_under_mc({'baseline':{5:1},'adversarial':{5:1},'scenario':{5:'.9'}},10.5,seeds={'baseline':1,'adversarial':2,'scenario':3})
 
 
 class StreakTests(unittest.TestCase):
