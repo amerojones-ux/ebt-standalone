@@ -18,6 +18,7 @@ on:
       - 'extensions/weather_attestation_envelope.py'
       - 'extensions/weather_attestation_verify.py'
       - 'extensions/weather_replay_policy.py'
+      - 'extensions/weather_production_readiness.py'
       - 'tests/test_provider_gateway.py'
       - 'tests/test_provider_reconciliation.py'
       - 'tests/test_provider_probe.py'
@@ -31,6 +32,7 @@ on:
       - 'tests/test_provider_weather_attestation_envelope.py'
       - 'tests/test_provider_weather_attestation_verify.py'
       - 'tests/test_provider_weather_replay_policy.py'
+      - 'tests/test_provider_weather_production_readiness.py'
       - '.github/workflows/provider-gateway-ci.yml'
 permissions:
   contents: read
@@ -52,4 +54,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -m unittest discover -s tests -p 'test_provider_*.py' -v
-          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py extensions/weatherapi_request_plan.py extensions/weather_release_gate.py extensions/weather_release_audit.py extensions/weather_verified_evidence.py extensions/weather_attestation_envelope.py extensions/weather_attestation_verify.py extensions/weather_replay_policy.py
+          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py extensions/weatherapi_request_plan.py extensions/weather_release_gate.py extensions/weather_release_audit.py extensions/weather_verified_evidence.py extensions/weather_attestation_envelope.py extensions/weather_attestation_verify.py extensions/weather_replay_policy.py extensions/weather_production_readiness.py
