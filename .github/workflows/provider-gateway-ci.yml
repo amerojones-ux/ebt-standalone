@@ -32,4 +32,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -m unittest discover -s tests -p 'test_provider_*.py' -v
-          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py
+          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py
