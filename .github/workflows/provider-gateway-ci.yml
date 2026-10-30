@@ -35,6 +35,9 @@ on:
       - 'tests/test_provider_weather_replay_policy.py'
       - 'tests/test_provider_weather_production_readiness.py'
       - 'tests/test_provider_prop_market_normalizer.py'
+      - 'tests/test_provider_platform_audit_gate.py'
+      - 'config/platform_audit_gate_2026_10_30.json'
+      - 'config/module_readiness_2026_10_30.json'
       - '.github/workflows/provider-gateway-ci.yml'
 permissions:
   contents: read
