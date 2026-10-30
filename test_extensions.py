@@ -175,3 +175,29 @@ class CLITests(unittest.TestCase):
             self.assertEqual(json.loads(result.stdout)['status'],'HOLD')
 
 if __name__=='__main__':unittest.main()
+
+class VisualTests(unittest.TestCase):
+    def test_electric_safe_research_card(self):
+        from extensions.prop_card import render_research_card
+        c={'subject':'Player A','opponent':'Team B','event':'Official-ID-PENDING',
+           'event_ct':'2026-10-29 19:00','market':'rebounds','comparator':'LT',
+           'threshold':10.5,'p50':8,'adverse_p50':12,'model_version':'research-v1',
+           'source_status':'PENDING','modeled_probability':'.7'}
+        x=render_research_card(c)
+        self.assertIn('Central cushion',x);self.assertIn('FORECAST: HOLD',x)
+        self.assertIn('NOT APPROVED',x);self.assertIn('70.00% MODELED / UNCALIBRATED',x)
+    def test_escapes_injected_html(self):
+        from extensions.prop_card import render_research_card
+        c={'subject':'<script>alert(1)</script>','opponent':'Team B','event':'ID',
+           'event_ct':'2026-10-29','market':'points','comparator':'GE',
+           'threshold':10,'p50':20,'adverse_p50':13,'model_version':'v1','source_status':'BLOCKED'}
+        x=render_research_card(c)
+        self.assertNotIn('<script>alert(1)</script>',x)
+        self.assertIn('&lt;script&gt;',x)
+        self.assertIn('100.00%',x)
+    def test_reject_claimed_verified_mc(self):
+        from extensions.prop_card import render_research_card
+        c={'subject':'X','opponent':'Y','event':'ID','event_ct':'2026-10-29','market':'points',
+           'comparator':'GE','threshold':10,'p50':20,'adverse_p50':13,
+           'model_version':'v1','source_status':'PENDING','simulation_status':'100000'}
+        with self.assertRaises(ValueError):render_research_card(c)
