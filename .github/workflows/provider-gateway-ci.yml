@@ -40,6 +40,8 @@ on:
       - 'extensions/provider_preflight.py'
       - 'extensions/provider_evidence_gate.py'
       - 'tests/test_provider_evidence_gate.py'
+      - 'extensions/provider_evidence_freshness.py'
+      - 'tests/test_provider_evidence_freshness.py'
       - 'docs/provider-live-verification-intake.yml'
       - 'config/platform_audit_gate_2026_10_30.json'
       - 'config/module_readiness_2026_10_30.json'
@@ -65,4 +67,4 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_provider_*.py' -v
           python -m extensions.provider_preflight docs/provider-live-verification-intake.yml
-          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py extensions/weatherapi_request_plan.py extensions/weather_release_gate.py extensions/weather_release_audit.py extensions/weather_verified_evidence.py extensions/weather_attestation_envelope.py extensions/weather_attestation_verify.py extensions/weather_replay_policy.py extensions/weather_production_readiness.py extensions/prop_market_normalizer.py extensions/provider_preflight.py extensions/provider_evidence_gate.py
+          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py extensions/weatherapi_request_plan.py extensions/weather_release_gate.py extensions/weather_release_audit.py extensions/weather_verified_evidence.py extensions/weather_attestation_envelope.py extensions/weather_attestation_verify.py extensions/weather_replay_policy.py extensions/weather_production_readiness.py extensions/prop_market_normalizer.py extensions/provider_preflight.py extensions/provider_evidence_gate.py extensions/provider_evidence_freshness.py
