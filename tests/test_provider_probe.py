@@ -28,16 +28,27 @@ class FakeOpener:
 
 SPEC = ProbeSpec("sportradar", "https://api.example.org/health", "api.example.org", "x-api-key")
 HOSTS = frozenset({"api.example.org"})
+ENDPOINTS = frozenset({SPEC.endpoint})
 
 
 class ProbeTests(unittest.TestCase):
     def test_reachable_is_not_certified(self):
         opener = FakeOpener()
-        result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS, opener=opener)
+        result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS, approved_endpoints=ENDPOINTS, opener=opener)
         self.assertEqual(result["connection"], "REACHABLE_ONLY")
         self.assertEqual(result["forecast"], "HOLD")
         self.assertEqual(opener.request.get_method(), "GET")
         self.assertNotIn("SYNTHETIC", str(result))
+
+    def test_unapproved_path_rejected(self):
+        spec = ProbeSpec("sportradar", "https://api.example.org/admin", "api.example.org", "x-api-key")
+        with self.assertRaises(ProviderGateError):
+            probe_readonly(spec, secret="SYNTHETIC", approved_hostnames=HOSTS,
+                           approved_endpoints=ENDPOINTS, opener=FakeOpener())
+
+    def test_missing_endpoint_allowlist_rejected(self):
+        with self.assertRaises(ProviderGateError):
+            probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS, opener=FakeOpener())
 
     def test_unapproved_host_rejected(self):
         with self.assertRaises(ProviderGateError):
@@ -68,7 +79,7 @@ class ProbeTests(unittest.TestCase):
             probe_readonly(SPEC, secret="secret\r\nX-Evil: 1", approved_hostnames=HOSTS, opener=FakeOpener())
 
     def test_malformed_json_blocked(self):
-        result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS,
+        result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS, approved_endpoints=ENDPOINTS,
                                 opener=FakeOpener(FakeResponse(b"not json")))
         self.assertEqual(result["connection"], "BLOCKED")
 
