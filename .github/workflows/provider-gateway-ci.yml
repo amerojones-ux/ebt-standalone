@@ -1,0 +1,29 @@
+name: EBT research provider gateway checks
+on:
+  push:
+    branches:
+      - feature/secure-provider-gateway-v1
+  pull_request:
+    paths:
+      - 'extensions/provider_gateway.py'
+      - 'tests/test_provider_gateway.py'
+      - '.github/workflows/provider-gateway-ci.yml'
+permissions:
+  contents: read
+jobs:
+  offline-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline tests (no API keys, no network provider calls)
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m unittest discover -s tests -p 'test_provider_gateway.py' -v
+          python -m compileall -q extensions/provider_gateway.py
