@@ -1,0 +1,17 @@
+{
+  "schema_version":"1.1",
+  "scope":"sports-analytics-only",
+  "authority":"full Project V7 specification with appended V7.1",
+  "extensions":{
+    "count_under_research":{"code":"implemented","tests":"synthetic","enabled_for_offline_research":true,"approved_for_live_forecasts":false},
+    "under_hindsight_firewall":{"code":"implemented","tests":"synthetic","calibration_certified":false},
+    "licensed_streak_csv":{"code":"implemented","tests":"synthetic","operator_manifest_is_external_proof":false,"actual_provider_rights_verified":false},
+    "three_purpose_count_mc":{"code":"implemented","minimum_trials_each":100000,"actual_real_candidate_runs_certified":false,"correlated_joint_parlay_simulator":false},
+    "electric_static_prop_card":{"code":"implemented","status":"research-only hold","actual_live_card_ui":false}
+  },
+  "live_integrations":{"sportsbook_quote":false,"official_slate_and_role":false,"licensed_player_and_team_stats":false,"calibrated_models":false,"production_api":false},
+  "forecast_mode":"HOLD_RESEARCH_ONLY",
+  "wager_mode":"NOT_APPROVED",
+  "deployment_enabled":false,
+  "requires_human_acceptance":true
+}
