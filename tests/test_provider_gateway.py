@@ -45,6 +45,16 @@ class ProviderGatewayTests(unittest.TestCase):
         with self.assertRaises(ProviderGateError):
             validate_observation({**RECORD, "provider": []}, as_of_utc="2026-10-30T15:05:00Z")
 
+    def test_malformed_credential_environment_fails_safe(self):
+        self.assertFalse(any(credential_presence({"EBT_SPORTRADAR_API_KEY": None}).values()))
+        self.assertFalse(any(credential_presence({"EBT_SPORTRADAR_API_KEY": 123}).values()))
+        with self.assertRaises(ProviderGateError):
+            credential_presence([])
+
+    def test_unhashable_status_fails_closed(self):
+        with self.assertRaises(ProviderGateError):
+            validate_observation({**RECORD, "status": []}, as_of_utc="2026-10-30T15:05:00Z")
+
     def test_observation_fingerprint_is_deterministic(self):
         a = validate_observation(RECORD, as_of_utc="2026-10-30T15:05:00Z")
         b = validate_observation(dict(reversed(list(RECORD.items()))),
