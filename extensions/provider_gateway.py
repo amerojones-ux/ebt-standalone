@@ -75,17 +75,17 @@ def credential_presence(environ: Mapping[str, str] | None = None) -> dict[str, b
 def assess_provider(provider: str, *, rights: Mapping[str, bool] | None = None,
                     feed_verified: bool = False,
                     environ: Mapping[str, str] | None = None) -> ProviderReadiness:
-    if provider not in PROVIDERS:
+    if not isinstance(provider, str) or provider not in PROVIDERS:
         raise ProviderGateError("unknown provider")
     present = credential_presence(environ)[provider]
     rights_ok = (isinstance(rights, Mapping) and
                  all(rights.get(k) is True for k in RIGHTS_REQUIRED))
     # Rights assertions must come from independently reviewed agreements.
-    ready = bool(present and rights_ok and feed_verified is True)
-    reason = ("READY_FOR_RESEARCH_INGESTION" if ready
-              else "HOLD: credential, verified rights, or verified feed missing")
+    # Caller-provided booleans cannot establish independently authenticated
+    # feed status or legal rights. Never unlock ingestion from this function.
+    reason = "HOLD: independent rights and feed verification not implemented"
     return ProviderReadiness(provider, present, bool(rights_ok),
-                             feed_verified is True, "FOUND" if ready else "BLOCKED", reason)
+                             feed_verified is True, "BLOCKED", reason)
 
 
 def validate_observation(record: Mapping[str, object], *,
@@ -100,7 +100,7 @@ def validate_observation(record: Mapping[str, object], *,
     if not isinstance(max_age_seconds, int) or isinstance(max_age_seconds, bool) or max_age_seconds < 0:
         raise ProviderGateError("invalid maximum age")
     provider = record.get("provider")
-    if provider not in PROVIDERS:
+    if not isinstance(provider, str) or provider not in PROVIDERS:
         raise ProviderGateError("unknown provider")
     if record.get("status") not in VALID_STATUS or record.get("status") != "FOUND":
         raise ProviderGateError("source not FOUND")
