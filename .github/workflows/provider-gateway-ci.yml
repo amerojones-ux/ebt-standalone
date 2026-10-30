@@ -7,7 +7,7 @@ on:
     paths:
       - 'extensions/provider_gateway.py'
       - 'extensions/provider_reconciliation.py'
-      - 'extensions/provider_probe.py extensions/provider_policy.py'
+      - 'extensions/provider_probe.py'
       - 'extensions/provider_policy.py'
       - 'tests/test_provider_gateway.py'
       - 'tests/test_provider_reconciliation.py'
