@@ -10,11 +10,13 @@ on:
       - 'extensions/provider_probe.py'
       - 'extensions/provider_policy.py'
       - 'extensions/weatherapi_status.py'
+      - 'extensions/weather_evidence.py'
       - 'tests/test_provider_gateway.py'
       - 'tests/test_provider_reconciliation.py'
       - 'tests/test_provider_probe.py'
       - 'tests/test_provider_policy.py'
       - 'tests/test_provider_weatherapi_status.py'
+      - 'tests/test_provider_weather_evidence.py'
       - '.github/workflows/provider-gateway-ci.yml'
 permissions:
   contents: read
@@ -34,4 +36,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -m unittest discover -s tests -p 'test_provider_*.py' -v
-          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py
+          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py
