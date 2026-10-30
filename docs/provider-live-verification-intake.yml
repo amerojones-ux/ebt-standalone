@@ -43,16 +43,19 @@ providers:
     status: NOT_TESTED
   rapidapi:
     secret_name: EBT_RAPIDAPI_API_KEY
-    product: pending_subscribed_api_name
+    product: pending_individual_subscribed_api_products
+    account_scope_claim: all_unverified
+    required_headers: [X-RapidAPI-Key, X-RapidAPI-Host]
     reviewed_endpoint: pending
-    reviewed_auth_scheme: pending
+    reviewed_auth_scheme: rapidapi_dual_header_not_supported_by_current_probe
     entitlements: pending
     status: NOT_TESTED
   weather:
     secret_name: EBT_WEATHER_API_KEY
-    product: pending_weather_vendor
+    product: WeatherAPI.com_unconfirmed
+    candidate_official_endpoint: https://api.weatherapi.com/v1/current.json
     reviewed_endpoint: pending
-    reviewed_auth_scheme: pending
+    reviewed_auth_scheme: query_key_not_supported_by_current_probe
     entitlements: pending
     status: NOT_TESTED
   sportradar:
@@ -62,3 +65,10 @@ providers:
     reviewed_auth_scheme: pending
     entitlements: pending
     status: NOT_TESTED
+
+# Source documentation reviewed 2026-10-30:
+# https://docs.rapidapi.com/v2/docs/configuring-api-authentication
+# https://www.weatherapi.com/docs/authentication/
+# https://www.weatherapi.com/docs/request/
+# Candidate weather endpoint is NOT approved for use until vendor identity,
+# request parameters, secret-safe transport, and subscription are verified.
