@@ -35,6 +35,8 @@ def audit_intake(intake: dict) -> dict:
         entry = entries[name]
         if not isinstance(entry, dict) or entry.get("secret_name") != secret_name:
             raise ValueError("provider secret mapping mismatch")
+        if entry.get("status") != "NOT_TESTED":
+            raise ValueError("unverified provider cannot claim live status")
         missing = [field for field in ("reviewed_endpoint", "reviewed_auth_scheme", "entitlements")
                    if not isinstance(entry.get(field), str) or entry[field].strip().lower() in ("", "pending", "unknown")]
         if name == "rapidapi" and (not isinstance(entry.get("product"), str) or "pending" in entry["product"]):
@@ -49,13 +51,19 @@ def audit_intake(intake: dict) -> dict:
 
 
 def main() -> None:
-    # YAML manifest is operator-reviewed separately; JSON input is a local sanitized
-    # representation, not a parser for untrusted YAML or a credential source.
+    # No credential values, HTTP calls, or external attestations are accepted.
     import argparse
     parser = argparse.ArgumentParser(description="Offline-only seven-provider intake preflight")
-    parser.add_argument("sanitized_intake_json", type=Path)
+    parser.add_argument("sanitized_intake", type=Path, help="Reviewed YAML or JSON intake manifest")
     args = parser.parse_args()
-    intake = json.loads(args.sanitized_intake_json.read_text(encoding="utf-8"))
+    raw = args.sanitized_intake.read_text(encoding="utf-8")
+    if args.sanitized_intake.suffix.lower() in (".yml", ".yaml"):
+        import yaml
+        intake = yaml.safe_load(raw)
+    elif args.sanitized_intake.suffix.lower() == ".json":
+        intake = json.loads(raw)
+    else:
+        parser.error("expected .yml, .yaml or .json manifest")
     print(json.dumps(audit_intake(intake), sort_keys=True, indent=2))
 
 
