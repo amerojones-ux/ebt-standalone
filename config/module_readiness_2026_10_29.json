@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "as_of_ct": "2026-10-29",
+  "domain": "EBT.ai sports analytics only",
+  "governing_spec": {
+    "project_attachment": "05-EBT_AI_BLACK_DIAMOND_OS_SOURCE_INTELLIGENCE_V7_FULL-1-.txt",
+    "includes": "V7 plus appended V7.1 2026-10-22",
+    "verified_in_project": true,
+    "embedded_in_public_repository": false
+  },
+  "repo_modules": {
+    "offline_evidence_and_calibration": "present synthetic validation; research only",
+    "live_forecasting": "not certified",
+    "underperformance_v1": "tested external prototype; not integrated",
+    "streak_importer_v3": "tested external prototype; not integrated",
+    "electric_visual": "private reference; no runtime UI",
+    "multisport_full_slate": "incomplete adapters",
+    "three_independent_mc": "no real candidate runs certified",
+    "parlay_joint_mc": "no real candidate runs certified",
+    "wager_approval": "not approved"
+  },
+  "acceptance": {
+    "max_primaries_per_event": 1,
+    "max_safer_alternatives_per_event": 1,
+    "max_replacements_per_event": 1,
+    "black_diamond_calibrated_probability_min": 0.87,
+    "black_diamond_lower_bound_min": 0.8,
+    "min_trials_each_purpose": 100000,
+    "individual_purposes": [
+      "baseline",
+      "adversarial",
+      "scenario_correlation"
+    ],
+    "joint_portfolio_min_trials": 100000
+  },
+  "hard_holds": [
+    "source_contract_and_current_availability",
+    "official_identity_and_role",
+    "trained_calibrated_distribution",
+    "real_reproducible_simulations",
+    "exact_current_quote_and_positive_ev",
+    "verified_settlement_and_final_revalidation"
+  ],
+  "release_enabled": false
+}
