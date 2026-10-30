@@ -1,0 +1,1 @@
+"""Isolated, offline EBT.ai sports research extensions; no live betting approvals."""
