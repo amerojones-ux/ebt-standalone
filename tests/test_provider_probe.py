@@ -84,7 +84,7 @@ class ProbeTests(unittest.TestCase):
         self.assertEqual(result["connection"], "BLOCKED")
 
     def test_oversized_payload_blocked(self):
-        result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS,
+        result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS, approved_endpoints=ENDPOINTS,
                                 opener=FakeOpener(FakeResponse(b"x" * 65537)))
         self.assertEqual(result["connection"], "BLOCKED")
 
