@@ -24,7 +24,8 @@ def audit_intake(intake: dict) -> dict:
     gates = intake.get("release_gates")
     if not isinstance(gates, dict) or gates.get("forecast") != "HOLD" or gates.get("wager") != "NOT_APPROVED":
         raise ValueError("release gates must remain fail-closed")
-    if not set(REQUIRED_GATE_NAMES).issubset(set(gates.get("live_probe_requires", []))):
+    requirements = gates.get("live_probe_requires")
+    if not isinstance(requirements, list) or not all(isinstance(x, str) for x in requirements) or not set(REQUIRED_GATE_NAMES).issubset(set(requirements)):
         raise ValueError("missing required probe security gates")
     entries = intake.get("providers")
     if not isinstance(entries, dict) or set(entries) != set(PROVIDERS):
@@ -48,7 +49,6 @@ def audit_intake(intake: dict) -> dict:
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[1]
     # YAML manifest is operator-reviewed separately; JSON input is a local sanitized
     # representation, not a parser for untrusted YAML or a credential source.
     import argparse
