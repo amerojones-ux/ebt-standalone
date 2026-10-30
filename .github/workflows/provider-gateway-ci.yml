@@ -7,8 +7,10 @@ on:
     paths:
       - 'extensions/provider_gateway.py'
       - 'extensions/provider_reconciliation.py'
+      - 'extensions/provider_probe.py'
       - 'tests/test_provider_gateway.py'
       - 'tests/test_provider_reconciliation.py'
+      - 'tests/test_provider_probe.py'
       - '.github/workflows/provider-gateway-ci.yml'
 permissions:
   contents: read
@@ -28,4 +30,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -m unittest discover -s tests -p 'test_provider_*.py' -v
-          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py
+          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py
