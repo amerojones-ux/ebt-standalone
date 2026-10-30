@@ -80,14 +80,12 @@ def assess_provider(provider: str, *, rights: Mapping[str, bool] | None = None,
     if not isinstance(provider, str) or provider not in PROVIDERS:
         raise ProviderGateError("unknown provider")
     present = credential_presence(environ)[provider]
-    rights_ok = (isinstance(rights, Mapping) and
-                 all(rights.get(k) is True for k in RIGHTS_REQUIRED))
     # Rights assertions must come from independently reviewed agreements.
     # Caller-provided booleans cannot establish independently authenticated
     # feed status or legal rights. Never unlock ingestion from this function.
     reason = "HOLD: independent rights and feed verification not implemented"
-    return ProviderReadiness(provider, present, bool(rights_ok),
-                             feed_verified is True, "BLOCKED", reason)
+    return ProviderReadiness(provider, present, False,
+                             False, "BLOCKED", reason)
 
 
 def validate_observation(record: Mapping[str, object], *,
