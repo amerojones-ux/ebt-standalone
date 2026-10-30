@@ -20,13 +20,13 @@ Require a separately approved backend with outbound TLS and host-level egress co
 Provider-by-provider matrix:
 | Provider | Credential | Endpoint and auth | Subscription coverage | Legal rights | Verification |
 |---|---|---|---|---|---|
-| TheRundown | Secret presence pending CI | Not reviewed | Unknown | Unknown | HOLD |
-| SportsDataIO | Secret presence pending CI | Not reviewed | Unknown | Unknown | HOLD |
-| The Odds API | Secret presence pending CI | Not reviewed | Unknown | Unknown | HOLD |
-| API-Sports | Secret presence pending CI | Not reviewed | Unknown | Unknown | HOLD |
-| RapidAPI | Secret presence pending CI | API host varies by subscribed API | Unknown | Unknown | HOLD |
-| Weather provider | Secret presence pending CI | Vendor not identified | Unknown | Unknown | HOLD |
-| Sportradar | Secret presence pending CI | Not reviewed | Unknown | Unknown | HOLD |
+| TheRundown | Presence workflow previously reported successful; per-provider results not independently inspected | Not reviewed | Unknown | Unknown | HOLD |
+| SportsDataIO | Presence workflow previously reported successful; per-provider results not independently inspected | Not reviewed | Unknown | Unknown | HOLD |
+| The Odds API | Presence workflow previously reported successful; per-provider results not independently inspected | Not reviewed | Unknown | Unknown | HOLD |
+| API-Sports | Presence workflow previously reported successful; per-provider results not independently inspected | Not reviewed | Unknown | Unknown | HOLD |
+| RapidAPI | Presence workflow previously reported successful; per-provider results not independently inspected | API host varies by subscribed API | Unknown | Unknown | HOLD |
+| Weather provider | Presence workflow previously reported successful; per-provider results not independently inspected | Vendor not identified | Unknown | Unknown | HOLD |
+| Sportradar | Presence workflow previously reported successful; per-provider results not independently inspected | Not reviewed | Unknown | Unknown | HOLD |
 
 `extensions/provider_probe.py` is a *header-auth-only* transport skeleton; it is not yet wired to any actual provider. An HTTP 200 JSON response is marked REACHABLE_ONLY, never licensed, fully verified or forecast-ready. Never infer production readiness from the result.
 
@@ -35,3 +35,24 @@ Before model activation require verified official identity mapping, permitted hi
 
 ## GitHub execution note
 GitHub may restrict newly added workflow files and manual dispatch to the default branch. Do not merge the draft PR solely to make manual dispatch available. Review the draft PR first. Once the workflow is safely present on the default branch, use its manual Run workflow action; if unavailable, investigate repository Actions settings and workflow permissions. Do not run secret-bearing workflows from untrusted branches. Do not claim a passing check without a completed successful run.
+
+
+## Step 2A — provider onboarding evidence (mandatory before any live probe)
+Maintain a reviewed, versioned record for each provider with:
+1. Official vendor and product name, account/subscription tier, documented API base hostname, and exact read-only path.
+2. Documented credential transport (header name or other scheme), accepted methods, expected content type, quota, and whether a billable request is incurred.
+3. Permitted sports/leagues, injury/stat/history endpoints, retention and derived-model rights, and redistribution restrictions.
+4. Reviewer approval of endpoint and hostname, TLS validation, network egress allowlist, and a bounded, rate-limited execution environment.
+5. Sanitized results: only provider ID, connection category, observation timestamp, and gate decision; never URL, response body, key, request headers or account identifiers.
+
+Do not configure live endpoints from guesses, search snippets, or an unreviewed branch. In particular, RapidAPI requires the subscribed upstream API product and host; the weather key requires the actual weather vendor. An unsupported query-string credential scheme must stay HOLD until a separate security-reviewed adapter exists.
+
+## Step 2B — promotion and rollback controls
+- Run credentialed probes only from a separately reviewed and protected workflow/environment; never in pull_request jobs or untrusted forks.
+- Keep network egress restricted at infrastructure level; the Python hostname check alone does not prevent DNS or proxy redirection.
+- Treat HTTP 200 JSON as REACHABLE_ONLY; require explicit entitlement, legal, coverage, identity and freshness verification independently.
+- Record immutable as-of test evidence and revoke access immediately if unexpected outbound destinations, leaked tokens or provider policy violations are detected.
+- Preserve FORECAST HOLD and WAGER NOT APPROVED until the independent model certification gate is satisfied.
+
+## Verified offline CI checkpoint
+At commit `acdf43fe7fe9d60382a2c6c73dd52e793d7dd8b3`, provider gateway run #57 and sports validation run #149 both completed successfully. These offline checks do **not** verify any live provider credential or entitlement.
