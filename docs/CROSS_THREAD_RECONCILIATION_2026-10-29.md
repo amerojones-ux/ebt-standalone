@@ -28,3 +28,6 @@ Add versioned **instructions and gap/readiness registry only**, without modifyin
 
 ### Evidence caveat
 Some thread facts are from historical user/assistant summaries rather than immutable contents of every past chat; they are marked as such. Current repository state and inspected archive content were checked directly. Inference about whether an external project instruction or Drive folder is updated must not be presented as verification.
+
+## Follow-up operational prompt reconciliation
+Following the initial docs-only PR merge, four **existing** ChatGPT sports automation prompts were updated while preserving their schedules: 5 AM Global Slate, 9 AM Primary Forecast, hourly evidence-only identity gate, and daily postgame audit. The separate credit-security watch was not touched. The operational change is documented in [`AUTOMATION_PROMPT_RECONCILIATION_2026-10-29.md`](AUTOMATION_PROMPT_RECONCILIATION_2026-10-29.md); it does not mean GitHub Actions or production sport-data jobs were deployed, and it does not alter the original PR scope stated above.
