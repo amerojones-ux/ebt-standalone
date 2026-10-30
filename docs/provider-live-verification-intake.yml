@@ -59,6 +59,10 @@ providers:
     reviewed_auth_scheme: query_key_not_supported_by_current_probe
     entitlements: pending
     status: NOT_TESTED
+    offline_status_classifier: CI_VERIFIED_AT_7243f1b
+    live_authentication: NOT_TESTED
+    historical_weather_entitlement: NOT_VERIFIED
+    weather_forecast_entitlement: NOT_VERIFIED
   sportradar:
     secret_name: EBT_SPORTRADAR_API_KEY
     product: Sportradar
@@ -73,3 +77,9 @@ providers:
 # https://www.weatherapi.com/docs/request/
 # Candidate weather endpoint is NOT approved for use until vendor identity,
 # request parameters, secret-safe transport, and subscription are verified.
+
+# Offline CI evidence for WeatherAPI response classification:
+# commit: 7243f1b3a6c194dc43d875c8af7725386cd4b0ab
+# provider-gateway run: 41116044814 (success)
+# sports-validation run: 41116044886 (success)
+# Neither run is a credentialed network probe.
