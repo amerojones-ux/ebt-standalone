@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "scope": "ebt-black-diamond-sports-only",
+  "audit_date": "2026-10-30",
+  "source_commit": "c61fbaf442ac3cd1915fe6dbeb9304d37e6d46c7",
+  "release": {
+    "forecast": "HOLD",
+    "wager": "NOT_APPROVED",
+    "production_deployment": false
+  },
+  "components": {
+    "provider_gateway": {
+      "implementation": "OFFLINE_TESTED",
+      "live_verified": false,
+      "blockers": [
+        "reviewed endpoints",
+        "authenticated requests",
+        "subscription rights",
+        "egress controls"
+      ]
+    },
+    "weather": {
+      "implementation": "RESEARCH_ONLY",
+      "live_verified": false,
+      "blockers": [
+        "credentialed request",
+        "trust store",
+        "revocation",
+        "durable replay storage",
+        "independent release approval"
+      ]
+    },
+    "source_ingestion": {
+      "implementation": "PARTIAL",
+      "live_verified": false,
+      "blockers": [
+        "licensed feed access",
+        "complete official slate",
+        "canonical identities",
+        "as-of provenance"
+      ]
+    },
+    "underperformance": {
+      "implementation": "RESEARCH_ONLY",
+      "live_verified": false,
+      "blockers": [
+        "fitted pregame distributions",
+        "independent backtests",
+        "calibration"
+      ]
+    },
+    "overperformance": {
+      "implementation": "RESEARCH_ONLY",
+      "live_verified": false,
+      "blockers": [
+        "opponent-adjusted fitted distributions",
+        "calibration"
+      ]
+    },
+    "streaks": {
+      "implementation": "RESEARCH_ONLY",
+      "live_verified": false,
+      "blockers": [
+        "verified historical rights",
+        "official final reconciliation"
+      ]
+    },
+    "monte_carlo": {
+      "implementation": "OFFLINE_TESTED",
+      "live_verified": false,
+      "blockers": [
+        "verified distribution inputs",
+        "live candidate reproducibility",
+        "correlated parlay simulation"
+      ]
+    },
+    "market_quotes": {
+      "implementation": "RESEARCH_ONLY",
+      "live_verified": false,
+      "blockers": [
+        "licensed current quotes",
+        "operator settlement rules",
+        "final quote refresh"
+      ]
+    },
+    "prop_cards": {
+      "implementation": "STATIC_RESEARCH_ONLY",
+      "live_verified": false,
+      "blockers": [
+        "certified data binding",
+        "immutable audit lineage"
+      ]
+    },
+    "postgame_audit": {
+      "implementation": "PARTIAL",
+      "live_verified": false,
+      "blockers": [
+        "complete issued forecast ledger",
+        "official final outcome matching",
+        "error calibration"
+      ]
+    },
+    "automation": {
+      "implementation": "SEPARATE_TASKS",
+      "live_verified": false,
+      "blockers": [
+        "end-to-end execution provenance",
+        "failure alerting",
+        "safe retries"
+      ]
+    },
+    "security": {
+      "implementation": "OFFLINE_TESTED",
+      "live_verified": false,
+      "blockers": [
+        "protected deployment",
+        "independent trust and key rotation",
+        "authorization review"
+      ]
+    }
+  },
+  "acceptance_order": [
+    "provider_rights_and_identity",
+    "immutable_as_of_capture",
+    "fitted_opponent_adjusted_models",
+    "temporal_calibration",
+    "certified_simulation",
+    "official_postgame_audit",
+    "independent_security_and_release_review"
+  ],
+  "evidence_limitations": "Offline tests do not establish licensed data access, forecast hit probability, ROI, or deployment approval."
+}
