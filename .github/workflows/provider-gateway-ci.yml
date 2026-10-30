@@ -16,6 +16,7 @@ on:
       - 'extensions/weather_release_audit.py'
       - 'extensions/weather_verified_evidence.py'
       - 'extensions/weather_attestation_envelope.py'
+      - 'extensions/weather_attestation_verify.py'
       - 'tests/test_provider_gateway.py'
       - 'tests/test_provider_reconciliation.py'
       - 'tests/test_provider_probe.py'
@@ -27,6 +28,7 @@ on:
       - 'tests/test_provider_weather_release_audit.py'
       - 'tests/test_provider_weather_verified_evidence.py'
       - 'tests/test_provider_weather_attestation_envelope.py'
+      - 'tests/test_provider_weather_attestation_verify.py'
       - '.github/workflows/provider-gateway-ci.yml'
 permissions:
   contents: read
@@ -41,9 +43,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Install signature verification dependency
+        run: python -m pip install 'cryptography>=43,<47'
       - name: Run offline tests (no API keys, no network provider calls)
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -m unittest discover -s tests -p 'test_provider_*.py' -v
-          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py extensions/weatherapi_request_plan.py extensions/weather_release_gate.py extensions/weather_release_audit.py extensions/weather_verified_evidence.py extensions/weather_attestation_envelope.py
+          python -m compileall -q extensions/provider_gateway.py extensions/provider_reconciliation.py extensions/provider_probe.py extensions/provider_policy.py extensions/weatherapi_status.py extensions/weather_evidence.py extensions/weatherapi_request_plan.py extensions/weather_release_gate.py extensions/weather_release_audit.py extensions/weather_verified_evidence.py extensions/weather_attestation_envelope.py extensions/weather_attestation_verify.py
