@@ -37,7 +37,11 @@ class ProviderGatewayTests(unittest.TestCase):
         rights = dict.fromkeys(("model_use", "historical_access", "retention", "derived_analytics"), True)
         env = {"EBT_SPORTRADAR_API_KEY": "fake"}
         self.assertEqual(assess_provider("sportradar", rights=rights, environ=env).status, "BLOCKED")
-        self.assertEqual(assess_provider("sportradar", rights=rights, feed_verified=True, environ=env).status, "BLOCKED")
+        claimed = assess_provider("sportradar", rights=rights, feed_verified=True, environ=env)
+        self.assertEqual(claimed.status, "BLOCKED")
+        self.assertFalse(claimed.rights_verified)
+        self.assertFalse(claimed.feed_verified)
+        self.assertTrue(claimed.credential_present)
 
     def test_unhashable_provider_fails_closed(self):
         with self.assertRaises(ProviderGateError):
