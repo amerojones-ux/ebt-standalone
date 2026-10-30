@@ -1,5 +1,4 @@
 """Offline-only tests for provider HTTPS probe; never performs network calls."""
-import io
 import unittest
 from extensions.provider_gateway import ProviderGateError
 from extensions.provider_probe import ProbeSpec, probe_readonly
@@ -77,6 +76,21 @@ class ProbeTests(unittest.TestCase):
         result = probe_readonly(SPEC, secret="SYNTHETIC", approved_hostnames=HOSTS,
                                 opener=FakeOpener(FakeResponse(b"x" * 65537)))
         self.assertEqual(result["connection"], "BLOCKED")
+
+    def test_invalid_port_rejected(self):
+        spec = ProbeSpec("sportradar", "https://api.example.org:bad/health", "api.example.org", "x-api-key")
+        with self.assertRaises(ProviderGateError):
+            probe_readonly(spec, secret="SYNTHETIC", approved_hostnames=HOSTS, opener=FakeOpener())
+
+    def test_nonfinite_timeout_rejected(self):
+        spec = ProbeSpec("sportradar", "https://api.example.org/health", "api.example.org", "x-api-key", float("nan"))
+        with self.assertRaises(ProviderGateError):
+            probe_readonly(spec, secret="SYNTHETIC", approved_hostnames=HOSTS, opener=FakeOpener())
+
+    def test_invalid_provider_type_rejected(self):
+        spec = ProbeSpec([], "https://api.example.org/health", "api.example.org", "x-api-key")
+        with self.assertRaises(ProviderGateError):
+            probe_readonly(spec, secret="SYNTHETIC", approved_hostnames=HOSTS, opener=FakeOpener())
 
     def test_timeout_limit(self):
         spec = ProbeSpec("sportradar", "https://api.example.org/health", "api.example.org", "x-api-key", 30)
