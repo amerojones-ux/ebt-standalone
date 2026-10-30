@@ -68,7 +68,9 @@ def _utc(value: str) -> datetime:
 def credential_presence(environ: Mapping[str, str] | None = None) -> dict[str, bool]:
     """Return booleans only. Never reveal, persist or hash credentials."""
     env = os.environ if environ is None else environ
-    return {name: bool(env.get(variable, "").strip())
+    if not isinstance(env, Mapping):
+        raise ProviderGateError("invalid credential environment")
+    return {name: isinstance(env.get(variable), str) and bool(env.get(variable).strip())
             for name, variable in PROVIDERS.items()}
 
 
@@ -102,7 +104,7 @@ def validate_observation(record: Mapping[str, object], *,
     provider = record.get("provider")
     if not isinstance(provider, str) or provider not in PROVIDERS:
         raise ProviderGateError("unknown provider")
-    if record.get("status") not in VALID_STATUS or record.get("status") != "FOUND":
+    if not isinstance(record.get("status"), str) or record.get("status") != "FOUND":
         raise ProviderGateError("source not FOUND")
     for key in ("league_id", "event_id", "team_id", "player_id"):
         value = record.get(key)
