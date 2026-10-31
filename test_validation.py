@@ -20,7 +20,10 @@ class Tests(unittest.TestCase):
     def test_nan(self):
         with self.assertRaises(ValueError):probability(float('nan'))
     def test_zero_cushion(self):self.assertIsNone(cushion(2,0,'OVER')['relative'])
-    def test_complete_gate_synthetic(self):self.assertEqual(q(valid())['wager'],'APPROVED')
+    def test_complete_gate_synthetic(self):
+        r=q(valid());self.assertEqual(r['wager'],'NOT APPROVED')
+        self.assertTrue(r['conditional_wager_gate_passed'])
+        self.assertFalse(r['independent_source_verification_performed'])
     def test_evidence_fails_closed(self):
         for k in EVIDENCE:
             r=valid();r[k]='true';self.assertEqual(q(r)['forecast'],'HOLD',k)
@@ -34,7 +37,7 @@ class Tests(unittest.TestCase):
         r=valid();r['runs']['baseline']['input_sha256']='x'*64;self.assertEqual(q(r)['forecast'],'HOLD')
     def test_stale_or_future_quote(self):
         for t in ('2026-10-28T17:00:00Z','2026-10-28T18:02:00Z'):
-            r=valid();r['quote']['retrieved_at']=t;self.assertEqual(q(r)['wager'],'NOT APPROVED');self.assertIn('VALIDATED',q(r)['forecast'])
+            r=valid();r['quote']['retrieved_at']=t;self.assertEqual(q(r)['wager'],'NOT APPROVED');self.assertTrue(q(r)['conditional_forecast_gate_passed'])
     def test_market_identity(self):
         r=valid();r['quote']['market_key']='OTHER';self.assertEqual(q(r)['wager'],'NOT APPROVED')
     def test_ev(self):

@@ -51,7 +51,8 @@ class UnderTests(unittest.TestCase):
         self.assertEqual(r['wager_status'],'NOT APPROVED')
     def test_locked_audit_split(self):
         base={'forecast_id':'f1','event_id':'e1','player_id':'p1','stat':'rebounds','line':9.5,'locked_at':'2026-10-01T15:00:00Z','event_start':'2026-10-01T16:00:00Z','source_available_times':['2026-10-01T14:00:00Z'],'p_under':.7,'settlement':'FINAL','result_verified':True,'actual':8}
-        pending={**base,'forecast_id':'f2','settlement':'PENDING'}
+        base['probability_kind']='model_forecast'
+        pending={**base,'forecast_id':'f2','event_id':'e2','settlement':'PENDING'}
         r=audit_locked_unders([base,pending])
         self.assertEqual(r['n_settled_verified'],1);self.assertEqual(r['n_pending_or_void'],1)
         self.assertFalse(r['certified_calibration'])
@@ -60,6 +61,7 @@ class UnderTests(unittest.TestCase):
         with self.assertRaises(ValueError):audit_locked_unders([x])
     def test_no_unverified_result(self):
         x={'forecast_id':'f1','event_id':'e1','player_id':'p1','stat':'rebounds','line':9.5,'locked_at':'2026-10-01T15:00:00Z','event_start':'2026-10-01T16:00:00Z','source_available_times':['2026-10-01T14:00:00Z'],'p_under':.7,'settlement':'FINAL','actual':8,'result_verified':False}
+        x['probability_kind']='model_forecast'
         r=audit_locked_unders([x]);self.assertEqual(r['n_pending_or_void'],1);self.assertIsNone(r['brier'])
 
 

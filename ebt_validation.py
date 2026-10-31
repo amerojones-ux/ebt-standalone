@@ -68,7 +68,8 @@ def qualify(row,*,now,max_quote_age_seconds):
                 if not isinstance(h,str) or len(h)!=64 or any(c not in '0123456789abcdef' for c in h):issues.append('provenance_'+purpose)
             if type(run.get('seed')) is not int:issues.append('seed_'+purpose)
     except (KeyError,ValueError,TypeError,AttributeError,ArithmeticError):issues.append('missing_or_invalid_forecast_input')
-    forecast='BLACK DIAMOND FORECAST — VALIDATED' if not issues else 'HOLD'
+    # This function only checks caller assertions; it cannot authenticate them.
+    forecast='RESEARCH GATES PASS — UNVERIFIED' if not issues else 'HOLD'
     wager_issues=[]
     try:
         q=row['quote']
@@ -85,7 +86,12 @@ def qualify(row,*,now,max_quote_age_seconds):
         if win+push+loss!=1 or win!=Fraction(exact_probability(row['calibrated_p'])):wager_issues.append('probability_semantics')
         if win*(odds-1)-loss<=0:wager_issues.append('nonpositive_ev')
     except (KeyError,ValueError,TypeError,AttributeError,ArithmeticError):wager_issues.append('missing_or_invalid_quote')
-    return {'forecast':forecast,'wager':'APPROVED' if not issues and not wager_issues else 'NOT APPROVED','issues':issues+wager_issues}
+    return {'forecast':forecast,'wager':'NOT APPROVED',
+            'conditional_forecast_gate_passed':not issues,
+            'conditional_wager_gate_passed':not issues and not wager_issues,
+            'independent_source_verification_performed':False,
+            'issues':issues+wager_issues,
+            'notice':'Caller-asserted numeric checks are research diagnostics, not validated forecasts or wager approval.'}
 
 def evaluate_holdout(rows):
     """Score externally certified, locked binary outcomes; does not certify calibration."""
