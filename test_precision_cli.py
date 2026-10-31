@@ -15,9 +15,11 @@ class PrecisionAndCLI(unittest.TestCase):
         r=valid();r.update(win_p='.9',push_p='0',loss_p='.1')
         # This exact finite decimal yields a small positive EV; float arithmetic loses it.
         r['quote']['decimal_odds']='1.11111111111111111112'
-        self.assertEqual(q(r)['wager'],'APPROVED')
+        self.assertTrue(q(r)['conditional_wager_gate_passed'])
+        self.assertEqual(q(r)['wager'],'NOT APPROVED')
         r['quote']['decimal_odds']='1.11111111111111111111'
         self.assertEqual(q(r)['wager'],'NOT APPROVED')
+        self.assertFalse(q(r)['conditional_wager_gate_passed'])
     def test_probability_mass_must_reconcile(self):
         r=valid();r['loss_p']='0.10000000001'
         self.assertEqual(q(r)['wager'],'NOT APPROVED')

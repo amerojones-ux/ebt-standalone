@@ -2,6 +2,12 @@
 
 **Scope:** EBT.ai Black Diamond sports analytics, not the credit platform. Read the full V7 project master and appended Oct 22 V7.1 before any forecasting, betting decision, market research or audit. The code in this directory is **research-only** and is not a live sports prediction platform.
 
+October 31 correction: read `CALIBRATION_RECOVERY.md`. The numeric qualification
+checker never approves a wager. Under-audit records must explicitly identify
+`probability_kind: model_forecast`; distinct forecast IDs cannot duplicate the
+same event/stat condition. `ebt_quality_cli.py` provides optional chronological
+archive diagnostics and conditional research checks, not certified forecasts.
+
 ## Installed executable modules
 
 - `extensions/underperformance.py`: complete integer count PMF validation, exact strict-under/push/over probability, P50/P80/P90, central cushion, separate context-normal and predeclared severe-shortfall probability, optional over-friendly recovery state, plus immutable pregame under audit and Brier/log-loss diagnostics. Never seeds projections from sportsbook lines. Does not fit a player distribution.

@@ -50,8 +50,10 @@ def quantile(pmf, fraction):
     accum = Decimal(0)
     for outcome, mass in sorted(pmf.items()):
         accum += mass
-        if accum >= q - Decimal('1e-12'):
+        if mass > 0 and accum >= q:
             return outcome
+    if abs(accum - 1) <= Decimal('1e-10'):
+        return max(k for k,mass in pmf.items() if mass > 0)
     raise ValueError('incomplete PMF')
 
 
@@ -124,10 +126,13 @@ def audit_locked_unders(rows):
     for record in rows:
         if not isinstance(record, dict):
             raise ValueError('record object required')
-        key = tuple(record[k] for k in ('forecast_id','event_id','player_id','stat','line'))
+        key = (record['event_id'],record['player_id'],record['stat'],
+               num(record['line']),record.get('period','full_game'))
         if key in seen:
             raise ValueError('duplicate forecast identity')
         seen.add(key)
+        if record.get('probability_kind') != 'model_forecast':
+            raise ValueError('explicit model_forecast probability kind required; streaks and odds are not forecasts')
         locked, start = _clock(record['locked_at']), _clock(record['event_start'])
         if locked >= start:
             raise ValueError('forecast must be locked pregame')

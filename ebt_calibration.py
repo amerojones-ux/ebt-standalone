@@ -8,7 +8,7 @@ SCOPE=('competition','market','threshold_type','model_version')
 
 def validate_rows(rows,scope,deadline):
     if not isinstance(rows,list):raise ValueError('forecast row array required')
-    seen=set();validated=[]
+    seen=set();events=set();validated=[]
     for row in rows:
         if not isinstance(row,dict) or row.get('certified') is not True:raise ValueError('independently certified outcome required')
         if any(row.get(k)!=scope[k] for k in SCOPE):raise ValueError('calibration scope mismatch')
@@ -16,6 +16,9 @@ def validate_rows(rows,scope,deadline):
             if not isinstance(row.get(k),str) or not row[k].strip():raise ValueError('canonical forecast/event identity required')
         if row['forecast_id'] in seen:raise ValueError('duplicate forecast_id')
         seen.add(row['forecast_id'])
+        if row['event_id'] in events:raise ValueError('one prospectively selected forecast per event required; do not inflate calibration with alternate lines')
+        events.add(row['event_id'])
+        if row.get('probability_kind') not in (None,'model_forecast'):raise ValueError('descriptive frequencies are not forecast probabilities')
         if row['result'] not in ('HIT','MISS'):raise ValueError('push/void/pending outcomes require separate accounting')
         if not clock(row['training_end'])<clock(row['issued_at'])<clock(row['event_start'])<=clock(row['outcome_available_at'])<=clock(deadline):raise ValueError('temporal leakage or outcome beyond cutoff')
         exact_probability(row['p']);validated.append(row)

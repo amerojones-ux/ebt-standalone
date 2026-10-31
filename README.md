@@ -2,6 +2,11 @@
 
 Dedicated sports analytics repository, separate from credit engineering. This initial branch contains an offline validation harness, not an activated forecasting platform.
 
+October 31 recovery: numeric checks no longer emit wager approval or validated
+forecast labels from caller assertions. See [calibration recovery](docs/CALIBRATION_RECOVERY.md)
+for chronological calibration diagnostics, event-level duplicate protection and
+the remaining real-data validation requirements.
+
 ## Run
 
 Python 3.11+ on Linux; standard library only.
