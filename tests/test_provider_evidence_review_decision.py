@@ -3,6 +3,7 @@ import unittest
 from apisports_status_receipt import build_receipt as build_apisports
 from provider_receipt_review_candidate import build_review_candidate
 from provider_evidence_review_decision import review_candidate, verify_candidate
+from provider_readiness_evidence_gate import validate_record
 
 COMMIT="a"*40
 RUN="12345"
@@ -19,6 +20,17 @@ def candidate():
 class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_candidate_checksum_verifies(self):
         self.assertTrue(verify_candidate(candidate()))
+
+    def test_unsupported_provider_candidate_fails(self):
+        c=candidate()
+        c["provider"]="Unsupported"
+        c["subject"]="Unsupported"
+        import hashlib, json
+        body={k:v for k,v in c.items() if k!="candidate_sha256"}
+        c["candidate_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        self.assertFalse(verify_candidate(c))
 
     def test_candidate_mutation_fails(self):
         c=candidate()
@@ -37,6 +49,15 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         self.assertFalse(r["ledger_mutation_permitted"])
         self.assertFalse(r["readiness_mutation_permitted"])
         self.assertFalse(r["forecast_activation_permitted"])
+        self.assertEqual(
+            validate_record(
+                r["ledger_record_proposal"],
+                subject="API-Sports",
+                claim="live_auth_verified",
+                trusted_now=NOW,
+            ),
+            [],
+        )
 
     def test_reject_emits_no_ledger_record(self):
         r=review_candidate(
