@@ -9,17 +9,30 @@ import weatherapi_live_probe
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORKFLOWS = {
-    "weather": ROOT / ".github" / "workflows" / "weatherapi-live-probe.yml",
-    "odds": ROOT / ".github" / "workflows" / "theoddsapi-live-probe.yml",
-    "apisports": ROOT / ".github" / "workflows" / "apisports-status-probe.yml",
+    "weather": {
+        "path": ROOT / ".github" / "workflows" / "weatherapi-live-probe.yml",
+        "receipt": "weatherapi_probe_receipt.json",
+        "artifact_prefix": "weatherapi-probe-receipt",
+    },
+    "odds": {
+        "path": ROOT / ".github" / "workflows" / "theoddsapi-live-probe.yml",
+        "receipt": "theoddsapi_probe_receipt.json",
+        "artifact_prefix": "theoddsapi-probe-receipt",
+    },
+    "apisports": {
+        "path": ROOT / ".github" / "workflows" / "apisports-status-probe.yml",
+        "receipt": "apisports_status_receipt.json",
+        "artifact_prefix": "apisports-status-receipt",
+    },
 }
+UPLOAD_ARTIFACT_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
 
 
 class LiveProbeSecurityInvariantTests(unittest.TestCase):
     def test_live_workflows_are_manual_main_only_and_read_only(self):
-        for name, path in WORKFLOWS.items():
+        for name, spec in WORKFLOWS.items():
             with self.subTest(name=name):
-                text = path.read_text(encoding="utf-8")
+                text = spec["path"].read_text(encoding="utf-8")
                 self.assertIn("workflow_dispatch:", text)
                 self.assertIn("github.ref == 'refs/heads/main'", text)
                 self.assertIn("ref: main", text)
@@ -31,6 +44,28 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertNotIn("\n  push:", text)
                 self.assertIn('default: "NO"', text)
                 self.assertIn("verify_receipt", text)
+
+    def test_live_workflows_persist_only_sanitized_receipt_artifacts(self):
+        for name, spec in WORKFLOWS.items():
+            with self.subTest(name=name):
+                text = spec["path"].read_text(encoding="utf-8")
+                self.assertIn("if: always()", text)
+                self.assertIn(
+                    "actions/upload-artifact@" + UPLOAD_ARTIFACT_SHA,
+                    text,
+                )
+                self.assertIn(
+                    "name: " + spec["artifact_prefix"] + "-${{ github.run_id }}",
+                    text,
+                )
+                self.assertIn("path: " + spec["receipt"], text)
+                self.assertIn("if-no-files-found: ignore", text)
+                self.assertIn("retention-days: 7", text)
+                self.assertIn("compression-level: 0", text)
+                self.assertNotIn("path: .", text)
+                self.assertNotIn("path: ./", text)
+                self.assertNotIn("path: **", text)
+                self.assertNotIn("raw_response", text)
 
     def _assert_direct_no_proxy_opener(self, module):
         fake_opener = Mock()
