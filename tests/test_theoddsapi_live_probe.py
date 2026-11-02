@@ -9,6 +9,7 @@ from theoddsapi_live_probe import (
     ACCOUNT_REVIEW_APPROVAL,
     REQUEST_APPROVAL,
     NoRedirectHandler,
+    _safe_result,
     probe,
 )
 
@@ -158,6 +159,14 @@ class TheOddsApiLiveProbeTests(unittest.TestCase):
                 opener=fail,
             )
             self.assertEqual(result["category"], "redirect_blocked")
+
+    def test_result_schema_drift_fails_closed(self):
+        with self.assertRaises(ValueError):
+            _safe_result("PASS", "not_in_receipt_schema")
+        with self.assertRaises(ValueError):
+            _safe_result("UNKNOWN", "unexpected_error")
+        with self.assertRaises(ValueError):
+            _safe_result("HOLD", "http_error", "string-detail")
 
     def test_no_redirect_handler_refuses_follow_up(self):
         self.assertIsNone(
