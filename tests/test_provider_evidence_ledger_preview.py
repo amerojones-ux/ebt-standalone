@@ -9,6 +9,7 @@ import json
 
 COMMIT="a"*40
 RUN="12345"
+ARTIFACT="d"*64
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -21,7 +22,7 @@ def decision():
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
     )
-    candidate=build_review_candidate(receipt)
+    candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT)
     return review_candidate(
         candidate,decision="APPROVE",reviewer="authorized-reviewer",
         reviewed_at=REVIEWED,trusted_now=NOW
@@ -57,7 +58,7 @@ class ProviderEvidenceLedgerPreviewTests(unittest.TestCase):
             {"status":"PASS","category":"authenticated_status_schema"},
             "2026-11-02T20:58:00+00:00",COMMIT,RUN
         )
-        candidate=build_review_candidate(receipt)
+        candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT)
         rejected=review_candidate(
             candidate,decision="REJECT",reviewer="authorized-reviewer",
             reviewed_at=REVIEWED,trusted_now=NOW
