@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 
-from weatherapi_probe_receipt import build_receipt, write_receipt
+from weatherapi_probe_receipt import build_receipt, verify_receipt, write_receipt
 
 class WeatherApiReceiptTests(unittest.TestCase):
     def test_receipt_contains_only_sanitized_fields(self):
@@ -15,7 +15,9 @@ class WeatherApiReceiptTests(unittest.TestCase):
         )
         self.assertEqual(r["provider"], "WeatherAPI")
         self.assertEqual(r["detail"], 2006)
+        self.assertEqual(r["integrity_model"], "sha256-checksum-not-signature")
         self.assertEqual(len(r["receipt_sha256"]), 64)
+        self.assertTrue(verify_receipt(r))
         rendered = json.dumps(r)
         self.assertNotIn("api_key", rendered.lower())
         self.assertNotIn("message", rendered.lower())
@@ -27,7 +29,28 @@ class WeatherApiReceiptTests(unittest.TestCase):
             "abc123",
             "42",
         )
-        self.assertEqual(build_receipt(*args)["receipt_sha256"], build_receipt(*args)["receipt_sha256"])
+        self.assertEqual(
+            build_receipt(*args)["receipt_sha256"],
+            build_receipt(*args)["receipt_sha256"],
+        )
+
+    def test_mutation_fails_verification(self):
+        r = build_receipt(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T19:10:00+00:00",
+            "abc123",
+            "42",
+        )
+        r["status"] = "HOLD"
+        self.assertFalse(verify_receipt(r))
+
+    def test_extra_field_fails_verification(self):
+        r = build_receipt(
+            {"status":"HOLD","category":"transport_error"},
+            "x",
+        )
+        r["raw_provider_message"] = "must never enter receipt"
+        self.assertFalse(verify_receipt(r))
 
     def test_unknown_category_rejected(self):
         with self.assertRaises(ValueError):
@@ -37,6 +60,13 @@ class WeatherApiReceiptTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_receipt({"status":"HOLD","category":"http_error","detail":"secret"}, "x")
 
+    def test_write_rejects_modified_receipt(self):
+        r = build_receipt({"status":"HOLD","category":"transport_error"}, "x")
+        r["category"] = "unexpected_error"
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):
+                write_receipt(os.path.join(d, "receipt.json"), r)
+
     def test_write_roundtrip(self):
         receipt = build_receipt({"status":"HOLD","category":"transport_error"}, "x")
         with tempfile.TemporaryDirectory() as d:
@@ -45,6 +75,7 @@ class WeatherApiReceiptTests(unittest.TestCase):
             with open(path, encoding="utf-8") as handle:
                 loaded = json.load(handle)
         self.assertEqual(loaded, receipt)
+        self.assertTrue(verify_receipt(loaded))
 
 if __name__ == "__main__":
     unittest.main()
