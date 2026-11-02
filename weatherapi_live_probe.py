@@ -1,6 +1,6 @@
-"""One-shot WeatherAPI authentication probe.
+"""One-shot WeatherAPI authentication probe with dual consent.
 
-Network access occurs ONLY when --confirm exactly matches the approval phrase.
+Network access occurs ONLY when BOTH approval phrases match exactly.
 Never logs API keys, URLs, headers, or response bodies.
 """
 import argparse
@@ -14,7 +14,8 @@ import urllib.request
 
 from weatherapi_contract import validate_current
 
-APPROVAL = "I_APPROVE_ONE_WEATHERAPI_REQUEST"
+REQUEST_APPROVAL = "I_APPROVE_ONE_WEATHERAPI_REQUEST"
+PLAN_REVIEW_APPROVAL = "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED"
 HOST = "api.weatherapi.com"
 PATH = "/v1/current.json"
 LOCATION = "Chicago"
@@ -35,9 +36,12 @@ def _default_open(request, timeout):
     opener = urllib.request.build_opener(NoRedirectHandler())
     return opener.open(request, timeout=timeout)
 
-def probe(confirm, opener=None, now_epoch=None):
-    if confirm != APPROVAL:
-        return _safe_result("HOLD", "approval_missing")
+def probe(confirm, plan_review, opener=None, now_epoch=None):
+    if plan_review != PLAN_REVIEW_APPROVAL:
+        return _safe_result("HOLD", "plan_review_missing")
+    if confirm != REQUEST_APPROVAL:
+        return _safe_result("HOLD", "request_approval_missing")
+
     key = os.environ.get("EBT_WEATHER_API_KEY")
     if not key:
         return _safe_result("HOLD", "secret_missing")
@@ -47,7 +51,10 @@ def probe(confirm, opener=None, now_epoch=None):
     request = urllib.request.Request(
         url,
         method="GET",
-        headers={"Accept": "application/json", "User-Agent": "EBT-Black-Diamond/WeatherAPI-Auth-Probe"},
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "EBT-Black-Diamond/WeatherAPI-Auth-Probe",
+        },
     )
     opener = _default_open if opener is None else opener
     try:
@@ -58,17 +65,23 @@ def probe(confirm, opener=None, now_epoch=None):
         if parsed.scheme != "https" or parsed.hostname != HOST or parsed.path != PATH:
             return _safe_result("HOLD", "endpoint_mismatch")
         if type(status) is not int or status != 200:
-            return _safe_result("HOLD", "http_status", status if type(status) is int else None)
+            return _safe_result(
+                "HOLD", "http_status", status if type(status) is int else None
+            )
+
         raw = response.read(MAX_BODY + 1)
         if len(raw) > MAX_BODY:
             return _safe_result("HOLD", "response_too_large")
+
         try:
             payload = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             return _safe_result("HOLD", "malformed_json")
+
         errors = validate_current(payload, LOCATION, now_epoch)
         if errors:
             return _safe_result("HOLD", "data_contract", len(errors))
+
         return _safe_result("PASS", "authenticated_schema_fresh")
     except urllib.error.HTTPError as exc:
         if 300 <= exc.code < 400:
@@ -82,8 +95,10 @@ def probe(confirm, opener=None, now_epoch=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--confirm", required=True)
+    parser.add_argument("--plan-review", required=True)
     args = parser.parse_args()
-    result = probe(args.confirm)
+
+    result = probe(args.confirm, args.plan_review)
     print("WEATHERAPI_LIVE_PROBE:", result["status"])
     print("CATEGORY:", result["category"])
     if "detail" in result:
