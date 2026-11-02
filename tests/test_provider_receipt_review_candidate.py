@@ -20,7 +20,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(c["subject"],"WeatherAPI")
         self.assertEqual(c["claim"],"live_auth_verified")
         self.assertEqual(c["candidate_status"],"REVIEW_ONLY")
-        self.assertIs(c["github_binding_verified"],True)
+        self.assertIs(c["github_metadata_match"],True)
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])
         self.assertEqual(len(c["candidate_sha256"]),64)
