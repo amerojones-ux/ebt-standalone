@@ -1,0 +1,53 @@
+name: The Odds API zero-credit one-shot authentication probe
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_account_review:
+        description: "Confirm The Odds API account and zero-credit /sports endpoint were reviewed"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED"
+        default: "NO"
+      confirm_live_request:
+        description: "Approve exactly ONE The Odds API /v4/sports request"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST"
+        default: "NO"
+
+permissions:
+  contents: read
+
+jobs:
+  one-shot-probe:
+    if: >-
+      ${{
+        inputs.confirm_account_review == 'I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED' &&
+        inputs.confirm_live_request == 'I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Execute one sanitized zero-credit /sports request and write receipt
+        env:
+          EBT_THEODDS_API_KEY: ${{ secrets.EBT_THEODDS_API_KEY }}
+        run: |
+          set +e
+          python3 theoddsapi_live_probe.py \
+            --account-review "I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED" \
+            --confirm "I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST" \
+            --receipt-path theoddsapi_probe_receipt.json
+          probe_exit=$?
+          echo "### Sanitized The Odds API probe receipt" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
+          cat theoddsapi_probe_receipt.json >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+          exit "$probe_exit"
