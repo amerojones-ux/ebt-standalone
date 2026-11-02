@@ -119,6 +119,16 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         )
         self.assertIs(r["candidate"]["github_metadata_match"],True)
         self.assertIs(r["candidate"]["attestation_verified"],True)
+        self.assertEqual(r["candidate"]["source_repository"],REPO)
+        self.assertEqual(r["candidate"]["attestation_id"],"attestation-123")
+        self.assertEqual(
+            r["candidate"]["attestation_url"],
+            "https://github.com/"+REPO+"/attestations/attestation-123",
+        )
+        self.assertEqual(
+            r["candidate"]["signer_workflow"],
+            ".github/workflows/weatherapi-live-probe.yml",
+        )
         self.assertEqual(
             r["candidate"]["attestation_marker_sha256"],
             r["attestation_verification"]["marker_file_sha256"],
