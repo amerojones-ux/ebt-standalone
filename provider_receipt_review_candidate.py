@@ -33,8 +33,10 @@ SUPPORTED={
 
 BODY_FIELDS={
     "provider","subject","claim","candidate_status","source_type","reference",
-    "source_commit","github_metadata_match","receipt_sha256","artifact_sha256",
-    "attestation_verified","attestation_marker_sha256","reviewer_required",
+    "source_repository","source_commit","github_metadata_match",
+    "receipt_sha256","artifact_sha256","attestation_verified",
+    "attestation_marker_sha256","attestation_id","attestation_url",
+    "signer_workflow","reviewer_required",
     "readiness_mutation_permitted","forecast_activation_permitted",
 }
 ALL_FIELDS=BODY_FIELDS|{"candidate_sha256"}
@@ -98,18 +100,30 @@ def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expecte
         "candidate_status":"REVIEW_ONLY_PENDING_ATTESTATION",
         "source_type":"github_actions_receipt",
         "reference":"github-actions-run:"+run_id,
+        "source_repository":None,
         "source_commit":commit.lower(),
         "github_metadata_match":True,
         "receipt_sha256":receipt_digest,
         "artifact_sha256":artifact_sha256.lower(),
         "attestation_verified":False,
         "attestation_marker_sha256":None,
+        "attestation_id":None,
+        "attestation_url":None,
+        "signer_workflow":None,
         "reviewer_required":True,
         "readiness_mutation_permitted":False,
         "forecast_activation_permitted":False,
     })
 
-def bind_attestation_verification(candidate, *, marker_sha256):
+def bind_attestation_verification(
+    candidate,
+    *,
+    marker_sha256,
+    source_repository,
+    attestation_id,
+    attestation_url,
+    signer_workflow,
+):
     if not verify_candidate_checksum(candidate):
         raise ValueError("candidate checksum invalid")
     if candidate.get("candidate_status")!="REVIEW_ONLY_PENDING_ATTESTATION":
@@ -120,9 +134,25 @@ def bind_attestation_verification(candidate, *, marker_sha256):
         raise ValueError("candidate already has attestation marker")
     if not isinstance(marker_sha256,str) or not SHA64.fullmatch(marker_sha256):
         raise ValueError("valid attestation marker checksum required")
+    if not isinstance(source_repository,str) or "/" not in source_repository:
+        raise ValueError("source repository required")
+    if not isinstance(attestation_id,str) or not attestation_id:
+        raise ValueError("attestation id required")
+    if not isinstance(attestation_url,str) or not attestation_url.startswith(
+        "https://github.com/"+source_repository+"/attestations/"
+    ):
+        raise ValueError("attestation url/repository mismatch")
+    if not isinstance(signer_workflow,str) or not signer_workflow.startswith(
+        ".github/workflows/"
+    ):
+        raise ValueError("signer workflow required")
 
     body={k:candidate[k] for k in BODY_FIELDS}
     body["candidate_status"]="REVIEW_ONLY"
+    body["source_repository"]=source_repository
     body["attestation_verified"]=True
     body["attestation_marker_sha256"]=marker_sha256.lower()
+    body["attestation_id"]=attestation_id
+    body["attestation_url"]=attestation_url
+    body["signer_workflow"]=signer_workflow
     return _sign(body)
