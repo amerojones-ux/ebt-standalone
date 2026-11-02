@@ -1,0 +1,13 @@
+{
+  "provider": "API-Sports",
+  "secret_name": "EBT_APISPORTS_API_KEY",
+  "host": "v1.american-football.api-sports.io",
+  "path": "/status",
+  "documented_zero_daily_quota_endpoint": true,
+  "privacy_rate_limit_review_verified": false,
+  "explicit_request_approval": false,
+  "network_enabled": false,
+  "request_count": 0,
+  "forecast_enabled": false,
+  "model_evidence_allowed": false
+}

@@ -1,0 +1,13 @@
+{
+  "provider": "The Odds API",
+  "secret_name": "EBT_THEODDS_API_KEY",
+  "host": "api.the-odds-api.com",
+  "path": "/v4/sports",
+  "documented_zero_usage_credit_endpoint": true,
+  "account_review_verified": false,
+  "explicit_request_approval": false,
+  "network_enabled": false,
+  "request_count": 0,
+  "forecast_enabled": false,
+  "model_evidence_allowed": false
+}

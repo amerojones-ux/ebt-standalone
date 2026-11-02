@@ -12,6 +12,10 @@ jobs:
         with:
           ref: main
           persist-credentials: false
+      - name: Reconcile all seven provider contracts
+        run: |
+          python3 -m unittest discover -s tests -p test_provider_contract_reconciliation.py -v
+          python3 provider_contract_reconciliation_cli.py
       - name: Validate global provider and model hold
         run: |
           python3 -m unittest discover -s tests -p test_provider_activation_gate.py -v

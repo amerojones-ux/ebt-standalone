@@ -2,7 +2,7 @@
 import json
 import sys
 
-REQUIRED = {"provider", "network_enabled", "explicit_request_approval", "entitlement_verified", "quota_verified", "cost_verified", "forecast_enabled", "max_requests", "timeout_seconds", "allow_redirects", "allow_retries"}
+REQUIRED = {"provider", "secret_name", "network_enabled", "explicit_request_approval", "entitlement_verified", "quota_verified", "cost_verified", "forecast_enabled", "max_requests", "timeout_seconds", "allow_redirects", "allow_retries"}
 
 def validate(plan):
     if not isinstance(plan, dict):
@@ -12,6 +12,8 @@ def validate(plan):
         errors.append("unexpected or missing fields")
     if plan.get("provider") != "WEATHER":
         errors.append("provider must be WEATHER")
+    if plan.get("secret_name") != "EBT_WEATHER_API_KEY":
+        errors.append("secret_name mismatch")
     for key in ("network_enabled", "explicit_request_approval", "entitlement_verified", "quota_verified", "cost_verified", "forecast_enabled", "allow_redirects", "allow_retries"):
         if plan.get(key) is not False:
             errors.append(key + " must be false")
