@@ -126,9 +126,15 @@ def provider_ready(entry):
         return entry.get("model_evidence_allowed") is False
     return False
 
-def activation_eligible(config):
-    """Evaluate readiness; never changes forecast_enabled itself."""
+def activation_eligible(config, evidence_ok=False):
+    """Evaluate readiness; never changes forecast_enabled itself.
+
+    evidence_ok must come from provider_evidence_gate.evidence_supports_readiness.
+    Without that independent evidence check, activation is never eligible.
+    """
     if validate_config(config):
+        return False
+    if evidence_ok is not True:
         return False
 
     required = config["required_providers"]
@@ -149,5 +155,9 @@ def activation_eligible(config):
 
     return True
 
-def status(config):
-    return "ELIGIBLE_FOR_MANUAL_ACTIVATION_REVIEW" if activation_eligible(config) else "SAFE_HOLD"
+def status(config, evidence_ok=False):
+    return (
+        "ELIGIBLE_FOR_MANUAL_ACTIVATION_REVIEW"
+        if activation_eligible(config, evidence_ok=evidence_ok)
+        else "SAFE_HOLD"
+    )
