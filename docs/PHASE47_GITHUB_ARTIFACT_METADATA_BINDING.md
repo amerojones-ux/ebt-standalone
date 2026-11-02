@@ -46,3 +46,8 @@ GitHub artifact metadata
 → dry-run evidence-ledger preview
 
 No ledger/readiness/forecast mutation is permitted by this phase.
+
+
+## Phase 52 strengthening
+
+Phase 52 additionally requires the downloaded artifact ZIP bytes to match the GitHub artifact record's exact `size_in_bytes` and SHA-256 `digest` before any archive member is parsed. The metadata binding is therefore now a byte-level transport integrity check, not only an identity/shape check.

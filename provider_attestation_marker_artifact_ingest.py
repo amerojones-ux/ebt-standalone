@@ -6,7 +6,10 @@ import stat
 import zipfile
 
 from provider_attestation_verification_marker import verify_marker
-from provider_github_artifact_metadata import build_attestation_marker_binding
+from provider_github_artifact_metadata import (
+    build_attestation_marker_binding,
+    verify_downloaded_artifact,
+)
 
 MAX_ZIP_BYTES=1024*1024
 MAX_MARKER_BYTES=65536
@@ -32,6 +35,7 @@ def ingest_attestation_marker_artifact(
     binding=build_attestation_marker_binding(
         metadata,provider=provider,trusted_now=trusted_now
     )
+    marker_zip_sha256=verify_downloaded_artifact(binding,zip_bytes)
 
     if not isinstance(zip_bytes,(bytes,bytearray)):
         raise ValueError("marker artifact must be bytes")
@@ -93,6 +97,7 @@ def ingest_attestation_marker_artifact(
         "status":"VERIFIED",
         "provider":provider,
         "binding":binding,
+        "marker_zip_sha256":marker_zip_sha256,
         "marker_filename":EXPECTED_FILES[provider],
         "marker_file_sha256":marker_file_sha256,
         "marker_internal_sha256":marker["marker_sha256"],

@@ -4,6 +4,8 @@ This module expects metadata obtained independently from GitHub's Actions artifa
 It never performs network calls itself.
 """
 from datetime import datetime, timezone
+import hashlib
+import hmac
 import re
 
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
@@ -95,6 +97,7 @@ def _build_binding(metadata, *, provider, trusted_now, prefixes, kind):
         "artifact_kind":kind,
         "github_artifact_id":artifact_id,
         "github_artifact_name":name,
+        "github_artifact_size":size,
         "github_artifact_digest":match.group(1).lower(),
         "expected_run_id":str(run_id),
         "expected_commit":head_sha.lower(),
@@ -114,3 +117,26 @@ def build_attestation_marker_binding(metadata, *, provider, trusted_now):
         metadata,provider=provider,trusted_now=trusted_now,
         prefixes=ATTESTATION_MARKER_PREFIXES,kind="attestation_verification_marker"
     )
+
+
+def verify_downloaded_artifact(binding, data):
+    """Bind downloaded ZIP bytes to GitHub artifact metadata."""
+    if not isinstance(binding,dict):
+        raise ValueError("artifact binding must be object")
+    if not isinstance(data,(bytes,bytearray)):
+        raise ValueError("downloaded artifact must be bytes")
+
+    expected_size=binding.get("github_artifact_size")
+    if type(expected_size) is not int or expected_size<=0:
+        raise ValueError("invalid expected artifact size")
+    if len(data)!=expected_size:
+        raise ValueError("downloaded artifact size mismatch")
+
+    expected_digest=binding.get("github_artifact_digest")
+    if not isinstance(expected_digest,str) or not re.fullmatch(r"[0-9a-f]{64}",expected_digest,re.I):
+        raise ValueError("invalid expected artifact digest")
+
+    actual=hashlib.sha256(bytes(data)).hexdigest()
+    if not hmac.compare_digest(actual,expected_digest.lower()):
+        raise ValueError("downloaded artifact digest mismatch")
+    return actual
