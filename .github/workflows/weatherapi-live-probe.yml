@@ -104,26 +104,41 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
           ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+          ATTESTATION_BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
           RECEIPT_FILE: weatherapi_probe_receipt.json
           VERIFICATION_MARKER: weatherapi_attestation_verification.json
           PROVIDER_NAME: WeatherAPI
           SIGNER_WORKFLOW: .github/workflows/weatherapi-live-probe.yml
         run: |
           set -euo pipefail
+          test -n "$ATTESTATION_BUNDLE_PATH"
+          test -f "$ATTESTATION_BUNDLE_PATH"
+
+          gh attestation verify "$RECEIPT_FILE" \
+            --bundle "$ATTESTATION_BUNDLE_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/attestation-local-verification.json
+
           gh attestation verify "$RECEIPT_FILE" \
             --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW" \
             --source-ref "refs/heads/main" \
             --source-digest "$GITHUB_SHA" \
-            --format json > /tmp/attestation-verification.json
+            --format json > /tmp/attestation-api-verification.json
 
           python3 - <<'PY'
           import hashlib
           import json
           import os
 
+          with open(os.environ["ATTESTATION_BUNDLE_PATH"], "rb") as handle:
+              bundle_sha256 = hashlib.sha256(handle.read()).hexdigest()
+
           body = {
-              "schema_version": 1,
+              "schema_version": 2,
               "provider": os.environ["PROVIDER_NAME"],
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
@@ -133,8 +148,10 @@ jobs:
               "signer_workflow": os.environ["SIGNER_WORKFLOW"],
               "attestation_id": os.environ.get("ATTESTATION_ID", ""),
               "attestation_url": os.environ.get("ATTESTATION_URL", ""),
+              "attestation_bundle_sha256": bundle_sha256,
               "receipt_file": os.environ["RECEIPT_FILE"],
               "verification_tool": "gh attestation verify",
+              "verification_modes": ["local_bundle", "github_api"],
           }
           canonical = json.dumps(
               body, sort_keys=True, separators=(",", ":")

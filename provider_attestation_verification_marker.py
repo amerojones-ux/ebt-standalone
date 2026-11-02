@@ -1,4 +1,4 @@
-"""Validate sanitized attestation-verification markers emitted by probe workflows."""
+"""Validate sanitized dual attestation-verification markers emitted by probe workflows."""
 import hashlib
 import hmac
 import json
@@ -23,11 +23,13 @@ EXPECTED={
         "signer_workflow":".github/workflows/apisports-status-probe.yml",
     },
 }
+VERIFICATION_MODES=["local_bundle","github_api"]
 
 BODY_FIELDS={
     "schema_version","provider","verification_status","repository",
     "workflow_run_id","source_commit","source_ref","signer_workflow",
-    "attestation_id","attestation_url","receipt_file","verification_tool",
+    "attestation_id","attestation_url","attestation_bundle_sha256",
+    "receipt_file","verification_tool","verification_modes",
 }
 ALL_FIELDS=BODY_FIELDS|{"marker_sha256"}
 
@@ -39,7 +41,7 @@ def verify_marker(marker, *, provider, repository, expected_run_id, expected_com
         return False
     if not isinstance(marker,dict) or set(marker)!=ALL_FIELDS:
         return False
-    if marker.get("schema_version")!=1:
+    if marker.get("schema_version")!=2:
         return False
     if marker.get("provider")!=provider:
         return False
@@ -51,6 +53,7 @@ def verify_marker(marker, *, provider, repository, expected_run_id, expected_com
         return False
     if not RUN_ID.fullmatch(marker.get("workflow_run_id","")):
         return False
+
     commit=marker.get("source_commit")
     if not isinstance(commit,str) or not SHA40.fullmatch(commit):
         return False
@@ -65,6 +68,12 @@ def verify_marker(marker, *, provider, repository, expected_run_id, expected_com
     if marker.get("receipt_file")!=spec["receipt_file"]:
         return False
     if marker.get("verification_tool")!="gh attestation verify":
+        return False
+    if marker.get("verification_modes")!=VERIFICATION_MODES:
+        return False
+
+    bundle_sha=marker.get("attestation_bundle_sha256")
+    if not isinstance(bundle_sha,str) or not SHA64.fullmatch(bundle_sha):
         return False
 
     attestation_id=marker.get("attestation_id")

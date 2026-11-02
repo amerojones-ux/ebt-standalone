@@ -102,7 +102,16 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn("actions/attest@" + ATTEST_SHA, text)
                 self.assertIn("subject-path: " + spec["receipt"], text)
                 self.assertIn("id: verify_attestation", text)
-                self.assertIn('gh attestation verify "$RECEIPT_FILE"', text)
+                self.assertIn(
+                    "ATTESTATION_BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}",
+                    text,
+                )
+                self.assertIn('test -f "$ATTESTATION_BUNDLE_PATH"', text)
+                self.assertGreaterEqual(
+                    text.count('gh attestation verify "$RECEIPT_FILE"'),
+                    2,
+                )
+                self.assertIn('--bundle "$ATTESTATION_BUNDLE_PATH"', text)
                 self.assertIn('--repo "$GITHUB_REPOSITORY"', text)
                 self.assertIn(
                     '--signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW"',
@@ -111,6 +120,20 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn('--source-ref "refs/heads/main"', text)
                 self.assertIn('--source-digest "$GITHUB_SHA"', text)
                 self.assertIn("SIGNER_WORKFLOW: " + spec["signer"], text)
+                self.assertIn(
+                    '/tmp/attestation-local-verification.json',
+                    text,
+                )
+                self.assertIn(
+                    '/tmp/attestation-api-verification.json',
+                    text,
+                )
+                self.assertIn('"schema_version": 2', text)
+                self.assertIn(
+                    '"verification_modes": ["local_bundle", "github_api"]',
+                    text,
+                )
+                self.assertIn('"attestation_bundle_sha256": bundle_sha256', text)
                 self.assertIn(
                     'echo "attestation_verified=1" >> "$GITHUB_OUTPUT"',
                     text,

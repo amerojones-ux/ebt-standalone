@@ -80,3 +80,8 @@ The normal security tests and `PREPARED_DEFAULT_DENY` registry now require:
 - separate verification-marker artifact.
 
 No provider request is executed, and no ledger/readiness/forecast mutation occurs in this phase.
+
+
+## Phase 51 strengthening
+
+Phase 51 supersedes the single API-backed verification pass with two required checks: the exact local Sigstore bundle emitted by `actions/attest`, plus a separate GitHub-API lookup under the same repository/signer/ref/commit policy. Verification markers are now schema v2 and include the exact attestation-bundle SHA-256 and the two required verification modes.

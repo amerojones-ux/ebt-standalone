@@ -62,7 +62,7 @@ def zip_receipt():
 
 def verification_marker():
     body={
-        "schema_version":1,
+        "schema_version":2,
         "provider":"WeatherAPI",
         "verification_status":"VERIFIED",
         "repository":REPO,
@@ -72,8 +72,10 @@ def verification_marker():
         "signer_workflow":".github/workflows/weatherapi-live-probe.yml",
         "attestation_id":"attestation-123",
         "attestation_url":"https://github.com/"+REPO+"/attestations/attestation-123",
+        "attestation_bundle_sha256":"f"*64,
         "receipt_file":"weatherapi_probe_receipt.json",
         "verification_tool":"gh attestation verify",
+        "verification_modes":["local_bundle","github_api"],
     }
     canonical=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
     marker=dict(body)
@@ -133,6 +135,14 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
             r["candidate"]["attestation_marker_sha256"],
             r["attestation_verification"]["marker_file_sha256"],
         )
+        self.assertEqual(
+            r["attestation_verification"]["attestation_bundle_sha256"],
+            "f"*64,
+        )
+        self.assertEqual(
+            r["attestation_verification"]["verification_modes"],
+            ["local_bundle","github_api"],
+        )
         self.assertFalse(r["ledger_mutation_permitted"])
 
     def test_artifact_name_must_match_run(self):
@@ -188,6 +198,40 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ingest_github_artifact(
                 metadata(),zip_receipt(),m,zip_marker(),
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_missing_dual_verification_modes_rejected(self):
+        marker=verification_marker()
+        marker["verification_modes"]=["github_api"]
+        body={k:v for k,v in marker.items() if k!="marker_sha256"}
+        marker["marker_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        raw=json.dumps(marker).encode()
+        out=io.BytesIO()
+        with zipfile.ZipFile(out,"w") as zf:
+            zf.writestr("weatherapi_attestation_verification.json",raw)
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(),zip_receipt(),marker_metadata(),out.getvalue(),
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_bad_bundle_hash_rejected(self):
+        marker=verification_marker()
+        marker["attestation_bundle_sha256"]="bad"
+        body={k:v for k,v in marker.items() if k!="marker_sha256"}
+        marker["marker_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        raw=json.dumps(marker).encode()
+        out=io.BytesIO()
+        with zipfile.ZipFile(out,"w") as zf:
+            zf.writestr("weatherapi_attestation_verification.json",raw)
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(),zip_receipt(),marker_metadata(),out.getvalue(),
                 provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 

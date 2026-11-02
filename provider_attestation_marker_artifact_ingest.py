@@ -98,5 +98,7 @@ def ingest_attestation_marker_artifact(
         "marker_internal_sha256":marker["marker_sha256"],
         "attestation_id":marker["attestation_id"],
         "attestation_url":marker["attestation_url"],
+        "attestation_bundle_sha256":marker["attestation_bundle_sha256"],
+        "verification_modes":marker["verification_modes"],
         "signer_workflow":marker["signer_workflow"],
     }
