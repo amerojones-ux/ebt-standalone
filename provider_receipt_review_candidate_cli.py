@@ -1,19 +1,28 @@
-"""CLI for generating review-only evidence candidates from provider receipts."""
+"""CLI for generating review-only evidence candidates from receipt files."""
 import argparse
+import hashlib
 import json
 import sys
 
 from provider_receipt_review_candidate import build_review_candidate
+
+MAX_RECEIPT_BYTES=65536
 
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("receipt")
     args=parser.parse_args()
     try:
-        with open(args.receipt,encoding="utf-8") as handle:
-            receipt=json.load(handle)
-        candidate=build_review_candidate(receipt)
-    except (OSError,ValueError,json.JSONDecodeError) as exc:
+        with open(args.receipt,"rb") as handle:
+            raw=handle.read(MAX_RECEIPT_BYTES+1)
+        if len(raw)>MAX_RECEIPT_BYTES:
+            raise ValueError("receipt file too large")
+        artifact_sha256=hashlib.sha256(raw).hexdigest()
+        receipt=json.loads(raw.decode("utf-8"))
+        candidate=build_review_candidate(
+            receipt,artifact_sha256=artifact_sha256
+        )
+    except (OSError,ValueError,UnicodeDecodeError,json.JSONDecodeError) as exc:
         print("RECEIPT_REVIEW_CANDIDATE: HOLD")
         print("CHECK:",str(exc))
         return 1
