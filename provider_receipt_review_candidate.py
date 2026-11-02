@@ -72,7 +72,7 @@ def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expecte
         "source_type":"github_actions_receipt",
         "reference":"github-actions-run:"+run_id,
         "source_commit":commit.lower(),
-        "github_binding_verified":True,
+        "github_metadata_match":True,
         "receipt_sha256":receipt_digest,
         "artifact_sha256":artifact_sha256.lower(),
         "reviewer_required":True,
