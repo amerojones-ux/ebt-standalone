@@ -4,7 +4,7 @@ import json
 import sys
 
 from provider_activation_gate import status, validate_config
-from provider_evidence_gate import evidence_supports_readiness
+from provider_readiness_evidence_gate import evidence_supports_readiness
 
 def main():
     parser=argparse.ArgumentParser()
