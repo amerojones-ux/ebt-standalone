@@ -1,0 +1,311 @@
+name: Provider live-auth evidence review
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Provider whose completed live-auth probe is being reviewed"
+        required: true
+        type: choice
+        options:
+          - "WeatherAPI"
+          - "The Odds API"
+          - "API-Sports"
+      source_run_id:
+        description: "Completed provider probe workflow run ID"
+        required: true
+        type: string
+      decision:
+        description: "Evidence review decision"
+        required: true
+        type: choice
+        options:
+          - "HOLD"
+          - "REJECT"
+          - "APPROVE"
+        default: "HOLD"
+      confirm_approval:
+        description: "Required only for APPROVE"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_ATTESTED_LIVE_AUTH_EVIDENCE"
+        default: "NO"
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  review:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        inputs.decision != 'HOLD' &&
+        (
+          inputs.decision == 'REJECT' ||
+          inputs.confirm_approval == 'I_APPROVE_ATTESTED_LIVE_AUTH_EVIDENCE'
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Resolve immutable provider review contract
+        id: contract
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          set -euo pipefail
+          case "$SOURCE_RUN_ID" in
+            ''|*[!0-9]*)
+              echo "source_run_id must be numeric" >&2
+              exit 2
+              ;;
+          esac
+
+          case "$PROVIDER" in
+            "WeatherAPI")
+              echo "source_workflow=.github/workflows/weatherapi-live-probe.yml" >> "$GITHUB_OUTPUT"
+              echo "receipt_artifact=weatherapi-probe-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "marker_artifact=weatherapi-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            "The Odds API")
+              echo "source_workflow=.github/workflows/theoddsapi-live-probe.yml" >> "$GITHUB_OUTPUT"
+              echo "receipt_artifact=theoddsapi-probe-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "marker_artifact=theoddsapi-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            "API-Sports")
+              echo "source_workflow=.github/workflows/apisports-status-probe.yml" >> "$GITHUB_OUTPUT"
+              echo "receipt_artifact=apisports-status-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "marker_artifact=apisports-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "unsupported provider" >&2
+              exit 2
+              ;;
+          esac
+
+      - name: Fetch and validate source workflow metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SOURCE_WORKFLOW: ${{ steps.contract.outputs.source_workflow }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > source_run.json
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open("source_run.json", encoding="utf-8") as handle:
+              run = json.load(handle)
+
+          expected_id = int(os.environ["SOURCE_RUN_ID"])
+          expected_workflow = os.environ["SOURCE_WORKFLOW"]
+
+          if run.get("id") != expected_id:
+              raise SystemExit("source run id mismatch")
+          if run.get("event") != "workflow_dispatch":
+              raise SystemExit("source run was not workflow_dispatch")
+          if run.get("head_branch") != "main":
+              raise SystemExit("source run was not on main")
+          if run.get("status") != "completed":
+              raise SystemExit("source run not completed")
+          if run.get("conclusion") != "success":
+              raise SystemExit("source run did not conclude success")
+          if run.get("path") != expected_workflow:
+              raise SystemExit("source workflow path mismatch")
+          head_sha = run.get("head_sha")
+          if not isinstance(head_sha, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", head_sha):
+              raise SystemExit("invalid source head sha")
+          repository = run.get("repository") or {}
+          head_repository = run.get("head_repository") or {}
+          if repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("source repository mismatch")
+          if head_repository.get("id") != repository.get("id"):
+              raise SystemExit("source head repository mismatch")
+          PY
+
+      - name: Resolve exact source evidence artifacts
+        id: artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          RECEIPT_ARTIFACT: ${{ steps.contract.outputs.receipt_artifact }}
+          MARKER_ARTIFACT: ${{ steps.contract.outputs.marker_artifact }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100" > artifacts.json
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          with open("artifacts.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          with open("source_run.json", encoding="utf-8") as handle:
+              run = json.load(handle)
+
+          artifacts = payload.get("artifacts")
+          if not isinstance(artifacts, list):
+              raise SystemExit("artifact list missing")
+
+          wanted = {
+              "receipt": os.environ["RECEIPT_ARTIFACT"],
+              "marker": os.environ["MARKER_ARTIFACT"],
+          }
+          resolved = {}
+          for key, name in wanted.items():
+              matches = [
+                  item for item in artifacts
+                  if isinstance(item, dict) and item.get("name") == name
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(f"{key} artifact count mismatch")
+              item = matches[0]
+              if item.get("expired") is not False:
+                  raise SystemExit(f"{key} artifact expired")
+              resolved[key] = item
+
+          repository = run["repository"]
+          head_repository = run["head_repository"]
+          workflow_run = {
+              "id": run["id"],
+              "repository_id": repository["id"],
+              "head_repository_id": head_repository["id"],
+              "head_branch": run["head_branch"],
+              "head_sha": run["head_sha"],
+          }
+
+          for key, item in resolved.items():
+              metadata = {
+                  field: item.get(field)
+                  for field in (
+                      "id", "name", "size_in_bytes", "expired",
+                      "created_at", "expires_at", "digest",
+                  )
+              }
+              metadata["workflow_run"] = workflow_run
+              with open(f"{key}_metadata.json", "w", encoding="utf-8") as handle:
+                  json.dump(metadata, handle, indent=2, sort_keys=True)
+                  handle.write("\n")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"receipt_id={resolved['receipt']['id']}\n")
+              handle.write(f"marker_id={resolved['marker']['id']}\n")
+          PY
+
+      - name: Download exact source evidence ZIPs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECEIPT_ID: ${{ steps.artifacts.outputs.receipt_id }}
+          MARKER_ID: ${{ steps.artifacts.outputs.marker_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RECEIPT_ID/zip" > receipt.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$MARKER_ID/zip" > marker.zip
+          test -s receipt.zip
+          test -s marker.zip
+
+      - name: Reconstruct attested REVIEW_ONLY candidate
+        env:
+          PROVIDER: ${{ inputs.provider }}
+        run: |
+          set -euo pipefail
+          python3 provider_github_artifact_ingest_cli.py             receipt_metadata.json receipt.zip             marker_metadata.json marker.zip             --provider "$PROVIDER"             --repository "$GITHUB_REPOSITORY"             --output provider_review_candidate.json
+
+      - name: Emit GitHub-actor-bound review decision
+        id: review
+        env:
+          DECISION: ${{ inputs.decision }}
+          REVIEWER_ACTOR: ${{ github.actor }}
+          REVIEWER_ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          reviewer="github:$REVIEWER_ACTOR#$REVIEWER_ACTOR_ID"
+          python3 provider_evidence_review_decision_cli.py             provider_review_candidate.json             --decision "$DECISION"             --reviewer "$reviewer"             --output provider_review_decision.json
+          echo "decision_file_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Attest review decision provenance
+        id: attest_review
+        if: steps.review.outputs.decision_file_verified == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: provider_review_decision.json
+
+      - name: Verify signed review decision provenance
+        id: verify_review_attestation
+        if: >-
+          ${{
+            always() &&
+            steps.review.outputs.decision_file_verified == '1' &&
+            steps.attest_review.outcome == 'success'
+          }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest_review.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest_review.outputs.attestation-url }}
+          REVIEWER_ACTOR: ${{ github.actor }}
+          REVIEWER_ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          gh attestation verify provider_review_decision.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-live-auth-evidence-review.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/review-attestation-verification.json
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+
+          body = {
+              "schema_version": 1,
+              "verification_status": "VERIFIED",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "review_workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "source_commit": os.environ["GITHUB_SHA"],
+              "source_ref": "refs/heads/main",
+              "signer_workflow": ".github/workflows/provider-live-auth-evidence-review.yml",
+              "reviewer": "github:" + os.environ["REVIEWER_ACTOR"] + "#" + os.environ["REVIEWER_ACTOR_ID"],
+              "attestation_id": os.environ.get("ATTESTATION_ID", ""),
+              "attestation_url": os.environ.get("ATTESTATION_URL", ""),
+              "decision_file": "provider_review_decision.json",
+              "verification_tool": "gh attestation verify",
+          }
+          canonical = json.dumps(
+              body, sort_keys=True, separators=(",", ":")
+          ).encode("utf-8")
+          marker = dict(body)
+          marker["marker_sha256"] = hashlib.sha256(canonical).hexdigest()
+          with open(
+              "provider_review_decision_attestation_verification.json",
+              "w",
+              encoding="utf-8",
+          ) as handle:
+              json.dump(marker, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+
+          echo "review_attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Persist sanitized review package
+        if: always() && steps.verify_review_attestation.outputs.review_attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: provider-live-auth-review-${{ inputs.source_run_id }}-${{ github.run_id }}
+          path: |
+            provider_review_candidate.json
+            provider_review_decision.json
+            provider_review_decision_attestation_verification.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
