@@ -22,7 +22,7 @@ def decision():
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
     )
-    candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT)
+    candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
     return review_candidate(
         candidate,decision="APPROVE",reviewer="authorized-reviewer",
         reviewed_at=REVIEWED,trusted_now=NOW
@@ -58,7 +58,7 @@ class ProviderEvidenceLedgerPreviewTests(unittest.TestCase):
             {"status":"PASS","category":"authenticated_status_schema"},
             "2026-11-02T20:58:00+00:00",COMMIT,RUN
         )
-        candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT)
+        candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
         rejected=review_candidate(
             candidate,decision="REJECT",reviewer="authorized-reviewer",
             reviewed_at=REVIEWED,trusted_now=NOW
