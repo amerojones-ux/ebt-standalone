@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import re
+from datetime import datetime
 
 from provider_readiness_evidence_gate import validate_record
 
@@ -12,6 +13,7 @@ RUN_ID=re.compile(r"^[0-9]+$")
 REVIEWER=re.compile(r"^github:[A-Za-z0-9-]+#[0-9]+$")
 SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
 REVIEW_WORKFLOW=".github/workflows/provider-live-auth-evidence-review.yml"
+SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
 
 BODY_FIELDS={
     "subject","claim","decision","reviewer","reviewed_at",
@@ -25,6 +27,17 @@ BODY_FIELDS={
 }
 ALL_FIELDS=BODY_FIELDS|{"attested_decision_sha256"}
 
+def _parse_time(value):
+    if not isinstance(value,str) or not value.strip():
+        return None
+    try:
+        parsed=datetime.fromisoformat(value.replace("Z","+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
+
 def _canonical(body):
     return json.dumps(body,sort_keys=True,separators=(",",":")).encode("utf-8")
 
@@ -36,7 +49,11 @@ def sign_attested_review_decision(body):
 def verify_attested_review_decision(value):
     if not isinstance(value,dict) or set(value)!=ALL_FIELDS:
         return False
+    if value.get("subject") not in SUPPORTED_PROVIDERS:
+        return False
     if value.get("claim")!="live_auth_verified":
+        return False
+    if _parse_time(value.get("reviewed_at")) is None:
         return False
     if value.get("decision") not in {"APPROVE","REJECT"}:
         return False
