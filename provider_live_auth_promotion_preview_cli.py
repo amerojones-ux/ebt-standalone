@@ -12,6 +12,7 @@ def main():
     parser.add_argument("readiness")
     parser.add_argument("ledger")
     parser.add_argument("review_decision")
+    parser.add_argument("--output")
     args=parser.parse_args()
 
     try:
@@ -32,6 +33,10 @@ def main():
         print("CHECK:",str(exc))
         return 1
 
+    if args.output:
+        with open(args.output,"w",encoding="utf-8") as handle:
+            json.dump(result,handle,indent=2,sort_keys=True)
+            handle.write("\n")
     print("LIVE_AUTH_PROMOTION_PREVIEW:",result["preview_status"])
     print("GLOBAL_PROVIDER_GATE:",result["global_provider_gate"])
     print(json.dumps(result,sort_keys=True))
