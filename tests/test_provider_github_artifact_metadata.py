@@ -234,11 +234,13 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
             )
 
     def test_marker_commit_mismatch_rejected(self):
-        m=marker_metadata()
+        receipt_zip=zip_receipt()
+        marker_zip=zip_marker()
+        m=marker_metadata(marker_zip)
         m["workflow_run"]["head_sha"]="c"*40
         with self.assertRaises(ValueError):
             ingest_github_artifact(
-                metadata(),zip_receipt(),m,zip_marker(),
+                metadata(receipt_zip),receipt_zip,m,marker_zip,
                 provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 
@@ -274,8 +276,11 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         with zipfile.ZipFile(out,"w") as zf:
             zf.writestr("weatherapi_attestation_verification.json",raw)
         with self.assertRaises(ValueError):
+            receipt_zip=zip_receipt()
+            tampered_marker_zip=out.getvalue()
             ingest_github_artifact(
-                metadata(),zip_receipt(),marker_metadata(),out.getvalue(),
+                metadata(receipt_zip),receipt_zip,
+                marker_metadata(tampered_marker_zip),tampered_marker_zip,
                 provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 
