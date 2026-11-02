@@ -69,3 +69,8 @@ The committed ledger still contains no verified live-auth records, so the expect
 - live probes: PREPARED_DEFAULT_DENY
 
 No provider network request, credential access, ledger mutation, readiness mutation or forecast activation occurs in this phase.
+
+
+## Superseded ledger schema
+
+Phase 53 supersedes evidence-ledger schema v2 with schema v3. Provider-side attestation provenance from Phase 50 remains required, and live-auth evidence now additionally requires the signed GitHub reviewer-workflow provenance documented in `docs/PHASE53_REVIEW_ATTESTATION_LEDGER_GATE.md`.
