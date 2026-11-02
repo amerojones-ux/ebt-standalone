@@ -1,0 +1,17 @@
+name: Live provider approval gate (offline only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  approval-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Assert no provider approved and network disabled
+        run: |
+          python3 -m unittest discover -s tests -p test_live_provider_gate.py -v
+          python3 live_provider_gate.py config/live_provider_approval.json

@@ -1,0 +1,97 @@
+{
+  "network_enabled": false,
+  "forecast_enabled": false,
+  "providers": [
+    {
+      "name": "RUNDOWN",
+      "secret_name": "EBT_THERUNDOWN_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    },
+    {
+      "name": "SPORTSDATA",
+      "secret_name": "EBT_SPORTSDATA_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    },
+    {
+      "name": "ODDS",
+      "secret_name": "EBT_THEODDS_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    },
+    {
+      "name": "APISPORTS",
+      "secret_name": "EBT_APISPORTS_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    },
+    {
+      "name": "RAPID",
+      "secret_name": "EBT_RAPIDAPI_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    },
+    {
+      "name": "WEATHER",
+      "secret_name": "EBT_WEATHER_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    },
+    {
+      "name": "SPORTRADAR",
+      "secret_name": "EBT_SPORTRADAR_API_KEY",
+      "approved": false,
+      "product": null,
+      "host": null,
+      "path": null,
+      "auth_method": null,
+      "quota_per_day": null,
+      "cost_per_call_usd": null,
+      "reviewer": null,
+      "approved_at": null
+    }
+  ]
+}
