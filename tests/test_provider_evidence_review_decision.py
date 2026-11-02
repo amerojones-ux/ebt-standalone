@@ -50,7 +50,7 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         self.assertFalse(verify_candidate(pending))
         with self.assertRaises(ValueError):
             review_candidate(
-                pending,decision="APPROVE",reviewer="authorized-reviewer",
+                pending,decision="APPROVE",reviewer="github:reviewer#123",
                 reviewed_at=REVIEWED,trusted_now=NOW
             )
 
@@ -70,9 +70,9 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         c["provider"]="WeatherAPI"
         self.assertFalse(verify_candidate(c))
 
-    def test_approve_emits_manual_ledger_proposal_only(self):
+    def test_approve_emits_proposal_pending_review_attestation(self):
         r=review_candidate(
-            candidate(),decision="APPROVE",reviewer="authorized-reviewer",
+            candidate(),decision="APPROVE",reviewer="github:reviewer#123",
             reviewed_at=REVIEWED,trusted_now=NOW
         )
         self.assertEqual(r["proposal_status"],"APPROVED_FOR_MANUAL_LEDGER_REVIEW")
@@ -87,19 +87,18 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         self.assertFalse(r["ledger_mutation_permitted"])
         self.assertFalse(r["readiness_mutation_permitted"])
         self.assertFalse(r["forecast_activation_permitted"])
-        self.assertEqual(
-            validate_record(
-                r["ledger_record_proposal"],
-                subject="API-Sports",
-                claim="live_auth_verified",
-                trusted_now=NOW,
-            ),
-            [],
+        errors=validate_record(
+            r["ledger_record_proposal"],
+            subject="API-Sports",
+            claim="live_auth_verified",
+            trusted_now=NOW,
         )
+        self.assertTrue(errors)
+        self.assertTrue(any("review_" in error or "reviewer" in error for error in errors))
 
     def test_reject_emits_no_ledger_record(self):
         r=review_candidate(
-            candidate(),decision="REJECT",reviewer="authorized-reviewer",
+            candidate(),decision="REJECT",reviewer="github:reviewer#123",
             reviewed_at=REVIEWED,trusted_now=NOW
         )
         self.assertEqual(r["proposal_status"],"REJECTED")
@@ -108,7 +107,7 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_future_review_rejected(self):
         with self.assertRaises(ValueError):
             review_candidate(
-                candidate(),decision="APPROVE",reviewer="authorized-reviewer",
+                candidate(),decision="APPROVE",reviewer="github:reviewer#123",
                 reviewed_at="2026-11-02T22:00:00+00:00",trusted_now=NOW
             )
 
@@ -122,7 +121,7 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_invalid_decision_rejected(self):
         with self.assertRaises(ValueError):
             review_candidate(
-                candidate(),decision="AUTO",reviewer="authorized-reviewer",
+                candidate(),decision="AUTO",reviewer="github:reviewer#123",
                 reviewed_at=REVIEWED,trusted_now=NOW
             )
 
