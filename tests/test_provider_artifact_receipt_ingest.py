@@ -89,14 +89,14 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ingest_artifact_bytes(
                 zip_one("weatherapi_probe_receipt.json",raw,external_attr=symlink_mode),
-                provider="WeatherAPI",
+                provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT,
             )
 
     def test_invalid_json_rejected(self):
         with self.assertRaises(ValueError):
             ingest_artifact_bytes(
                 zip_one("weatherapi_probe_receipt.json",b"{"),
-                provider="WeatherAPI",
+                provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT,
             )
 
     def test_hold_receipt_rejected_from_review_candidate(self):
@@ -107,7 +107,23 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ingest_artifact_bytes(
                 zip_one("weatherapi_probe_receipt.json",json.dumps(receipt).encode()),
-                provider="WeatherAPI",
+                provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT,
+            )
+
+    def test_trusted_run_id_mismatch_rejected(self):
+        raw=json.dumps(weather_receipt()).encode()
+        with self.assertRaises(ValueError):
+            ingest_artifact_bytes(
+                zip_one("weatherapi_probe_receipt.json",raw),
+                provider="WeatherAPI",expected_run_id="999999",expected_commit=COMMIT,
+            )
+
+    def test_trusted_commit_mismatch_rejected(self):
+        raw=json.dumps(weather_receipt()).encode()
+        with self.assertRaises(ValueError):
+            ingest_artifact_bytes(
+                zip_one("weatherapi_probe_receipt.json",raw),
+                provider="WeatherAPI",expected_run_id=RUN,expected_commit="b"*40,
             )
 
     def test_provider_mismatch_rejected(self):
