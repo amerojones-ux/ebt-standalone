@@ -1,0 +1,13 @@
+{
+  "provider": "WEATHER",
+  "network_enabled": false,
+  "explicit_request_approval": false,
+  "entitlement_verified": false,
+  "quota_verified": false,
+  "cost_verified": false,
+  "forecast_enabled": false,
+  "max_requests": 0,
+  "timeout_seconds": 10,
+  "allow_redirects": false,
+  "allow_retries": false
+}
