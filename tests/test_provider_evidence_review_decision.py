@@ -1,13 +1,14 @@
 import unittest
 
 from apisports_status_receipt import build_receipt as build_apisports
-from provider_receipt_review_candidate import build_review_candidate
+from provider_receipt_review_candidate import build_review_candidate, bind_attestation_verification
 from provider_evidence_review_decision import review_candidate, verify_candidate
 from provider_readiness_evidence_gate import validate_record
 
 COMMIT="a"*40
 RUN="12345"
 ARTIFACT="d"*64
+MARKER="e"*64
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -16,11 +17,31 @@ def candidate():
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
     )
-    return build_review_candidate(receipt,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
+    pending=build_review_candidate(
+        receipt,artifact_sha256=ARTIFACT,
+        expected_run_id=RUN,expected_commit=COMMIT
+    )
+    return bind_attestation_verification(pending,marker_sha256=MARKER)
 
 class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_candidate_checksum_verifies(self):
         self.assertTrue(verify_candidate(candidate()))
+
+    def test_pending_attestation_candidate_cannot_be_reviewed(self):
+        receipt=build_apisports(
+            {"status":"PASS","category":"authenticated_status_schema"},
+            "2026-11-02T20:58:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            receipt,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        self.assertFalse(verify_candidate(pending))
+        with self.assertRaises(ValueError):
+            review_candidate(
+                pending,decision="APPROVE",reviewer="authorized-reviewer",
+                reviewed_at=REVIEWED,trusted_now=NOW
+            )
 
     def test_unsupported_provider_candidate_fails(self):
         c=candidate()
