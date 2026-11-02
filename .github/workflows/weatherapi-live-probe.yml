@@ -36,10 +36,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Execute one sanitized WeatherAPI request
+      - name: Execute one sanitized WeatherAPI request and write receipt
         env:
           EBT_WEATHER_API_KEY: ${{ secrets.EBT_WEATHER_API_KEY }}
         run: |
+          set +e
           python3 weatherapi_live_probe.py \
             --plan-review "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED" \
-            --confirm "I_APPROVE_ONE_WEATHERAPI_REQUEST"
+            --confirm "I_APPROVE_ONE_WEATHERAPI_REQUEST" \
+            --receipt-path weatherapi_probe_receipt.json
+          probe_exit=$?
+          echo "### Sanitized WeatherAPI probe receipt" >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
+          cat weatherapi_probe_receipt.json >> "$GITHUB_STEP_SUMMARY"
+          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+          exit "$probe_exit"
