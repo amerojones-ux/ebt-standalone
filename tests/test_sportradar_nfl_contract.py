@@ -23,8 +23,18 @@ def hierarchy():
     return {
         "league":{"id":"3c6d318a-6164-4290-9bbc-bf9bb21cc4b8","alias":"NFL"},
         "conferences":[
-            {"alias":"AFC","divisions":[{"teams":teams[:16]}]},
-            {"alias":"NFC","divisions":[{"teams":teams[16:]}]},
+            {"alias":"AFC","divisions":[
+                {"teams":teams[0:4]},
+                {"teams":teams[4:8]},
+                {"teams":teams[8:12]},
+                {"teams":teams[12:16]},
+            ]},
+            {"alias":"NFC","divisions":[
+                {"teams":teams[16:20]},
+                {"teams":teams[20:24]},
+                {"teams":teams[24:28]},
+                {"teams":teams[28:32]},
+            ]},
         ],
     }
 
@@ -61,6 +71,14 @@ class SportradarNflContractTests(unittest.TestCase):
 
     def test_team_count_must_be_32(self):
         p=hierarchy(); p["conferences"][1]["divisions"][0]["teams"].pop()
+        self.assertTrue(validate_hierarchy(p))
+
+    def test_conference_aliases_must_be_afc_nfc(self):
+        p=hierarchy(); p["conferences"][1]["alias"]="OTHER"
+        self.assertTrue(validate_hierarchy(p))
+
+    def test_division_count_must_be_eight(self):
+        p=hierarchy(); p["conferences"][1]["divisions"].pop()
         self.assertTrue(validate_hierarchy(p))
 
     def test_first_request_is_never_authorized_by_offline_contract(self):
