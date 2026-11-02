@@ -47,7 +47,10 @@ SHA64 = re.compile(r"^[0-9a-f]{64}$", re.I)
 RUN_REF = re.compile(r"^github-actions-run:[0-9]+$")
 REVIEW_REF = re.compile(r"^review:[A-Za-z0-9._:/-]+$")
 REPORT_REF = re.compile(r"^validation-report:[A-Za-z0-9._:/-]+$")
+REVIEWER = re.compile(r"^github:[A-Za-z0-9-]+#[0-9]+$")
+RUN_ID = re.compile(r"^[0-9]+$")
 SOURCE_REPOSITORY = "amerojones-ux/ebt-standalone"
+REVIEW_WORKFLOW = ".github/workflows/provider-live-auth-evidence-review.yml"
 SIGNER_WORKFLOWS = {
     "WeatherAPI": ".github/workflows/weatherapi-live-probe.yml",
     "The Odds API": ".github/workflows/theoddsapi-live-probe.yml",
@@ -85,6 +88,11 @@ def validate_record(record, *, subject, claim, trusted_now=None):
         "source_repository", "source_commit", "receipt_sha256",
         "artifact_sha256", "attestation_marker_sha256", "attestation_id",
         "attestation_url", "signer_workflow",
+        "review_repository", "review_workflow_run_id", "review_source_commit",
+        "review_github_metadata_match", "review_decision_sha256",
+        "review_decision_file_sha256", "review_attestation_marker_sha256",
+        "review_attestation_id", "review_attestation_url",
+        "review_signer_workflow",
     }
     allowed = required | provenance_fields
     if set(record) != (required | (set(record) & provenance_fields)):
@@ -126,7 +134,8 @@ def validate_record(record, *, subject, claim, trusted_now=None):
         elif reviewed_at > now:
             errors.append("reviewed_at cannot be in the future")
 
-    if not isinstance(record.get("reviewer"), str) or not record["reviewer"].strip():
+    reviewer = record.get("reviewer")
+    if not isinstance(reviewer, str) or not reviewer.strip():
         errors.append("reviewer required")
 
     source_repository = record.get("source_repository")
@@ -137,6 +146,16 @@ def validate_record(record, *, subject, claim, trusted_now=None):
     attestation_id = record.get("attestation_id")
     attestation_url = record.get("attestation_url")
     signer_workflow = record.get("signer_workflow")
+    review_repository = record.get("review_repository")
+    review_workflow_run_id = record.get("review_workflow_run_id")
+    review_source_commit = record.get("review_source_commit")
+    review_github_metadata_match = record.get("review_github_metadata_match")
+    review_decision_sha = record.get("review_decision_sha256")
+    review_decision_file_sha = record.get("review_decision_file_sha256")
+    review_marker_sha = record.get("review_attestation_marker_sha256")
+    review_attestation_id = record.get("review_attestation_id")
+    review_attestation_url = record.get("review_attestation_url")
+    review_signer_workflow = record.get("review_signer_workflow")
     if source_commit is not None and (
         not isinstance(source_commit, str) or not SHA40.fullmatch(source_commit)
     ):
@@ -153,6 +172,20 @@ def validate_record(record, *, subject, claim, trusted_now=None):
         not isinstance(marker_sha, str) or not SHA64.fullmatch(marker_sha)
     ):
         errors.append("invalid attestation_marker_sha256")
+    if review_source_commit is not None and (
+        not isinstance(review_source_commit, str)
+        or not SHA40.fullmatch(review_source_commit)
+    ):
+        errors.append("invalid review_source_commit")
+    for label, value in (
+        ("review_decision_sha256", review_decision_sha),
+        ("review_decision_file_sha256", review_decision_file_sha),
+        ("review_attestation_marker_sha256", review_marker_sha),
+    ):
+        if value is not None and (
+            not isinstance(value, str) or not SHA64.fullmatch(value)
+        ):
+            errors.append("invalid " + label)
 
     if source_type == "github_actions_receipt":
         if source_repository != SOURCE_REPOSITORY:
@@ -176,6 +209,33 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             errors.append("github_actions_receipt signer workflow not configured")
         elif signer_workflow != expected_signer:
             errors.append("github_actions_receipt signer_workflow mismatch")
+
+        if not isinstance(reviewer, str) or not REVIEWER.fullmatch(reviewer):
+            errors.append("github_actions_receipt reviewer must be GitHub actor identity")
+        if review_repository != SOURCE_REPOSITORY:
+            errors.append("github_actions_receipt review_repository mismatch")
+        if not isinstance(review_workflow_run_id, str) or not RUN_ID.fullmatch(
+            review_workflow_run_id
+        ):
+            errors.append("github_actions_receipt review_workflow_run_id invalid")
+        if review_source_commit is None:
+            errors.append("github_actions_receipt requires review_source_commit")
+        if review_github_metadata_match is not True:
+            errors.append("github_actions_receipt requires review_github_metadata_match")
+        if review_decision_sha is None:
+            errors.append("github_actions_receipt requires review_decision_sha256")
+        if review_decision_file_sha is None:
+            errors.append("github_actions_receipt requires review_decision_file_sha256")
+        if review_marker_sha is None:
+            errors.append("github_actions_receipt requires review_attestation_marker_sha256")
+        if not isinstance(review_attestation_id, str) or not review_attestation_id:
+            errors.append("github_actions_receipt requires review_attestation_id")
+        if not isinstance(review_attestation_url, str) or not review_attestation_url.startswith(
+            "https://github.com/" + SOURCE_REPOSITORY + "/attestations/"
+        ):
+            errors.append("github_actions_receipt review_attestation_url mismatch")
+        if review_signer_workflow != REVIEW_WORKFLOW:
+            errors.append("github_actions_receipt review_signer_workflow mismatch")
     else:
         attestation_only = {
             "source_repository": source_repository,
@@ -184,6 +244,16 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             "attestation_id": attestation_id,
             "attestation_url": attestation_url,
             "signer_workflow": signer_workflow,
+            "review_repository": review_repository,
+            "review_workflow_run_id": review_workflow_run_id,
+            "review_source_commit": review_source_commit,
+            "review_github_metadata_match": review_github_metadata_match,
+            "review_decision_sha256": review_decision_sha,
+            "review_decision_file_sha256": review_decision_file_sha,
+            "review_attestation_marker_sha256": review_marker_sha,
+            "review_attestation_id": review_attestation_id,
+            "review_attestation_url": review_attestation_url,
+            "review_signer_workflow": review_signer_workflow,
         }
         if any(value is not None for value in attestation_only.values()):
             errors.append("attestation provenance fields require github_actions_receipt")
@@ -196,8 +266,8 @@ def validate_ledger(ledger, *, trusted_now=None):
     errors = []
     if not isinstance(ledger, dict):
         return ["ledger must be object"]
-    if ledger.get("schema_version") != 2:
-        errors.append("schema_version must be 2")
+    if ledger.get("schema_version") != 3:
+        errors.append("schema_version must be 3")
 
     entries = ledger.get("providers")
     if not isinstance(entries, list):

@@ -43,7 +43,7 @@ def github_record(subject="API-Sports",claim="live_auth_verified"):
         "source_type":"github_actions_receipt",
         "reference":"github-actions-run:123",
         "reviewed_at":"2026-11-02T20:00:00+00:00",
-        "reviewer":"authorized-reviewer",
+        "reviewer":"github:reviewer#123",
         "source_repository":REPO,
         "source_commit":"a"*40,
         "receipt_sha256":"b"*64,
@@ -52,6 +52,16 @@ def github_record(subject="API-Sports",claim="live_auth_verified"):
         "attestation_id":"attestation-123",
         "attestation_url":"https://github.com/"+REPO+"/attestations/attestation-123",
         "signer_workflow":signer,
+        "review_repository":REPO,
+        "review_workflow_run_id":"777",
+        "review_source_commit":"e"*40,
+        "review_github_metadata_match":True,
+        "review_decision_sha256":"f"*64,
+        "review_decision_file_sha256":"1"*64,
+        "review_attestation_marker_sha256":"2"*64,
+        "review_attestation_id":"review-attestation-123",
+        "review_attestation_url":"https://github.com/"+REPO+"/attestations/review-attestation-123",
+        "review_signer_workflow":".github/workflows/provider-live-auth-evidence-review.yml",
     }
 
 def report_record(subject="MODEL",claim="historical_calibration_verified"):
@@ -132,6 +142,11 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
             "source_commit","receipt_sha256","artifact_sha256",
             "attestation_marker_sha256","attestation_id","attestation_url",
             "signer_workflow","source_repository",
+            "review_repository","review_workflow_run_id",
+            "review_source_commit","review_github_metadata_match",
+            "review_decision_sha256","review_decision_file_sha256",
+            "review_attestation_marker_sha256","review_attestation_id",
+            "review_attestation_url","review_signer_workflow",
         ]
         for field in fields:
             with self.subTest(field=field):
@@ -143,6 +158,32 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
                         claim="live_auth_verified",trusted_now=NOW
                     )
                 )
+
+    def test_free_form_reviewer_rejected_for_live_auth(self):
+        record=github_record()
+        record["reviewer"]="authorized-reviewer"
+        self.assertTrue(
+            validate_record(
+                record,subject="API-Sports",
+                claim="live_auth_verified",trusted_now=NOW
+            )
+        )
+
+    def test_wrong_review_signer_or_repository_rejected(self):
+        record=github_record()
+        record["review_repository"]="other/repo"
+        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+        record=github_record()
+        record["review_signer_workflow"]=".github/workflows/other.yml"
+        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+
+    def test_bad_review_hashes_and_run_id_rejected(self):
+        record=github_record()
+        record["review_workflow_run_id"]="x"
+        record["review_decision_sha256"]="123"
+        record["review_decision_file_sha256"]="123"
+        record["review_attestation_marker_sha256"]="123"
+        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
 
     def test_bad_commit_and_hashes_rejected(self):
         record=github_record()

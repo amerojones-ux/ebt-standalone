@@ -90,6 +90,6 @@ It has no provider secret reference, no repository-content write permission, no 
 
 ## Boundary
 
-This phase prepares a stronger canonical reviewer identity path. It does not yet make the final evidence ledger require a signed review-workflow attestation; that remains a separate fail-closed promotion step.
+Phase 53 closes this boundary: the final evidence ledger and all promotion previews now require the signed review-workflow attestation package, not merely the raw review decision.
 
 No provider request, credential read, ledger write, readiness write, forecast activation, or wager action occurs in this phase.

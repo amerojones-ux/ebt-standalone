@@ -53,3 +53,8 @@ No provider network, secret, quota, or wager action is touched by this phase.
 ## Schema v2 update
 
 Phase 50 supersedes the initial ledger record shape with `schema_version: 2` for live-auth evidence. GitHub Actions receipt records now require the signed-attestation provenance fields documented in `docs/PHASE50_ATTESTED_LEDGER_PROVENANCE.md`. The original evidence-source and claim-binding principles remain unchanged.
+
+
+## Schema v3 update
+
+Phase 53 supersedes schema v2 with `schema_version: 3` for live-auth evidence. In addition to provider-side signed provenance, live-auth records now require GitHub-actor reviewer identity and the signed/verified review-workflow provenance chain. Raw review decisions are no longer sufficient for ledger preview or readiness promotion.

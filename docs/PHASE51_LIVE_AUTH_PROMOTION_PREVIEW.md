@@ -2,17 +2,17 @@
 
 Status: **SAFE HOLD / OFFLINE**
 
-Phase 50 preserves the complete signed-provenance chain in evidence ledger v2. Phase 51 adds a deterministic dry-run promotion package for the next step: setting exactly one provider readiness flag, `live_auth_verified=true`, after an approved attested live-auth evidence record.
+Phase 50 preserves the complete signed-provenance chain in evidence ledger v3. Phase 51 adds a deterministic dry-run promotion package for the next step: setting exactly one provider readiness flag, `live_auth_verified=true`, after an approved attested live-auth evidence record.
 
 ## Inputs
 
 The preview requires:
 - current committed readiness config;
-- current evidence ledger v2;
-- an explicit checksum-valid APPROVE review decision;
+- current evidence ledger v3;
+- an attested GitHub APPROVE review decision;
 - trusted UTC time.
 
-The review decision must already contain the signed GitHub provenance required by the live-auth evidence schema.
+The attested review decision must contain both provider-receipt provenance and the signed GitHub reviewer-workflow provenance required by ledger schema v3.
 
 ## Preview behavior
 
