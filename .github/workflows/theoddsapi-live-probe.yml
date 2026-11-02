@@ -57,6 +57,11 @@ jobs:
           PY
 
           gh --version
+          python_version="$(python3 -c 'import platform; print(platform.python_version())')"
+          gh_version="$(gh --version | head -n 1 | awk '{print $3}')"
+          test -n "$python_version"
+          test -n "$gh_version"
+
           gh attestation verify --help > /tmp/gh-attestation-verify-help.txt
           for flag in \
             --bundle \
@@ -68,6 +73,8 @@ jobs:
           do
             grep -F -- "$flag" /tmp/gh-attestation-verify-help.txt >/dev/null
           done
+          echo "python_version=$python_version" >> "$GITHUB_OUTPUT"
+          echo "gh_version=$gh_version" >> "$GITHUB_OUTPUT"
           echo "toolchain_verified=1" >> "$GITHUB_OUTPUT"
 
       - name: Execute one sanitized zero-credit /sports request and verify receipt
@@ -139,6 +146,10 @@ jobs:
           RECEIPT_FILE: theoddsapi_probe_receipt.json
           VERIFICATION_MARKER: theoddsapi_attestation_verification.json
           PROVIDER_NAME: The Odds API
+          RUNNER_LABEL: ubuntu-24.04
+          SETUP_PYTHON_SHA: 6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+          TOOLCHAIN_PYTHON_VERSION: ${{ steps.toolchain.outputs.python_version }}
+          TOOLCHAIN_GH_VERSION: ${{ steps.toolchain.outputs.gh_version }}
           SIGNER_WORKFLOW: .github/workflows/theoddsapi-live-probe.yml
         run: |
           set -euo pipefail
@@ -172,7 +183,7 @@ jobs:
               bundle_sha256 = hashlib.sha256(handle.read()).hexdigest()
 
           body = {
-              "schema_version": 2,
+              "schema_version": 3,
               "provider": os.environ["PROVIDER_NAME"],
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
@@ -186,6 +197,18 @@ jobs:
               "receipt_file": os.environ["RECEIPT_FILE"],
               "verification_tool": "gh attestation verify",
               "verification_modes": ["local_bundle", "github_api"],
+              "runner_label": os.environ["RUNNER_LABEL"],
+              "python_version": os.environ["TOOLCHAIN_PYTHON_VERSION"],
+              "gh_version": os.environ["TOOLCHAIN_GH_VERSION"],
+              "setup_python_sha": os.environ["SETUP_PYTHON_SHA"],
+              "required_attestation_flags": [
+                  "--bundle",
+                  "--repo",
+                  "--signer-workflow",
+                  "--source-ref",
+                  "--source-digest",
+                  "--format",
+              ],
           }
           canonical = json.dumps(
               body, sort_keys=True, separators=(",", ":")
