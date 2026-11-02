@@ -7,6 +7,7 @@ from provider_readiness_evidence_gate import validate_record
 
 COMMIT="a"*40
 RUN="12345"
+ARTIFACT="d"*64
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -15,7 +16,7 @@ def candidate():
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
     )
-    return build_review_candidate(receipt)
+    return build_review_candidate(receipt,artifact_sha256=ARTIFACT)
 
 class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_candidate_checksum_verifies(self):
