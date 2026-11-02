@@ -12,6 +12,8 @@ def main():
         choices=["WeatherAPI","The Odds API","API-Sports"],
         required=True,
     )
+    parser.add_argument("--expected-run-id",required=True)
+    parser.add_argument("--expected-commit",required=True)
     args=parser.parse_args()
 
     try:
@@ -19,7 +21,12 @@ def main():
             data=handle.read(MAX_ZIP_BYTES+1)
         if len(data)>MAX_ZIP_BYTES:
             raise ValueError("artifact ZIP too large")
-        result=ingest_artifact_bytes(data,provider=args.provider)
+        result=ingest_artifact_bytes(
+            data,
+            provider=args.provider,
+            expected_run_id=args.expected_run_id,
+            expected_commit=args.expected_commit,
+        )
     except (OSError,ValueError) as exc:
         print("PROVIDER_ARTIFACT_INGEST: HOLD")
         print("CHECK:",str(exc))
