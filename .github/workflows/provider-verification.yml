@@ -1,0 +1,29 @@
+name: Provider verification regression
+on:
+  push:
+    branches:
+      - development/provider-verification-gates-20261101
+  pull_request:
+    paths:
+      - provider_verification.py
+      - test_provider_verification.py
+      - .github/workflows/provider-verification.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Offline provider verification tests
+        run: python -m unittest -v test_provider_verification
