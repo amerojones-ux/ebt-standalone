@@ -1,6 +1,7 @@
 import copy
 import json
 import unittest
+from unittest.mock import patch
 
 from apisports_status_receipt import build_receipt
 from provider_receipt_review_candidate import (
@@ -119,6 +120,16 @@ class ProviderLiveAuthPromotionPreviewTests(unittest.TestCase):
             build_live_auth_promotion_preview(
                 readiness(),ledger(),approved,trusted_now=NOW
             )
+
+    def test_forced_non_hold_activation_result_is_rejected(self):
+        with patch(
+            "provider_live_auth_promotion_preview.status",
+            return_value="ELIGIBLE_FOR_MANUAL_ACTIVATION_REVIEW",
+        ):
+            with self.assertRaises(ValueError):
+                build_live_auth_promotion_preview(
+                    readiness(),ledger(),decision(),trusted_now=NOW
+                )
 
     def test_preview_refuses_activation_boundary_crossing(self):
         r=readiness()
