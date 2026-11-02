@@ -98,8 +98,8 @@ class ApiSportsStatusProbeTests(unittest.TestCase):
     def test_no_redirect_handler_refuses_follow_up(self):
         self.assertIsNone(NoRedirectHandler().redirect_request(None,None,302,"Found",{},"https://example.com"))
 
-    def test_default_opener_ignores_environment_proxies(self):
-        fake=Mock(); fake.open.return_value=object()
+    def test_default_opener_ignores_environment_proxies_and_default_headers(self):
+        fake=Mock(); fake.open.return_value=object(); fake.addheaders=[("User-agent","unsafe")]
         with patch.object(apisports_status_probe.urllib.request,"build_opener",return_value=fake) as build:
             apisports_status_probe._default_open(object(),10)
         handlers=build.call_args.args
@@ -107,6 +107,19 @@ class ApiSportsStatusProbeTests(unittest.TestCase):
         self.assertEqual(len(proxy),1)
         self.assertEqual(proxy[0].proxies,{})
         self.assertTrue(any(isinstance(h,NoRedirectHandler) for h in handlers))
+        self.assertEqual(fake.addheaders,[])
+
+    def test_request_uses_only_documented_application_header(self):
+        captured={}
+        def inspect(req,timeout):
+            captured["method"]=req.get_method()
+            captured["headers"]={k.lower():v for k,v in req.header_items()}
+            return FakeResponse()
+        with patch.dict(os.environ,{"EBT_APISPORTS_API_KEY":"secret"}):
+            r=probe(REQUEST_APPROVAL,ACCOUNT_REVIEW_APPROVAL,opener=inspect)
+        self.assertEqual(r["status"],"PASS")
+        self.assertEqual(captured["method"],"GET")
+        self.assertEqual(set(captured["headers"]),{"x-apisports-key"})
 
 if __name__=="__main__":
     unittest.main()
