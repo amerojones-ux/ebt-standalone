@@ -58,6 +58,7 @@ def validate_hierarchy(payload):
     aliases = set()
     team_ids = set()
     team_count = 0
+    division_count = 0
     for conference in conferences:
         if not isinstance(conference, dict):
             errors.append("conference must be object")
@@ -73,6 +74,7 @@ def validate_hierarchy(payload):
         if not isinstance(divisions, list) or not divisions:
             errors.append("conference divisions required")
             continue
+        division_count += len(divisions)
         for division in divisions:
             if not isinstance(division, dict):
                 errors.append("division must be object")
@@ -97,6 +99,12 @@ def validate_hierarchy(payload):
                     errors.append("team alias required")
                 team_count += 1
 
+    if aliases != {"AFC", "NFC"}:
+        errors.append("NFL hierarchy must contain AFC and NFC")
+    if len(conferences) != 2:
+        errors.append("NFL hierarchy must contain 2 conferences")
+    if division_count != 8:
+        errors.append("NFL hierarchy must contain 8 divisions")
     if team_count != 32:
         errors.append("NFL hierarchy must contain 32 teams")
     return errors
