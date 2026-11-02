@@ -1,0 +1,298 @@
+name: Provider live-auth promotion preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      review_run_id:
+        description: "Completed signed live-auth review workflow run ID"
+        required: true
+        type: string
+      confirm_preview:
+        description: "Approve generation of a non-mutating live-auth promotion preview"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_LIVE_AUTH_PROMOTION_PREVIEW"
+        default: "NO"
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  preview:
+    if: >-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        inputs.confirm_preview == 'I_APPROVE_LIVE_AUTH_PROMOTION_PREVIEW'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Fetch and validate signed review workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+        run: |
+          set -euo pipefail
+          case "$REVIEW_RUN_ID" in
+            ''|*[!0-9]*)
+              echo "review_run_id must be numeric" >&2
+              exit 2
+              ;;
+          esac
+
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REVIEW_RUN_ID" > review_run.json
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open("review_run.json", encoding="utf-8") as handle:
+              run = json.load(handle)
+
+          expected_id = int(os.environ["REVIEW_RUN_ID"])
+          expected_workflow = ".github/workflows/provider-live-auth-evidence-review.yml"
+
+          if run.get("id") != expected_id:
+              raise SystemExit("review run id mismatch")
+          if run.get("event") != "workflow_dispatch":
+              raise SystemExit("review run was not workflow_dispatch")
+          if run.get("head_branch") != "main":
+              raise SystemExit("review run was not on main")
+          if run.get("status") != "completed":
+              raise SystemExit("review run not completed")
+          if run.get("conclusion") != "success":
+              raise SystemExit("review run did not conclude success")
+          if run.get("path") != expected_workflow:
+              raise SystemExit("review workflow path mismatch")
+          head_sha = run.get("head_sha")
+          if not isinstance(head_sha, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", head_sha):
+              raise SystemExit("invalid review head sha")
+          repository = run.get("repository") or {}
+          head_repository = run.get("head_repository") or {}
+          if repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("review repository mismatch")
+          if head_repository.get("id") != repository.get("id"):
+              raise SystemExit("review head repository mismatch")
+          PY
+
+      - name: Resolve exact signed review package artifact
+        id: review_artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$REVIEW_RUN_ID/artifacts?per_page=100" > review_artifacts.json
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open("review_artifacts.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          with open("review_run.json", encoding="utf-8") as handle:
+              run = json.load(handle)
+
+          artifacts = payload.get("artifacts")
+          if not isinstance(artifacts, list):
+              raise SystemExit("review artifact list missing")
+
+          run_id = str(run["id"])
+          pattern = re.compile(
+              r"^provider-live-auth-review-([0-9]+)-" + re.escape(run_id) + r"$"
+          )
+          matches = [
+              item for item in artifacts
+              if isinstance(item, dict)
+              and isinstance(item.get("name"), str)
+              and pattern.fullmatch(item["name"])
+          ]
+          if len(matches) != 1:
+              raise SystemExit("signed review package artifact count mismatch")
+
+          item = matches[0]
+          if item.get("expired") is not False:
+              raise SystemExit("signed review package artifact expired")
+
+          repository = run["repository"]
+          head_repository = run["head_repository"]
+          metadata = {
+              field: item.get(field)
+              for field in (
+                  "id", "name", "size_in_bytes", "expired",
+                  "created_at", "expires_at", "digest",
+              )
+          }
+          metadata["workflow_run"] = {
+              "id": run["id"],
+              "repository_id": repository["id"],
+              "head_repository_id": head_repository["id"],
+              "head_branch": run["head_branch"],
+              "head_sha": run["head_sha"],
+          }
+          with open("review_package_metadata.json", "w", encoding="utf-8") as handle:
+              json.dump(metadata, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+
+          source_run_id = pattern.fullmatch(item["name"]).group(1)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"artifact_id={item['id']}\n")
+              handle.write(f"source_run_id={source_run_id}\n")
+          PY
+
+      - name: Download exact signed review package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.review_artifact.outputs.artifact_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > review_package.zip
+          test -s review_package.zip
+
+      - name: Ingest signed review package
+        run: |
+          set -euo pipefail
+          python3 provider_review_package_ingest_cli.py \
+            review_package_metadata.json review_package.zip \
+            --repository "$GITHUB_REPOSITORY" \
+            --output provider_attested_review_decision.json
+
+      - name: Build evidence-backed SAFE_HOLD promotion preview
+        id: preview
+        run: |
+          set -euo pipefail
+          python3 provider_live_auth_promotion_preview_cli.py \
+            config/provider_readiness.json \
+            config/provider_evidence.json \
+            provider_attested_review_decision.json \
+            --output provider_live_auth_promotion_preview.json
+
+          python3 - <<'PY'
+          import json
+
+          with open(
+              "provider_live_auth_promotion_preview.json",
+              encoding="utf-8",
+          ) as handle:
+              preview = json.load(handle)
+
+          if preview.get("preview_status") != "VALID_LIVE_AUTH_PROMOTION_PREVIEW":
+              raise SystemExit("promotion preview status invalid")
+          if preview.get("global_provider_gate") != "SAFE_HOLD":
+              raise SystemExit("promotion preview crossed SAFE_HOLD boundary")
+          if preview.get("ledger_write_permitted") is not False:
+              raise SystemExit("ledger write unexpectedly permitted")
+          if preview.get("readiness_write_permitted") is not False:
+              raise SystemExit("readiness write unexpectedly permitted")
+          if preview.get("forecast_activation_permitted") is not False:
+              raise SystemExit("forecast activation unexpectedly permitted")
+          PY
+
+          echo "preview_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Attest promotion preview provenance
+        id: attest_preview
+        if: steps.preview.outputs.preview_verified == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: provider_live_auth_promotion_preview.json
+
+      - name: Verify signed promotion preview provenance
+        id: verify_preview_attestation
+        if: >-
+          ${{
+            always() &&
+            steps.preview.outputs.preview_verified == '1' &&
+            steps.attest_preview.outcome == 'success'
+          }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest_preview.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest_preview.outputs.attestation-url }}
+          REVIEW_RUN_ID: ${{ inputs.review_run_id }}
+          SOURCE_RUN_ID: ${{ steps.review_artifact.outputs.source_run_id }}
+        run: |
+          set -euo pipefail
+          gh attestation verify provider_live_auth_promotion_preview.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-live-auth-promotion-preview.yml" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/promotion-preview-attestation-verification.json
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+
+          with open(
+              "provider_live_auth_promotion_preview.json",
+              "rb",
+          ) as handle:
+              preview_bytes = handle.read()
+
+          with open(
+              "provider_live_auth_promotion_preview.json",
+              encoding="utf-8",
+          ) as handle:
+              preview = json.load(handle)
+
+          body = {
+              "schema_version": 1,
+              "verification_status": "VERIFIED",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "promotion_workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "review_workflow_run_id": os.environ["REVIEW_RUN_ID"],
+              "source_probe_run_id": os.environ["SOURCE_RUN_ID"],
+              "source_commit": os.environ["GITHUB_SHA"],
+              "source_ref": "refs/heads/main",
+              "signer_workflow": ".github/workflows/provider-live-auth-promotion-preview.yml",
+              "preview_file": "provider_live_auth_promotion_preview.json",
+              "preview_sha256": preview["preview_sha256"],
+              "preview_file_sha256": hashlib.sha256(preview_bytes).hexdigest(),
+              "global_provider_gate": preview["global_provider_gate"],
+              "attestation_id": os.environ.get("ATTESTATION_ID", ""),
+              "attestation_url": os.environ.get("ATTESTATION_URL", ""),
+              "verification_tool": "gh attestation verify",
+          }
+          canonical = json.dumps(
+              body, sort_keys=True, separators=(",", ":")
+          ).encode("utf-8")
+          marker = dict(body)
+          marker["marker_sha256"] = hashlib.sha256(canonical).hexdigest()
+          with open(
+              "provider_live_auth_promotion_preview_attestation_verification.json",
+              "w",
+              encoding="utf-8",
+          ) as handle:
+              json.dump(marker, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+
+          echo "preview_attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Persist sanitized promotion preview package
+        if: always() && steps.verify_preview_attestation.outputs.preview_attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: provider-live-auth-promotion-preview-${{ inputs.review_run_id }}-${{ github.run_id }}
+          path: |
+            provider_attested_review_decision.json
+            provider_live_auth_promotion_preview.json
+            provider_live_auth_promotion_preview_attestation_verification.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
