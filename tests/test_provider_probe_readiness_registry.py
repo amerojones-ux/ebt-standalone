@@ -35,6 +35,35 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertTrue(probe["runner_pinned"])
             self.assertTrue(probe["python_toolchain_pinned"])
             self.assertTrue(probe["attestation_cli_capability_preflight_required"])
+            self.assertTrue(probe["toolchain_fingerprint_bound"])
+
+    def test_marker_schema_downgrade_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '"schema_version": 3',
+            '"schema_version": 2',
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_toolchain_fingerprint_binding_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '"python_version": os.environ["TOOLCHAIN_PYTHON_VERSION"]',
+            '"python_version": "3.13.0"',
+        )
+        r=assess_probe(
+            "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
 
     def test_runner_label_drift_invalidates_probe(self):
         cfg=configs(); wfs=workflows()

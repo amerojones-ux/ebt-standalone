@@ -69,3 +69,8 @@ The standard security tests and probe-readiness registry now require:
 The expected registry state remains `PREPARED_DEFAULT_DENY`.
 
 No provider request, secret access, readiness mutation, evidence promotion, or forecast activation occurs in this phase.
+
+
+## Phase 55 strengthening
+
+Phase 55 carries the successful preflight environment into verification-marker schema v3. The marker checksum now binds the exact runner label, runtime Python version, GitHub CLI version, pinned setup-python commit and required attestation flags, allowing post-run review to audit the toolchain used for cryptographic verification.
