@@ -2,6 +2,7 @@ import pathlib
 import unittest
 from unittest.mock import Mock, patch
 
+import apisports_status_probe
 import theoddsapi_live_probe
 import weatherapi_live_probe
 
@@ -10,6 +11,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORKFLOWS = {
     "weather": ROOT / ".github" / "workflows" / "weatherapi-live-probe.yml",
     "odds": ROOT / ".github" / "workflows" / "theoddsapi-live-probe.yml",
+    "apisports": ROOT / ".github" / "workflows" / "apisports-status-probe.yml",
 }
 
 
@@ -30,51 +32,40 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn('default: "NO"', text)
                 self.assertIn("verify_receipt", text)
 
-    def test_weatherapi_default_opener_disables_environment_proxies(self):
+    def _assert_direct_no_proxy_opener(self, module):
         fake_opener = Mock()
         fake_response = object()
         fake_opener.open.return_value = fake_response
+        fake_opener.addheaders = [("User-agent", "unsafe")]
         with patch.object(
-            weatherapi_live_probe.urllib.request,
+            module.urllib.request,
             "build_opener",
             return_value=fake_opener,
         ) as build:
-            result = weatherapi_live_probe._default_open(object(), 10)
+            result = module._default_open(object(), 10)
         self.assertIs(result, fake_response)
         handlers = build.call_args.args
         proxy_handlers = [
             handler for handler in handlers
-            if isinstance(handler, weatherapi_live_probe.urllib.request.ProxyHandler)
+            if isinstance(handler, module.urllib.request.ProxyHandler)
         ]
         self.assertEqual(len(proxy_handlers), 1)
         self.assertEqual(proxy_handlers[0].proxies, {})
         self.assertTrue(
-            any(isinstance(handler, weatherapi_live_probe.NoRedirectHandler) for handler in handlers)
+            any(isinstance(handler, module.NoRedirectHandler) for handler in handlers)
         )
         fake_opener.open.assert_called_once()
+        return fake_opener
+
+    def test_weatherapi_default_opener_disables_environment_proxies(self):
+        self._assert_direct_no_proxy_opener(weatherapi_live_probe)
 
     def test_theoddsapi_default_opener_disables_environment_proxies(self):
-        fake_opener = Mock()
-        fake_response = object()
-        fake_opener.open.return_value = fake_response
-        with patch.object(
-            theoddsapi_live_probe.urllib.request,
-            "build_opener",
-            return_value=fake_opener,
-        ) as build:
-            result = theoddsapi_live_probe._default_open(object(), 10)
-        self.assertIs(result, fake_response)
-        handlers = build.call_args.args
-        proxy_handlers = [
-            handler for handler in handlers
-            if isinstance(handler, theoddsapi_live_probe.urllib.request.ProxyHandler)
-        ]
-        self.assertEqual(len(proxy_handlers), 1)
-        self.assertEqual(proxy_handlers[0].proxies, {})
-        self.assertTrue(
-            any(isinstance(handler, theoddsapi_live_probe.NoRedirectHandler) for handler in handlers)
-        )
-        fake_opener.open.assert_called_once()
+        self._assert_direct_no_proxy_opener(theoddsapi_live_probe)
+
+    def test_apisports_default_opener_disables_proxies_and_default_headers(self):
+        opener = self._assert_direct_no_proxy_opener(apisports_status_probe)
+        self.assertEqual(opener.addheaders, [])
 
 
 if __name__ == "__main__":
