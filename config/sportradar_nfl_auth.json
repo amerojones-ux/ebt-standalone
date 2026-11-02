@@ -1,0 +1,14 @@
+{
+  "provider": "Sportradar NFL",
+  "secret_name": "EBT_SPORTRADAR_API_KEY",
+  "auth_header": "x-api-key",
+  "host": "api.sportradar.com",
+  "version": "v7",
+  "language": "en",
+  "format": "json",
+  "access_level": "UNKNOWN",
+  "network_enabled": false,
+  "quota_impact_approved": false,
+  "request_count": 0,
+  "forecast_enabled": false
+}
