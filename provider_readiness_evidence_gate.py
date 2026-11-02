@@ -196,8 +196,8 @@ def validate_ledger(ledger, *, trusted_now=None):
     errors = []
     if not isinstance(ledger, dict):
         return ["ledger must be object"]
-    if ledger.get("schema_version") != 1:
-        errors.append("schema_version must be 1")
+    if ledger.get("schema_version") != 2:
+        errors.append("schema_version must be 2")
 
     entries = ledger.get("providers")
     if not isinstance(entries, list):
