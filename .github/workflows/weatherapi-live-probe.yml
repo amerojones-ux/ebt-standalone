@@ -36,7 +36,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Execute one sanitized WeatherAPI request and write receipt
+      - name: Execute one sanitized WeatherAPI request and verify receipt
         env:
           EBT_WEATHER_API_KEY: ${{ secrets.EBT_WEATHER_API_KEY }}
         run: |
@@ -46,8 +46,34 @@ jobs:
             --confirm "I_APPROVE_ONE_WEATHERAPI_REQUEST" \
             --receipt-path weatherapi_probe_receipt.json
           probe_exit=$?
-          echo "### Sanitized WeatherAPI probe receipt" >> "$GITHUB_STEP_SUMMARY"
-          echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
-          cat weatherapi_probe_receipt.json >> "$GITHUB_STEP_SUMMARY"
-          echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+
+          receipt_ok=0
+          if [ -f weatherapi_probe_receipt.json ]; then
+            python3 - <<'PY'
+          import json
+          from weatherapi_probe_receipt import verify_receipt
+          with open("weatherapi_probe_receipt.json", encoding="utf-8") as handle:
+              receipt = json.load(handle)
+          raise SystemExit(0 if verify_receipt(receipt) else 1)
+          PY
+            receipt_verify=$?
+            if [ "$receipt_verify" -eq 0 ]; then
+              receipt_ok=1
+              echo "### Sanitized WeatherAPI probe receipt" >> "$GITHUB_STEP_SUMMARY"
+              echo "_Integrity model: SHA-256 checksum only; not a cryptographic signature._" >> "$GITHUB_STEP_SUMMARY"
+              echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
+              cat weatherapi_probe_receipt.json >> "$GITHUB_STEP_SUMMARY"
+              echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "### WeatherAPI probe receipt invalid" >> "$GITHUB_STEP_SUMMARY"
+              echo "Receipt checksum/schema verification failed." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "### WeatherAPI probe receipt unavailable" >> "$GITHUB_STEP_SUMMARY"
+            echo "Probe did not complete normal receipt serialization." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$receipt_ok" -ne 1 ]; then
+            exit 2
+          fi
           exit "$probe_exit"
