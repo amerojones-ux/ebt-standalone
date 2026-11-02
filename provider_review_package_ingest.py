@@ -103,7 +103,9 @@ def _validate_metadata(metadata, *, trusted_now):
         "repository_id":repo_id,
     }
 
-def ingest_review_package(metadata, zip_bytes, *, trusted_now):
+def ingest_review_package(metadata, zip_bytes, *, repository, trusted_now):
+    if repository != SOURCE_REPOSITORY:
+        raise ValueError("review package repository mismatch")
     binding=_validate_metadata(metadata,trusted_now=trusted_now)
     if not isinstance(zip_bytes,(bytes,bytearray)):
         raise ValueError("review artifact must be bytes")
