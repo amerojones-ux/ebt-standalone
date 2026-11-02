@@ -16,7 +16,7 @@ def candidate():
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
     )
-    return build_review_candidate(receipt,artifact_sha256=ARTIFACT)
+    return build_review_candidate(receipt,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
 
 class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_candidate_checksum_verifies(self):

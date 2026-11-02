@@ -23,7 +23,7 @@ def _is_symlink(info):
     mode=(info.external_attr >> 16) & 0xFFFF
     return stat.S_ISLNK(mode)
 
-def ingest_artifact_bytes(data, *, provider):
+def ingest_artifact_bytes(data, *, provider, expected_run_id, expected_commit):
     if provider not in EXPECTED_FILES:
         raise ValueError("unsupported provider")
     if not isinstance(data,(bytes,bytearray)):
@@ -76,6 +76,8 @@ def ingest_artifact_bytes(data, *, provider):
     candidate=build_review_candidate(
         receipt,
         artifact_sha256=artifact_sha256,
+        expected_run_id=expected_run_id,
+        expected_commit=expected_commit,
     )
     if candidate["provider"]!=provider:
         raise ValueError("provider/receipt mismatch")

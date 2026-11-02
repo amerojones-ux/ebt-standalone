@@ -11,6 +11,8 @@ MAX_RECEIPT_BYTES=65536
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("receipt")
+    parser.add_argument("--expected-run-id",required=True)
+    parser.add_argument("--expected-commit",required=True)
     args=parser.parse_args()
     try:
         with open(args.receipt,"rb") as handle:
@@ -20,7 +22,10 @@ def main():
         artifact_sha256=hashlib.sha256(raw).hexdigest()
         receipt=json.loads(raw.decode("utf-8"))
         candidate=build_review_candidate(
-            receipt,artifact_sha256=artifact_sha256
+            receipt,
+            artifact_sha256=artifact_sha256,
+            expected_run_id=args.expected_run_id,
+            expected_commit=args.expected_commit,
         )
     except (OSError,ValueError,UnicodeDecodeError,json.JSONDecodeError) as exc:
         print("RECEIPT_REVIEW_CANDIDATE: HOLD")
