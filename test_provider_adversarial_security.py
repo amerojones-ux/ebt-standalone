@@ -13,6 +13,7 @@ class AdversarialSecurityTests(unittest.TestCase):
     def test_unapproved_header(self): self.assertEqual(collect(P,U,headers={"X-Forwarded-Host":"evil.example"}).status,"FAIL")
     def test_api_key_header_allowed_validation_only(self):
         from unittest.mock import patch
-        with patch("secure_provider_collector.build_opener",side_effect=OSError):
+        with patch("secure_provider_collector.build_opener") as opener:
+            opener.return_value.open.side_effect = OSError("synthetic transport failure")
             self.assertEqual(collect(P,U,headers={"X-API-Key":"dummy"}).status,"HOLD")
 if __name__=="__main__": unittest.main()
