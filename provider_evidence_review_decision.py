@@ -21,6 +21,13 @@ CANDIDATE_BODY_FIELDS={
 }
 CANDIDATE_FIELDS=CANDIDATE_BODY_FIELDS|{"candidate_sha256"}
 
+DECISION_BODY_FIELDS={
+    "subject","claim","decision","reviewer","reviewed_at","candidate_sha256",
+    "ledger_mutation_permitted","readiness_mutation_permitted",
+    "forecast_activation_permitted","proposal_status","ledger_record_proposal",
+}
+DECISION_FIELDS=DECISION_BODY_FIELDS|{"decision_sha256"}
+
 def _parse_time(value):
     if not isinstance(value,str) or not value.strip():
         return None
@@ -67,6 +74,74 @@ def verify_candidate(candidate):
     actual=hashlib.sha256(_canonical(body)).hexdigest()
     return hmac.compare_digest(actual,expected)
 
+def _sign_decision(body):
+    result=dict(body)
+    result["decision_sha256"]=hashlib.sha256(_canonical(body)).hexdigest()
+    return result
+
+def verify_review_decision(result):
+    if not isinstance(result,dict) or set(result)!=DECISION_FIELDS:
+        return False
+    if result.get("decision") not in DECISIONS:
+        return False
+    if result.get("claim")!="live_auth_verified":
+        return False
+    if result.get("subject") not in SUPPORTED_PROVIDERS:
+        return False
+    if not isinstance(result.get("reviewer"),str) or not result["reviewer"].strip():
+        return False
+    if _parse_time(result.get("reviewed_at")) is None:
+        return False
+    if not SHA64.fullmatch(result.get("candidate_sha256","")):
+        return False
+    if result.get("ledger_mutation_permitted") is not False:
+        return False
+    if result.get("readiness_mutation_permitted") is not False:
+        return False
+    if result.get("forecast_activation_permitted") is not False:
+        return False
+
+    proposal=result.get("ledger_record_proposal")
+    if result.get("decision")=="REJECT":
+        if result.get("proposal_status")!="REJECTED" or proposal is not None:
+            return False
+    else:
+        if result.get("proposal_status")!="APPROVED_FOR_MANUAL_LEDGER_REVIEW":
+            return False
+        if not isinstance(proposal,dict):
+            return False
+        required={
+            "status","subject","claim","source_type","reference","reviewed_at",
+            "reviewer","source_commit","artifact_sha256",
+        }
+        if set(proposal)!=required:
+            return False
+        if proposal.get("status")!="VERIFIED":
+            return False
+        if proposal.get("subject")!=result.get("subject"):
+            return False
+        if proposal.get("claim")!=result.get("claim"):
+            return False
+        if proposal.get("reviewer")!=result.get("reviewer"):
+            return False
+        if proposal.get("reviewed_at")!=result.get("reviewed_at"):
+            return False
+        if proposal.get("source_type")!="github_actions_receipt":
+            return False
+        if not RUN_REF.fullmatch(proposal.get("reference","")):
+            return False
+        if not SHA40.fullmatch(proposal.get("source_commit","")):
+            return False
+        if not SHA64.fullmatch(proposal.get("artifact_sha256","")):
+            return False
+
+    expected=result.get("decision_sha256")
+    if not isinstance(expected,str) or not SHA64.fullmatch(expected):
+        return False
+    body={key:result[key] for key in DECISION_BODY_FIELDS}
+    actual=hashlib.sha256(_canonical(body)).hexdigest()
+    return hmac.compare_digest(actual,expected)
+
 def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now):
     if not verify_candidate(candidate):
         raise ValueError("candidate verification failed")
@@ -82,7 +157,7 @@ def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now)
     if reviewed > now:
         raise ValueError("reviewed_at cannot be in the future")
 
-    result={
+    body={
         "subject":candidate["subject"],
         "claim":candidate["claim"],
         "decision":decision,
@@ -95,12 +170,12 @@ def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now)
     }
 
     if decision=="REJECT":
-        result["proposal_status"]="REJECTED"
-        result["ledger_record_proposal"]=None
-        return result
+        body["proposal_status"]="REJECTED"
+        body["ledger_record_proposal"]=None
+        return _sign_decision(body)
 
-    result["proposal_status"]="APPROVED_FOR_MANUAL_LEDGER_REVIEW"
-    result["ledger_record_proposal"]={
+    body["proposal_status"]="APPROVED_FOR_MANUAL_LEDGER_REVIEW"
+    body["ledger_record_proposal"]={
         "status":"VERIFIED",
         "subject":candidate["subject"],
         "claim":candidate["claim"],
@@ -111,4 +186,4 @@ def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now)
         "source_commit":candidate["source_commit"],
         "artifact_sha256":candidate["artifact_sha256"],
     }
-    return result
+    return _sign_decision(body)
