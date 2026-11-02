@@ -18,7 +18,7 @@ def _canonical(value):
 def build_live_auth_promotion_preview(
     readiness,
     ledger,
-    review_decision,
+    attested_review_decision,
     *,
     trusted_now,
 ):
@@ -27,7 +27,7 @@ def build_live_auth_promotion_preview(
         raise ValueError("current readiness config invalid")
 
     ledger_preview=build_ledger_preview(
-        ledger,review_decision,trusted_now=trusted_now
+        ledger,attested_review_decision,trusted_now=trusted_now
     )
     if ledger_preview.get("claim")!="live_auth_verified":
         raise ValueError("review decision is not live-auth evidence")
