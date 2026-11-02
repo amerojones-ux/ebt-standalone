@@ -39,9 +39,9 @@ def collect(policy: EndpointPolicy, url: str, *, config: CollectorConfig = Colle
                 return CollectorResult("FAIL", None, None, "INVALID_HEADER")
             if key.lower() not in ("accept", "user-agent", "authorization", "x-api-key", "x-rapidapi-key", "x-rapidapi-host"):
                 return CollectorResult("FAIL", None, None, "HEADER_NOT_ALLOWLISTED")
-    request = Request(url, headers=headers or {}, method="GET")
-    opener = build_opener(ProxyHandler({}), HTTPSHandler(context=ssl.create_default_context()), RejectRedirect())
     try:
+        request = Request(url, headers=headers or {}, method="GET")
+        opener = build_opener(ProxyHandler({}), HTTPSHandler(context=ssl.create_default_context()), RejectRedirect())
         with opener.open(request, timeout=config.timeout_seconds) as response:
             status = response.status
             if status != 200:
