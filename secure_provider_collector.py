@@ -4,7 +4,7 @@ Never pass credentials in URL or logs. Redirects disabled. Uses OS TLS trust.
 No requests occur on import. Operator must explicitly call collect().
 """
 from dataclasses import dataclass
-from urllib.request import Request, build_opener, HTTPSHandler
+from urllib.request import Request, build_opener, HTTPSHandler, ProxyHandler
 from urllib.error import HTTPError, URLError
 import ssl
 from provider_endpoint_policy import EndpointPolicy, verify_url
@@ -21,9 +21,6 @@ class CollectorResult:
     body: bytes | None
     reason: str
 
-class NoRedirect(HTTPSHandler):
-    pass
-
 from urllib.request import HTTPRedirectHandler
 class RejectRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -37,11 +34,13 @@ def collect(policy: EndpointPolicy, url: str, *, config: CollectorConfig = Colle
     if config.timeout_seconds <= 0 or config.timeout_seconds > 15 or config.max_body_bytes < 1 or config.max_body_bytes > 1048576:
         return CollectorResult("FAIL", None, None, "UNSAFE_LIMITS")
     if headers:
-        for key in headers:
-            if key.lower() in ("host", "cookie", "proxy-authorization"):
-                return CollectorResult("FAIL", None, None, "FORBIDDEN_HEADER")
+        for key, value in headers.items():
+            if not isinstance(key, str) or not isinstance(value, str) or not key.isascii() or not key.replace("-", "").isalnum() or any(ord(ch) < 32 or ord(ch) == 127 for ch in value):
+                return CollectorResult("FAIL", None, None, "INVALID_HEADER")
+            if key.lower() not in ("accept", "user-agent", "authorization", "x-api-key", "x-rapidapi-key", "x-rapidapi-host"):
+                return CollectorResult("FAIL", None, None, "HEADER_NOT_ALLOWLISTED")
     request = Request(url, headers=headers or {}, method="GET")
-    opener = build_opener(HTTPSHandler(context=ssl.create_default_context()), RejectRedirect())
+    opener = build_opener(ProxyHandler({}), HTTPSHandler(context=ssl.create_default_context()), RejectRedirect())
     try:
         with opener.open(request, timeout=config.timeout_seconds) as response:
             status = response.status
