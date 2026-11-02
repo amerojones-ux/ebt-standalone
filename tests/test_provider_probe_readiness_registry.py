@@ -32,6 +32,65 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertTrue(probe["exact_bundle_verification_required"])
             self.assertTrue(probe["github_api_verification_required"])
             self.assertTrue(probe["persisted_attestation_bundle_required"])
+            self.assertTrue(probe["runner_pinned"])
+            self.assertTrue(probe["python_toolchain_pinned"])
+            self.assertTrue(probe["attestation_cli_capability_preflight_required"])
+
+    def test_runner_label_drift_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "runs-on: ubuntu-24.04",
+            "runs-on: ubuntu-latest",
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_floating_setup_python_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "actions/setup-python@v7",
+        )
+        r=assess_probe(
+            "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_wrong_python_version_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["API-Sports"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            'python-version: "3.13"',
+            'python-version: "3.12"',
+        )
+        r=assess_probe(
+            "API-Sports",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_toolchain_gate_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "if: steps.toolchain.outputs.toolchain_verified == '1'",
+            "if: always()",
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
 
     def test_network_enable_drift_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
