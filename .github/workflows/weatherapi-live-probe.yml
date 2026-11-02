@@ -2,27 +2,44 @@ name: WeatherAPI one-shot live authentication probe
 on:
   workflow_dispatch:
     inputs:
+      confirm_plan_quota_billing_review:
+        description: "Confirm WeatherAPI plan, quota and billing were reviewed"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED"
+        default: "NO"
       confirm_live_request:
-        description: "Select exact approval phrase to permit ONE WeatherAPI request"
+        description: "Approve exactly ONE WeatherAPI request"
         required: true
         type: choice
         options:
           - "NO"
           - "I_APPROVE_ONE_WEATHERAPI_REQUEST"
         default: "NO"
+
 permissions:
   contents: read
+
 jobs:
   one-shot-probe:
-    if: ${{ inputs.confirm_live_request == 'I_APPROVE_ONE_WEATHERAPI_REQUEST' }}
+    if: >-
+      ${{
+        inputs.confirm_plan_quota_billing_review == 'I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED' &&
+        inputs.confirm_live_request == 'I_APPROVE_ONE_WEATHERAPI_REQUEST'
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+
       - name: Execute one sanitized WeatherAPI request
         env:
           EBT_WEATHER_API_KEY: ${{ secrets.EBT_WEATHER_API_KEY }}
         run: |
-          python3 weatherapi_live_probe.py --confirm "I_APPROVE_ONE_WEATHERAPI_REQUEST"
+          python3 weatherapi_live_probe.py \
+            --plan-review "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED" \
+            --confirm "I_APPROVE_ONE_WEATHERAPI_REQUEST"
