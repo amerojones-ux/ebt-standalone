@@ -39,6 +39,9 @@ jobs:
       - name: Assert global provider/model SAFE_HOLD
         run: python provider_activation_gate_cli.py config/provider_readiness.json
 
+      - name: Assert prepared live probes remain default-deny
+        run: python provider_probe_readiness_registry_cli.py
+
       - name: Check command-line entry point
         run: python ebt_cli.py --help
 
