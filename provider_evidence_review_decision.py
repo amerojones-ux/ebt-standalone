@@ -16,7 +16,7 @@ SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
 
 CANDIDATE_BODY_FIELDS={
     "provider","subject","claim","candidate_status","source_type","reference",
-    "source_commit","github_binding_verified","receipt_sha256","artifact_sha256","reviewer_required",
+    "source_commit","github_metadata_match","receipt_sha256","artifact_sha256","reviewer_required",
     "readiness_mutation_permitted","forecast_activation_permitted",
 }
 CANDIDATE_FIELDS=CANDIDATE_BODY_FIELDS|{"candidate_sha256"}
@@ -59,7 +59,7 @@ def verify_candidate(candidate):
         return False
     if not SHA40.fullmatch(candidate.get("source_commit","")):
         return False
-    if candidate.get("github_binding_verified") is not True:
+    if candidate.get("github_metadata_match") is not True:
         return False
     if not SHA64.fullmatch(candidate.get("receipt_sha256","")):
         return False
