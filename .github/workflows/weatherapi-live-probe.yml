@@ -86,10 +86,79 @@ jobs:
           exit "$probe_exit"
 
       - name: Attest sanitized receipt provenance
+        id: attest
         if: always() && steps.probe.outputs.receipt_verified == '1'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: weatherapi_probe_receipt.json
+
+      - name: Verify signed receipt provenance
+        id: verify_attestation
+        if: >-
+          ${{
+            always() &&
+            steps.probe.outputs.receipt_verified == '1' &&
+            steps.attest.outcome == 'success'
+          }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+          RECEIPT_FILE: weatherapi_probe_receipt.json
+          VERIFICATION_MARKER: weatherapi_attestation_verification.json
+          PROVIDER_NAME: WeatherAPI
+          SIGNER_WORKFLOW: .github/workflows/weatherapi-live-probe.yml
+        run: |
+          set -euo pipefail
+          gh attestation verify "$RECEIPT_FILE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/attestation-verification.json
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+
+          body = {
+              "schema_version": 1,
+              "provider": os.environ["PROVIDER_NAME"],
+              "verification_status": "VERIFIED",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "source_commit": os.environ["GITHUB_SHA"],
+              "source_ref": "refs/heads/main",
+              "signer_workflow": os.environ["SIGNER_WORKFLOW"],
+              "attestation_id": os.environ.get("ATTESTATION_ID", ""),
+              "attestation_url": os.environ.get("ATTESTATION_URL", ""),
+              "receipt_file": os.environ["RECEIPT_FILE"],
+              "verification_tool": "gh attestation verify",
+          }
+          canonical = json.dumps(
+              body, sort_keys=True, separators=(",", ":")
+          ).encode("utf-8")
+          marker = dict(body)
+          marker["marker_sha256"] = hashlib.sha256(canonical).hexdigest()
+          with open(
+              os.environ["VERIFICATION_MARKER"], "w", encoding="utf-8"
+          ) as handle:
+              json.dump(marker, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+
+          echo "attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Persist attestation verification marker
+        if: always() && steps.verify_attestation.outputs.attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weatherapi-attestation-verification-${{ github.run_id }}
+          path: weatherapi_attestation_verification.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
 
       - name: Persist sanitized receipt artifact
         if: always()
