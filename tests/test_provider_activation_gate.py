@@ -73,6 +73,15 @@ class ProviderActivationGateTests(unittest.TestCase):
         e["model_evidence_allowed"]=False
         self.assertFalse(provider_ready(e))
 
+    def test_ready_primary_without_evidence_never_becomes_eligible(self):
+        c=base()
+        c["required_providers"]=["SportsDataIO"]
+        for i,e in enumerate(c["providers"]):
+            if e["name"]=="SportsDataIO":
+                c["providers"][i]=ready_provider("SportsDataIO","primary_stats")
+        for k in c["model_gates"]: c["model_gates"][k]=True
+        self.assertFalse(activation_eligible(c))
+
     def test_ready_primary_plus_all_model_gates_can_be_eligible(self):
         c=base()
         c["required_providers"]=["SportsDataIO"]
@@ -80,7 +89,7 @@ class ProviderActivationGateTests(unittest.TestCase):
             if e["name"]=="SportsDataIO":
                 c["providers"][i]=ready_provider("SportsDataIO","primary_stats")
         for k in c["model_gates"]: c["model_gates"][k]=True
-        self.assertTrue(activation_eligible(c))
+        self.assertTrue(activation_eligible(c, evidence_ok=True))
 
     def test_missing_provider_coverage_holds(self):
         c=base(); c["providers"].pop()
