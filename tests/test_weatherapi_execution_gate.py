@@ -1,9 +1,11 @@
 import unittest
 from weatherapi_execution_gate import validate
 
-BASE = {"provider":"WEATHER","network_enabled":False,"explicit_request_approval":False,"entitlement_verified":False,"quota_verified":False,"cost_verified":False,"forecast_enabled":False,"max_requests":0,"timeout_seconds":10,"allow_redirects":False,"allow_retries":False}
+BASE = {"provider":"WEATHER","secret_name":"EBT_WEATHER_API_KEY","network_enabled":False,"explicit_request_approval":False,"entitlement_verified":False,"quota_verified":False,"cost_verified":False,"forecast_enabled":False,"max_requests":0,"timeout_seconds":10,"allow_redirects":False,"allow_retries":False}
 class ExecutionGateTests(unittest.TestCase):
     def test_safe_hold(self): self.assertEqual(validate(BASE),[])
+    def test_secret_mapping(self):
+        p=dict(BASE,secret_name="WRONG"); self.assertTrue(validate(p))
     def test_network(self):
         p=dict(BASE,network_enabled=True); self.assertTrue(validate(p))
     def test_approval(self):
