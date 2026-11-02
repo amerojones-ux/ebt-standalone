@@ -1,0 +1,18 @@
+{
+  "provider": "RapidAPI",
+  "secret_name": "EBT_RAPIDAPI_API_KEY",
+  "key_header": "X-RapidAPI-Key",
+  "host_header": "X-RapidAPI-Host",
+  "api_product": "",
+  "rapidapi_host": "",
+  "pricing_type": "UNKNOWN",
+  "plan_name": "",
+  "billing_object": "",
+  "subscription_verified": false,
+  "quota_reviewed": false,
+  "overage_reviewed": false,
+  "endpoint_reviewed": false,
+  "network_enabled": false,
+  "request_count": 0,
+  "forecast_enabled": false
+}
