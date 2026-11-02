@@ -14,4 +14,8 @@ class CaptureIntegrityTests(unittest.TestCase):
     def test_order_independent(self): self.assertEqual(canonical_digest({"a":1,"b":2}),canonical_digest({"b":2,"a":1}))
     def test_nan_rejected(self):
         with self.assertRaises(ValueError): canonical_digest({"x":float("nan")})
+    def test_none_digest_fails_closed(self):
+        self.assertEqual(verify_integrity(replace(R,sha256=None))[0],"FAIL")
+    def test_numeric_digest_fails_closed(self):
+        self.assertEqual(verify_integrity(replace(R,sha256=123))[0],"FAIL")
 if __name__=="__main__": unittest.main()
