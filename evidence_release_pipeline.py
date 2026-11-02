@@ -22,6 +22,12 @@ def verify_bundle(bundle: EvidenceBundle, *, now, reconciled_ids: frozenset[str]
     intake_status, intake_reasons = evaluate_intake(bundle.intake)
     if bundle.capture.host != bundle.intake.api_host or bundle.capture.endpoint != bundle.intake.endpoint_id:
         return ("HOLD", ("CROSS_RECORD_IDENTITY_MISMATCH",))
+    if bundle.integrity_record.provider != bundle.intake.provider or bundle.integrity_record.endpoint_id != bundle.capture.endpoint:
+        return ("HOLD", ("CAPTURE_SOURCE_IDENTITY_MISMATCH",))
+    if bundle.capture.published_at != bundle.integrity_record.source_published_at:
+        return ("HOLD", ("PUBLICATION_TIMESTAMP_MISMATCH",))
+    if bundle.capture.provenance_id != bundle.intake.evidence_id:
+        return ("HOLD", ("EVIDENCE_REFERENCE_MISMATCH",))
     if bundle.capture.body != bundle.integrity_record.payload:
         return ("HOLD", ("CAPTURE_PAYLOAD_MISMATCH",))
     if bundle.capture.retrieved_at != bundle.integrity_record.retrieved_at:
