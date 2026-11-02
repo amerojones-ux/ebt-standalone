@@ -20,7 +20,8 @@ class LivePlan:
     max_requests: int = 1
 
 def validate_plan(plan: LivePlan, *, approved_contracts: frozenset[str],
-                  approved_approvals: frozenset[str]) -> tuple[str,str]:
+                  approved_approvals: frozenset[str],
+                  approved_auth_bindings: frozenset[tuple[str,str,str]] = frozenset()) -> tuple[str,str]:
     if plan.provider not in PROVIDERS or plan.policy.provider != plan.provider:
         return ("FAIL","PROVIDER_MISMATCH")
     if not plan.contract_id or plan.contract_id not in approved_contracts:
@@ -31,14 +32,18 @@ def validate_plan(plan: LivePlan, *, approved_contracts: frozenset[str],
         return ("FAIL","REQUEST_BUDGET_INVALID")
     if plan.auth_header_name.lower() not in ("authorization","x-api-key","x-rapidapi-key"):
         return ("FAIL","AUTH_HEADER_NOT_APPROVED")
+    if (plan.provider,plan.contract_id,plan.auth_header_name.lower()) not in approved_auth_bindings:
+        return ("HOLD","AUTH_BINDING_NOT_APPROVED")
     return verify_url(plan.policy,plan.url)
 
 def execute(plan: LivePlan, *, credential: str,
             approved_contracts: frozenset[str],
             approved_approvals: frozenset[str],
+            approved_auth_bindings: frozenset[tuple[str,str,str]] = frozenset(),
             config: CollectorConfig = CollectorConfig()) -> CollectorResult:
     status, reason = validate_plan(plan,approved_contracts=approved_contracts,
-                                   approved_approvals=approved_approvals)
+                                   approved_approvals=approved_approvals,
+                                   approved_auth_bindings=approved_auth_bindings)
     if status != "PASS":
         return CollectorResult("HOLD",None,None,reason)
     if not isinstance(credential,str) or not credential or any(ord(c)<33 or ord(c)>126 for c in credential):
