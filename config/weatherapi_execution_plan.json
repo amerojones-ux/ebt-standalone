@@ -1,5 +1,6 @@
 {
   "provider": "WEATHER",
+  "secret_name": "EBT_WEATHER_API_KEY",
   "network_enabled": false,
   "explicit_request_approval": false,
   "entitlement_verified": false,
