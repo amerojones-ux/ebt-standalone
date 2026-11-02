@@ -1,0 +1,17 @@
+name: Provider verification offline preflight
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate offline plan and tests
+        run: |
+          python3 -m unittest -v tests/test_provider_preflight.py
+          python3 provider_preflight.py config/provider_preflight.json
