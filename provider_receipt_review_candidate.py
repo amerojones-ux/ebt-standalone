@@ -30,7 +30,7 @@ SUPPORTED={
     },
 }
 
-def build_review_candidate(receipt, *, artifact_sha256):
+def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expected_commit):
     if not isinstance(receipt,dict):
         raise ValueError("receipt must be object")
     provider=receipt.get("provider")
@@ -55,6 +55,14 @@ def build_review_candidate(receipt, *, artifact_sha256):
         raise ValueError("receipt checksum required")
     if not isinstance(artifact_sha256,str) or not SHA64.fullmatch(artifact_sha256):
         raise ValueError("artifact file checksum required")
+    if not isinstance(expected_run_id,str) or not RUN_ID.fullmatch(expected_run_id):
+        raise ValueError("trusted GitHub run id required")
+    if not isinstance(expected_commit,str) or not SHA40.fullmatch(expected_commit):
+        raise ValueError("trusted GitHub head commit required")
+    if run_id != expected_run_id:
+        raise ValueError("receipt run id does not match trusted GitHub run")
+    if commit.lower() != expected_commit.lower():
+        raise ValueError("receipt commit does not match trusted GitHub head commit")
 
     body={
         "provider":provider,
@@ -63,7 +71,8 @@ def build_review_candidate(receipt, *, artifact_sha256):
         "candidate_status":"REVIEW_ONLY",
         "source_type":"github_actions_receipt",
         "reference":"github-actions-run:"+run_id,
-        "source_commit":commit,
+        "source_commit":commit.lower(),
+        "github_binding_verified":True,
         "receipt_sha256":receipt_digest,
         "artifact_sha256":artifact_sha256.lower(),
         "reviewer_required":True,
