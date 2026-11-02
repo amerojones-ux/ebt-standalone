@@ -20,6 +20,15 @@ HOST = "api.weatherapi.com"
 PATH = "/v1/current.json"
 LOCATION = "Chicago"
 MAX_BODY = 32768
+MAX_ERROR_BODY = 4096
+
+WEATHERAPI_ERROR_CATEGORIES = {
+    1002: "auth_missing_key",
+    2006: "auth_invalid_key",
+    2007: "quota_exceeded",
+    2008: "key_disabled",
+    2009: "entitlement_denied",
+}
 
 class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Reject redirects before a second HTTP request can be issued."""
@@ -35,6 +44,28 @@ def _safe_result(status, category, detail=None):
 def _default_open(request, timeout):
     opener = urllib.request.build_opener(NoRedirectHandler())
     return opener.open(request, timeout=timeout)
+
+
+def _classify_http_error(exc):
+    """Extract only WeatherAPI numeric error codes; never return provider messages."""
+    if 300 <= exc.code < 400:
+        return _safe_result("HOLD", "redirect_blocked", int(exc.code))
+
+    provider_code = None
+    try:
+        raw = exc.read(MAX_ERROR_BODY + 1)
+        if len(raw) <= MAX_ERROR_BODY:
+            payload = json.loads(raw.decode("utf-8"))
+            error = payload.get("error") if isinstance(payload, dict) else None
+            code = error.get("code") if isinstance(error, dict) else None
+            if type(code) is int:
+                provider_code = code
+    except Exception:
+        provider_code = None
+
+    category = WEATHERAPI_ERROR_CATEGORIES.get(provider_code, "http_error")
+    detail = provider_code if provider_code is not None else int(exc.code)
+    return _safe_result("HOLD", category, detail)
 
 def probe(confirm, plan_review, opener=None, now_epoch=None):
     if plan_review != PLAN_REVIEW_APPROVAL:
@@ -84,9 +115,7 @@ def probe(confirm, plan_review, opener=None, now_epoch=None):
 
         return _safe_result("PASS", "authenticated_schema_fresh")
     except urllib.error.HTTPError as exc:
-        if 300 <= exc.code < 400:
-            return _safe_result("HOLD", "redirect_blocked", int(exc.code))
-        return _safe_result("HOLD", "http_error", int(exc.code))
+        return _classify_http_error(exc)
     except (urllib.error.URLError, socket.timeout, TimeoutError):
         return _safe_result("HOLD", "transport_error")
     except Exception:
