@@ -21,11 +21,13 @@ Official access modes include:
 ## Black Diamond evidence rule
 No SportsDataIO source is automatically accepted as forecasting evidence.
 
-Promotion to model evidence requires all of:
-1. production access method identified;
+Promotion to generic model evidence requires all of:
+1. the access method is specifically **Leagues API production**;
 2. account entitlement independently verified;
-3. exact feed scope independently verified;
+3. exact deep-feed scope independently verified;
 4. freshness/current-day behavior independently verified.
+
+Global Sports API production may, after the same verification gates, support **schedule/score evidence only**. Its topline coverage must not be treated as deep player/stat/prop evidence.
 
 Free Trial and Dev Key data must never enter modeling, calibration, backtesting truth labels, or forecast certification because the provider explicitly documents them as scrambled.
 
