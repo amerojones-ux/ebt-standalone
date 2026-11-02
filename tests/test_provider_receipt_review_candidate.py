@@ -15,7 +15,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             {"status":"PASS","category":"authenticated_schema_fresh"},
             "2026-11-02T20:00:00+00:00",COMMIT,RUN
         )
-        c=build_review_candidate(r,artifact_sha256=ARTIFACT)
+        c=build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
         self.assertEqual(c["provider"],"WeatherAPI")
         self.assertEqual(c["subject"],"WeatherAPI")
         self.assertEqual(c["claim"],"live_auth_verified")
@@ -29,14 +29,14 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             {"status":"PASS","category":"authenticated_zero_credit_sports_schema"},
             "2026-11-02T20:00:00+00:00",COMMIT,RUN
         )
-        self.assertEqual(build_review_candidate(r,artifact_sha256=ARTIFACT)["provider"],"The Odds API")
+        self.assertEqual(build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)["provider"],"The Odds API")
 
     def test_apisports_pass_becomes_review_only_candidate(self):
         r=build_apisports(
             {"status":"PASS","category":"authenticated_status_schema"},
             "2026-11-02T20:00:00+00:00",COMMIT,RUN
         )
-        self.assertEqual(build_review_candidate(r,artifact_sha256=ARTIFACT)["provider"],"API-Sports")
+        self.assertEqual(build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)["provider"],"API-Sports")
 
     def test_hold_receipt_rejected(self):
         r=build_weather(
@@ -44,7 +44,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             "2026-11-02T20:00:00+00:00",COMMIT,RUN
         )
         with self.assertRaises(ValueError):
-            build_review_candidate(r,artifact_sha256=ARTIFACT)
+            build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
 
     def test_tampered_receipt_rejected(self):
         r=build_weather(
@@ -53,7 +53,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         )
         r["status"]="HOLD"
         with self.assertRaises(ValueError):
-            build_review_candidate(r,artifact_sha256=ARTIFACT)
+            build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
 
     def test_missing_commit_rejected(self):
         r=build_odds(
@@ -61,7 +61,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             "2026-11-02T20:00:00+00:00","",RUN
         )
         with self.assertRaises(ValueError):
-            build_review_candidate(r,artifact_sha256=ARTIFACT)
+            build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
 
     def test_missing_run_id_rejected(self):
         r=build_apisports(
@@ -69,14 +69,14 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             "2026-11-02T20:00:00+00:00",COMMIT,""
         )
         with self.assertRaises(ValueError):
-            build_review_candidate(r,artifact_sha256=ARTIFACT)
+            build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
 
     def test_candidate_contains_only_sanitized_provenance(self):
         r=build_weather(
             {"status":"PASS","category":"authenticated_schema_fresh"},
             "2026-11-02T20:00:00+00:00",COMMIT,RUN
         )
-        c=build_review_candidate(r,artifact_sha256=ARTIFACT)
+        c=build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
         rendered=repr(c).lower()
         self.assertNotIn("api_key",rendered)
         self.assertNotIn("headers",rendered)
