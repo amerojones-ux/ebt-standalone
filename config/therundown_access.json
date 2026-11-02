@@ -1,0 +1,13 @@
+{
+  "provider": "TheRundown",
+  "secret_name": "EBT_THERUNDOWN_API_KEY",
+  "auth_header": "X-TheRundown-Key",
+  "base_url": "https://therundown.io/api/v2",
+  "plan_name": "UNKNOWN",
+  "data_delay_verified": false,
+  "datapoint_quota_reviewed": false,
+  "overage_behavior_reviewed": false,
+  "network_enabled": false,
+  "authenticated_request_count": 0,
+  "forecast_enabled": false
+}
