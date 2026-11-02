@@ -25,27 +25,31 @@ def base_workflow():
         "head_sha":COMMIT,
     }
 
-def metadata():
+def metadata(zip_bytes=None):
+    size=2048 if zip_bytes is None else len(zip_bytes)
+    digest="b"*64 if zip_bytes is None else hashlib.sha256(zip_bytes).hexdigest()
     return {
         "id":99,
         "name":"weatherapi-probe-receipt-123456",
-        "size_in_bytes":2048,
+        "size_in_bytes":size,
         "expired":False,
         "created_at":"2026-11-02T20:50:00Z",
         "expires_at":"2026-11-09T20:50:00Z",
-        "digest":"sha256:"+"b"*64,
+        "digest":"sha256:"+digest,
         "workflow_run":base_workflow(),
     }
 
-def marker_metadata():
+def marker_metadata(zip_bytes=None):
+    size=2048 if zip_bytes is None else len(zip_bytes)
+    digest="c"*64 if zip_bytes is None else hashlib.sha256(zip_bytes).hexdigest()
     return {
         "id":100,
         "name":"weatherapi-attestation-verification-123456",
-        "size_in_bytes":2048,
+        "size_in_bytes":size,
         "expired":False,
         "created_at":"2026-11-02T20:52:00Z",
         "expires_at":"2026-11-09T20:52:00Z",
-        "digest":"sha256:"+"c"*64,
+        "digest":"sha256:"+digest,
         "workflow_run":base_workflow(),
     }
 
@@ -105,11 +109,13 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         self.assertEqual(b["artifact_kind"],"attestation_verification_marker")
 
     def test_preferred_ingestion_requires_receipt_and_verified_marker(self):
+        receipt_zip=zip_receipt()
+        marker_zip=zip_marker()
         r=ingest_github_artifact(
-            metadata(),
-            zip_receipt(),
-            marker_metadata(),
-            zip_marker(),
+            metadata(receipt_zip),
+            receipt_zip,
+            marker_metadata(marker_zip),
+            marker_zip,
             provider="WeatherAPI",
             repository=REPO,
             trusted_now=NOW,
@@ -144,6 +150,39 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
             ["local_bundle","github_api"],
         )
         self.assertFalse(r["ledger_mutation_permitted"])
+
+    def test_receipt_zip_digest_mismatch_rejected(self):
+        receipt_zip=zip_receipt()
+        marker_zip=zip_marker()
+        m=metadata(receipt_zip)
+        m["digest"]="sha256:"+"0"*64
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                m,receipt_zip,marker_metadata(marker_zip),marker_zip,
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_receipt_zip_size_mismatch_rejected(self):
+        receipt_zip=zip_receipt()
+        marker_zip=zip_marker()
+        m=metadata(receipt_zip)
+        m["size_in_bytes"]+=1
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                m,receipt_zip,marker_metadata(marker_zip),marker_zip,
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_zip_digest_mismatch_rejected(self):
+        receipt_zip=zip_receipt()
+        marker_zip=zip_marker()
+        m=marker_metadata(marker_zip)
+        m["digest"]="sha256:"+"0"*64
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(receipt_zip),receipt_zip,m,marker_zip,
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
 
     def test_artifact_name_must_match_run(self):
         m=metadata(); m["name"]="weatherapi-probe-receipt-999"
@@ -187,8 +226,10 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         m["workflow_run"]["id"]=999
         m["name"]="weatherapi-attestation-verification-999"
         with self.assertRaises(ValueError):
+            receipt_zip=zip_receipt()
+            marker_zip=zip_marker()
             ingest_github_artifact(
-                metadata(),zip_receipt(),m,zip_marker(),
+                metadata(receipt_zip),receipt_zip,m,marker_zip,
                 provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 
@@ -213,8 +254,11 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         with zipfile.ZipFile(out,"w") as zf:
             zf.writestr("weatherapi_attestation_verification.json",raw)
         with self.assertRaises(ValueError):
+            receipt_zip=zip_receipt()
+            tampered_marker_zip=out.getvalue()
             ingest_github_artifact(
-                metadata(),zip_receipt(),marker_metadata(),out.getvalue(),
+                metadata(receipt_zip),receipt_zip,
+                marker_metadata(tampered_marker_zip),tampered_marker_zip,
                 provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 
