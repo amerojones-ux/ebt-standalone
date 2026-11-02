@@ -9,6 +9,7 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("metadata")
     parser.add_argument("artifact_zip")
+    parser.add_argument("--repository",required=True)
     parser.add_argument("--output",required=True)
     args=parser.parse_args()
     try:
@@ -21,6 +22,7 @@ def main():
         result=ingest_review_package(
             metadata,
             data,
+            repository=args.repository,
             trusted_now=datetime.now(timezone.utc).isoformat(),
         )
         with open(args.output,"w",encoding="utf-8") as handle:
