@@ -20,6 +20,8 @@ def verify_bundle(bundle: EvidenceBundle, *, now, reconciled_ids: frozenset[str]
     schema_status, schema_reason = verify(bundle.contract, bundle.capture, now=now, reconciled_ids=reconciled_ids)
     digest_status, digest_reason = verify_integrity(bundle.integrity_record)
     intake_status, intake_reasons = evaluate_intake(bundle.intake)
+    if (bundle.intake.source_authenticated is not True or bundle.intake.official_reconciled is not True):
+        return ("HOLD", ("INDEPENDENT_TRUST_NOT_ESTABLISHED",))
     if bundle.capture.host != bundle.intake.api_host or bundle.capture.endpoint != bundle.intake.endpoint_id:
         return ("HOLD", ("CROSS_RECORD_IDENTITY_MISMATCH",))
     if bundle.integrity_record.provider != bundle.intake.provider or bundle.integrity_record.endpoint_id != bundle.capture.endpoint:
