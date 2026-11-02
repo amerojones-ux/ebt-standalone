@@ -49,6 +49,10 @@ def _default_open(request,timeout):
         urllib.request.ProxyHandler({}),
         NoRedirectHandler(),
     )
+    # API-Sports warns that frameworks may inject unsupported headers.
+    # Remove urllib's default User-Agent so only the documented API key
+    # application header is intentionally supplied.
+    opener.addheaders=[]
     return opener.open(request,timeout=timeout)
 
 def _classify_http_error(exc):
@@ -76,11 +80,7 @@ def probe(confirm,account_review,opener=None):
     request=urllib.request.Request(
         url,
         method="GET",
-        headers={
-            "x-apisports-key":key,
-            "Accept":"application/json",
-            "User-Agent":"EBT-Black-Diamond/API-Sports-Status-Probe",
-        },
+        headers={"x-apisports-key":key},
     )
     opener=_default_open if opener is None else opener
 
