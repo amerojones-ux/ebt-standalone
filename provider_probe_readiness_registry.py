@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent
 UPLOAD_SHA="cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+ATTEST_SHA="1e69f48acb82d1966a394da916b4c1698aa569d6"
 
 PROBES={
     "WeatherAPI":{
@@ -96,6 +97,14 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         spec["review_phrase"],
         spec["request_phrase"],
         "verify_receipt",
+        "id: probe",
+        'echo "receipt_verified=$receipt_ok" >> "$GITHUB_OUTPUT"',
+        "  id-token: write",
+        "  attestations: write",
+        "  artifact-metadata: write",
+        "if: always() && steps.probe.outputs.receipt_verified == '1'",
+        "actions/attest@"+ATTEST_SHA,
+        "subject-path: "+spec["receipt"],
         "if: always()",
         "actions/upload-artifact@"+UPLOAD_SHA,
         "name: "+spec["artifact_prefix"]+"-${{ github.run_id }}",

@@ -64,6 +64,20 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
 
+    def test_missing_or_floating_attestation_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6",
+            "actions/attest@v4",
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
     def test_schedule_trigger_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
         spec=PROBES["WeatherAPI"]

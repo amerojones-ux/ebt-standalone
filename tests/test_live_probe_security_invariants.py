@@ -26,6 +26,7 @@ WORKFLOWS = {
     },
 }
 UPLOAD_ARTIFACT_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+ATTEST_SHA = "1e69f48acb82d1966a394da916b4c1698aa569d6"
 
 
 class LiveProbeSecurityInvariantTests(unittest.TestCase):
@@ -38,6 +39,9 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn("ref: main", text)
                 self.assertIn("persist-credentials: false", text)
                 self.assertIn("permissions:\n  contents: read", text)
+                self.assertIn("  id-token: write", text)
+                self.assertIn("  attestations: write", text)
+                self.assertIn("  artifact-metadata: write", text)
                 self.assertNotIn("schedule:", text)
                 self.assertNotIn("pull_request:", text)
                 self.assertNotIn("\npush:", text)
@@ -62,6 +66,14 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn("if-no-files-found: ignore", text)
                 self.assertIn("retention-days: 7", text)
                 self.assertIn("compression-level: 0", text)
+                self.assertIn("id: probe", text)
+                self.assertIn('echo "receipt_verified=$receipt_ok" >> "$GITHUB_OUTPUT"', text)
+                self.assertIn(
+                    "if: always() && steps.probe.outputs.receipt_verified == '1'",
+                    text,
+                )
+                self.assertIn("actions/attest@" + ATTEST_SHA, text)
+                self.assertIn("subject-path: " + spec["receipt"], text)
                 self.assertNotIn("path: .", text)
                 self.assertNotIn("path: ./", text)
                 self.assertNotIn("path: **", text)

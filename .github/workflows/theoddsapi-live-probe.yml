@@ -21,6 +21,9 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   one-shot-probe:
@@ -39,6 +42,7 @@ jobs:
           persist-credentials: false
 
       - name: Execute one sanitized zero-credit /sports request and verify receipt
+        id: probe
         env:
           EBT_THEODDS_API_KEY: ${{ secrets.EBT_THEODDS_API_KEY }}
         run: |
@@ -75,10 +79,17 @@ jobs:
             echo "Probe did not complete normal receipt serialization." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+          echo "receipt_verified=$receipt_ok" >> "$GITHUB_OUTPUT"
           if [ "$receipt_ok" -ne 1 ]; then
             exit 2
           fi
           exit "$probe_exit"
+
+      - name: Attest sanitized receipt provenance
+        if: always() && steps.probe.outputs.receipt_verified == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: theoddsapi_probe_receipt.json
 
       - name: Persist sanitized receipt artifact
         if: always()
