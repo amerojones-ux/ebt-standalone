@@ -1,0 +1,12 @@
+{
+  "provider": "SportsDataIO",
+  "secret_name": "EBT_SPORTSDATA_API_KEY",
+  "auth_header": "Ocp-Apim-Subscription-Key",
+  "allow_query_key": false,
+  "declared_access_method": "UNKNOWN",
+  "network_enabled": false,
+  "forecast_enabled": false,
+  "entitlement_verified": false,
+  "feed_verified": false,
+  "freshness_verified": false
+}
