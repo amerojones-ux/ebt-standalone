@@ -9,6 +9,7 @@ from provider_readiness_evidence_gate import (
 )
 
 NOW="2026-11-02T20:30:00+00:00"
+REPO="amerojones-ux/ebt-standalone"
 
 def readiness():
     with open("config/provider_readiness.json", encoding="utf-8") as handle:
@@ -30,6 +31,11 @@ def manual_record(subject="SportsDataIO",claim="entitlement_verified"):
     }
 
 def github_record(subject="API-Sports",claim="live_auth_verified"):
+    signer={
+        "API-Sports":".github/workflows/apisports-status-probe.yml",
+        "WeatherAPI":".github/workflows/weatherapi-live-probe.yml",
+        "The Odds API":".github/workflows/theoddsapi-live-probe.yml",
+    }.get(subject,".github/workflows/unsupported.yml")
     return {
         "status":"VERIFIED",
         "subject":subject,
@@ -38,8 +44,14 @@ def github_record(subject="API-Sports",claim="live_auth_verified"):
         "reference":"github-actions-run:123",
         "reviewed_at":"2026-11-02T20:00:00+00:00",
         "reviewer":"authorized-reviewer",
+        "source_repository":REPO,
         "source_commit":"a"*40,
-        "artifact_sha256":"b"*64,
+        "receipt_sha256":"b"*64,
+        "artifact_sha256":"c"*64,
+        "attestation_marker_sha256":"d"*64,
+        "attestation_id":"attestation-123",
+        "attestation_url":"https://github.com/"+REPO+"/attestations/attestation-123",
+        "signer_workflow":signer,
     }
 
 def report_record(subject="MODEL",claim="historical_calibration_verified"):
@@ -85,6 +97,17 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
                 entry["evidence"]["entitlement_verified"]=manual_record()
         self.assertEqual(evidence_supports_readiness(r,l,trusted_now=NOW),[])
 
+    def test_matching_attested_live_auth_evidence_supports_claim(self):
+        r=readiness()
+        l=ledger()
+        for entry in r["providers"]:
+            if entry["name"]=="API-Sports":
+                entry["live_auth_verified"]=True
+        for entry in l["providers"]:
+            if entry["name"]=="API-Sports":
+                entry["evidence"]["live_auth_verified"]=github_record()
+        self.assertEqual(evidence_supports_readiness(r,l,trusted_now=NOW),[])
+
     def test_live_auth_requires_github_actions_receipt(self):
         r=manual_record(subject="API-Sports",claim="live_auth_verified")
         errors=validate_record(r,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW)
@@ -104,18 +127,44 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
             [],
         )
 
-    def test_github_receipt_requires_commit_and_hash(self):
-        record=github_record()
-        del record["artifact_sha256"]
-        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
-        record=github_record()
-        del record["source_commit"]
-        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+    def test_github_receipt_requires_full_signed_provenance(self):
+        fields=[
+            "source_commit","receipt_sha256","artifact_sha256",
+            "attestation_marker_sha256","attestation_id","attestation_url",
+            "signer_workflow","source_repository",
+        ]
+        for field in fields:
+            with self.subTest(field=field):
+                record=github_record()
+                del record[field]
+                self.assertTrue(
+                    validate_record(
+                        record,subject="API-Sports",
+                        claim="live_auth_verified",trusted_now=NOW
+                    )
+                )
 
-    def test_bad_commit_and_hash_rejected(self):
+    def test_bad_commit_and_hashes_rejected(self):
         record=github_record()
         record["source_commit"]="xyz"
+        record["receipt_sha256"]="123"
         record["artifact_sha256"]="123"
+        record["attestation_marker_sha256"]="123"
+        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+
+    def test_wrong_repository_rejected(self):
+        record=github_record()
+        record["source_repository"]="other/repo"
+        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+
+    def test_wrong_signer_workflow_rejected(self):
+        record=github_record()
+        record["signer_workflow"]=".github/workflows/weatherapi-live-probe.yml"
+        self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+
+    def test_wrong_attestation_url_rejected(self):
+        record=github_record()
+        record["attestation_url"]="https://example.com/attestation/123"
         self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
 
     def test_subject_and_claim_mismatch_rejected(self):
@@ -132,6 +181,11 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
     def test_timestamp_must_be_timezone_aware(self):
         record=manual_record()
         record["reviewed_at"]="2026-11-02T20:00:00"
+        self.assertTrue(validate_record(record,subject="SportsDataIO",claim="entitlement_verified",trusted_now=NOW))
+
+    def test_attestation_fields_for_manual_review_rejected(self):
+        record=manual_record()
+        record["attestation_id"]="not-allowed"
         self.assertTrue(validate_record(record,subject="SportsDataIO",claim="entitlement_verified",trusted_now=NOW))
 
     def test_extra_evidence_field_rejected(self):
