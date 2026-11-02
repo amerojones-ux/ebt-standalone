@@ -1,5 +1,6 @@
 """CLI for the global provider activation gate."""
 import argparse
+from datetime import datetime, timezone
 import json
 import sys
 
@@ -21,8 +22,11 @@ def main():
     with open(args.evidence, encoding="utf-8") as handle:
         evidence=json.load(handle)
 
+    trusted_now=datetime.now(timezone.utc).isoformat()
     config_errors=validate_config(config)
-    evidence_errors=evidence_supports_readiness(config,evidence)
+    evidence_errors=evidence_supports_readiness(
+        config,evidence,trusted_now=trusted_now
+    )
     all_errors=config_errors + evidence_errors
     evidence_ok=not evidence_errors
 
