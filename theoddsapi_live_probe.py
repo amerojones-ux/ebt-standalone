@@ -50,7 +50,12 @@ def _safe_result(status, category, detail=None):
     return out
 
 def _default_open(request, timeout):
-    opener = urllib.request.build_opener(NoRedirectHandler())
+    # Ignore runner/user proxy environment so query-string credentials go
+    # directly to the allowlisted HTTPS provider host.
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        NoRedirectHandler(),
+    )
     return opener.open(request, timeout=timeout)
 
 def _extract_error_code(exc):
