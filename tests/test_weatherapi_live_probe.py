@@ -9,6 +9,7 @@ from weatherapi_live_probe import (
     REQUEST_APPROVAL,
     PLAN_REVIEW_APPROVAL,
     NoRedirectHandler,
+    _safe_result,
     probe,
 )
 
@@ -162,6 +163,14 @@ class WeatherApiLiveProbeTests(unittest.TestCase):
             r = probe(REQUEST_APPROVAL, PLAN_REVIEW_APPROVAL, opener=fail, now_epoch=NOW)
             self.assertEqual(r["category"], "http_error")
             self.assertEqual(r["detail"], 403)
+
+    def test_result_schema_drift_fails_closed(self):
+        with self.assertRaises(ValueError):
+            _safe_result("PASS", "not_in_receipt_schema")
+        with self.assertRaises(ValueError):
+            _safe_result("UNKNOWN", "unexpected_error")
+        with self.assertRaises(ValueError):
+            _safe_result("HOLD", "http_error", "string-detail")
 
     def test_no_redirect_handler_refuses_follow_up(self):
         self.assertIsNone(
