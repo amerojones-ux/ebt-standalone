@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 UPLOAD_SHA="cf430e030ddbb5b0abf93d22962f4752f3646cd9"
 ATTEST_SHA="1e69f48acb82d1966a394da916b4c1698aa569d6"
+SETUP_PYTHON_SHA="6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
 
 PROBES={
     "WeatherAPI":{
@@ -106,12 +107,21 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
 
     required_workflow_fragments=[
         "workflow_dispatch:",
+        "runs-on: ubuntu-24.04",
+        "timeout-minutes: 5",
         "github.ref == 'refs/heads/main'",
         'default: "NO"',
         "persist-credentials: false",
         spec["review_phrase"],
         spec["request_phrase"],
         "verify_receipt",
+        "actions/setup-python@"+SETUP_PYTHON_SHA,
+        'python-version: "3.13"',
+        "check-latest: false",
+        "id: toolchain",
+        'echo "toolchain_verified=1" >> "$GITHUB_OUTPUT"',
+        "if: steps.toolchain.outputs.toolchain_verified == '1'",
+        "gh attestation verify --help",
         "id: probe",
         'echo "receipt_verified=$receipt_ok" >> "$GITHUB_OUTPUT"',
         "  id-token: write",
@@ -182,6 +192,9 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "exact_bundle_verification_required":True,
         "github_api_verification_required":True,
         "persisted_attestation_bundle_required":True,
+        "runner_pinned":True,
+        "python_toolchain_pinned":True,
+        "attestation_cli_capability_preflight_required":True,
         "errors":errors,
     }
 
