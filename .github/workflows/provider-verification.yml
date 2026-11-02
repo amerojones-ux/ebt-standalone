@@ -15,6 +15,8 @@ on:
       - test_release_readiness.py
       - provider_intake.py
       - test_provider_intake.py
+      - evidence_release_pipeline.py
+      - test_evidence_release_pipeline.py
       - .github/workflows/provider-verification.yml
   workflow_dispatch:
 permissions:
@@ -34,4 +36,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Offline provider verification tests
-        run: python -m unittest -v test_provider_verification test_provider_contracts test_provider_capture_integrity test_release_readiness test_provider_intake
+        run: python -m unittest -v test_provider_verification test_provider_contracts test_provider_capture_integrity test_release_readiness test_provider_intake test_evidence_release_pipeline
