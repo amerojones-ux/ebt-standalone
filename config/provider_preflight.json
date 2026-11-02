@@ -1,0 +1,42 @@
+{
+  "mode": "offline",
+  "network_enabled": false,
+  "forecast_enabled": false,
+  "providers": [
+    {
+      "name": "RUNDOWN",
+      "secret_name": "EBT_THERUNDOWN_API_KEY",
+      "request_count": 0
+    },
+    {
+      "name": "SPORTSDATA",
+      "secret_name": "EBT_SPORTSDATA_API_KEY",
+      "request_count": 0
+    },
+    {
+      "name": "ODDS",
+      "secret_name": "EBT_THEODDS_API_KEY",
+      "request_count": 0
+    },
+    {
+      "name": "APISPORTS",
+      "secret_name": "EBT_APISPORTS_API_KEY",
+      "request_count": 0
+    },
+    {
+      "name": "RAPID",
+      "secret_name": "EBT_RAPIDAPI_API_KEY",
+      "request_count": 0
+    },
+    {
+      "name": "WEATHER",
+      "secret_name": "EBT_WEATHER_API_KEY",
+      "request_count": 0
+    },
+    {
+      "name": "SPORTRADAR",
+      "secret_name": "EBT_SPORTRADAR_API_KEY",
+      "request_count": 0
+    }
+  ]
+}
