@@ -36,4 +36,8 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(run(replace(B,integrity_record=replace(R,source_published_at="2026-11-01T11:00:00Z")))[0],"HOLD")
     def test_evidence_reference_mismatch(self):
         self.assertEqual(run(replace(B,intake=replace(I,evidence_id="different")))[0],"HOLD")
+    def test_official_reconciliation_unverified(self):
+        self.assertEqual(run(replace(B,intake=replace(I,official_reconciled=None)))[0],"HOLD")
+    def test_source_authentication_explicit_failure(self):
+        self.assertEqual(run(replace(B,intake=replace(I,source_authenticated=False)))[0],"HOLD")
 if __name__=="__main__": unittest.main()
