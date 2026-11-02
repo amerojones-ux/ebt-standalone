@@ -4,7 +4,8 @@ from dataclasses import replace
 from provider_contracts import Contract, Capture
 from provider_capture_integrity import CaptureRecord, canonical_digest
 from provider_intake import ProviderIntake
-from evidence_release_pipeline import EvidenceBundle, verify_bundle
+from evidence_release_pipeline import EvidenceBundle, verify_bundle, verify_independent_bundle
+from trust_attestation import TrustAttestation
 
 NOW=datetime(2026,11,1,12,tzinfo=timezone.utc)
 TIME=NOW.isoformat()
@@ -40,4 +41,19 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(run(replace(B,intake=replace(I,official_reconciled=None)))[0],"HOLD")
     def test_source_authentication_explicit_failure(self):
         self.assertEqual(run(replace(B,intake=replace(I,source_authenticated=False)))[0],"HOLD")
+    def test_attestation_missing_holds(self):
+        status, _ = verify_independent_bundle(
+            B, now=NOW, reconciled_ids=frozenset({"official-e1"}),
+            attestation=None, approved_verifiers=frozenset({"reviewer-1"}),
+            approved_official_sources=frozenset({"OfficialLeague"}))
+        self.assertEqual(status,"HOLD")
+    def test_attestation_bound_record(self):
+        att=TrustAttestation("official-e1",R.sha256,"WeatherAPI","OfficialLeague",
+                             "reviewer-1",TIME,"e1","e1","VERIFIED")
+        status, reasons=verify_independent_bundle(
+            B, now=NOW, reconciled_ids=frozenset({"official-e1"}),
+            attestation=att, approved_verifiers=frozenset({"reviewer-1"}),
+            approved_official_sources=frozenset({"OfficialLeague"}))
+        self.assertEqual(status,"PASS")
+        self.assertIn("EXTERNAL_AUTHENTICATION_PENDING",reasons[0])
 if __name__=="__main__": unittest.main()
