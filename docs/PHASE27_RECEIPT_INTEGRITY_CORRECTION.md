@@ -18,3 +18,11 @@ Both WeatherAPI and The Odds API receipts now:
 Both manual workflows now verify the receipt before placing it in the GitHub Actions step summary. If the probe crashes before serialization or the receipt fails validation, the workflow records a sanitized unavailable/invalid message and exits nonzero.
 
 No signing key was introduced, no false attestation claim is made, and no provider request or credential read occurred during this phase.
+
+
+## Additional execution hardening
+The audit also identified two execution-boundary risks:
+- Manual live-probe jobs now require `github.ref == 'refs/heads/main'` and checkout `main` explicitly, in addition to their dual approval inputs.
+- Both HTTP openers install an empty `ProxyHandler({})` so environment proxy variables cannot redirect query-string credentials through a runner/user proxy. A connection that cannot reach the allowlisted provider directly must fail closed.
+
+Regression tests lock these workflow and direct-connect invariants.
