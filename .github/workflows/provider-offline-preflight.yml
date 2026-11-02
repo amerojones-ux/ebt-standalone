@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
       - name: Validate offline plan and tests
         run: |
-          python3 -m unittest -v tests/test_provider_preflight.py
+          python3 -m unittest discover -s tests -p test_provider_preflight.py -v
           python3 provider_preflight.py config/provider_preflight.json
