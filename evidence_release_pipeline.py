@@ -8,6 +8,7 @@ from provider_contracts import Contract, Capture, verify
 from provider_capture_integrity import CaptureRecord, verify_integrity
 from provider_intake import ProviderIntake, evaluate_intake, IntakeStatus
 from release_readiness import ReleaseEvidence, State, decide
+from trust_attestation import TrustAttestation, assess
 
 @dataclass(frozen=True)
 class EvidenceBundle:
@@ -37,6 +38,30 @@ def verify_bundle(bundle: EvidenceBundle, *, now, reconciled_ids: frozenset[str]
     if schema_status != "PASS" or digest_status != "PASS" or intake_status is not IntakeStatus.VERIFIED:
         return ("HOLD", (schema_reason, digest_reason, *intake_reasons))
     return ("PASS", ("OFFLINE_EVIDENCE_CONSISTENT_NOT_AUTHENTICATED",))
+
+def verify_independent_bundle(bundle: EvidenceBundle, *, now, reconciled_ids: frozenset[str],
+                              attestation: TrustAttestation | None,
+                              approved_verifiers: frozenset[str],
+                              approved_official_sources: frozenset[str]):
+    """Fail closed unless offline bundle AND independent-review record agree.
+
+    Reviewer allowlisting does not cryptographically authenticate a source.
+    """
+    status, reasons = verify_bundle(bundle, now=now, reconciled_ids=reconciled_ids)
+    if status != "PASS":
+        return (status, reasons)
+    trust_status, trust_reason = assess(
+        attestation,
+        evidence_id=bundle.intake.evidence_id,
+        digest=bundle.integrity_record.sha256,
+        provider=bundle.intake.provider,
+        now=now,
+        approved_verifiers=approved_verifiers,
+        approved_official_sources=approved_official_sources,
+    )
+    if trust_status != "PASS":
+        return ("HOLD", (trust_reason,))
+    return ("PASS", ("OFFLINE_REVIEW_CONSISTENT_EXTERNAL_AUTHENTICATION_PENDING",))
 
 def release_decision(evidence: ReleaseEvidence):
     return decide(evidence)
