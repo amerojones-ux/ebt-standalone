@@ -20,6 +20,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(c["subject"],"WeatherAPI")
         self.assertEqual(c["claim"],"live_auth_verified")
         self.assertEqual(c["candidate_status"],"REVIEW_ONLY")
+        self.assertIs(c["github_binding_verified"],True)
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])
         self.assertEqual(len(c["candidate_sha256"]),64)
@@ -70,6 +71,28 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
+
+    def test_trusted_run_id_mismatch_rejected(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        with self.assertRaises(ValueError):
+            build_review_candidate(
+                r,artifact_sha256=ARTIFACT,
+                expected_run_id="999999",expected_commit=COMMIT,
+            )
+
+    def test_trusted_commit_mismatch_rejected(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        with self.assertRaises(ValueError):
+            build_review_candidate(
+                r,artifact_sha256=ARTIFACT,
+                expected_run_id=RUN,expected_commit="b"*40,
+            )
 
     def test_candidate_contains_only_sanitized_provenance(self):
         r=build_weather(
