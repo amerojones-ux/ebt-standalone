@@ -11,8 +11,10 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 
 from weatherapi_contract import validate_current
+from weatherapi_probe_receipt import build_receipt, write_receipt
 
 REQUEST_APPROVAL = "I_APPROVE_ONE_WEATHERAPI_REQUEST"
 PLAN_REVIEW_APPROVAL = "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED"
@@ -44,7 +46,6 @@ def _safe_result(status, category, detail=None):
 def _default_open(request, timeout):
     opener = urllib.request.build_opener(NoRedirectHandler())
     return opener.open(request, timeout=timeout)
-
 
 def _classify_http_error(exc):
     """Extract only WeatherAPI numeric error codes; never return provider messages."""
@@ -125,9 +126,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--confirm", required=True)
     parser.add_argument("--plan-review", required=True)
+    parser.add_argument("--receipt-path")
     args = parser.parse_args()
 
     result = probe(args.confirm, args.plan_review)
+
+    if args.receipt_path:
+        receipt = build_receipt(
+            result,
+            datetime.now(timezone.utc).isoformat(),
+            os.environ.get("GITHUB_SHA", ""),
+            os.environ.get("GITHUB_RUN_ID", ""),
+        )
+        write_receipt(args.receipt_path, receipt)
+
     print("WEATHERAPI_LIVE_PROBE:", result["status"])
     print("CATEGORY:", result["category"])
     if "detail" in result:
