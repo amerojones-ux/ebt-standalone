@@ -79,3 +79,13 @@ jobs:
             exit 2
           fi
           exit "$probe_exit"
+
+      - name: Persist sanitized receipt artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weatherapi-probe-receipt-${{ github.run_id }}
+          path: weatherapi_probe_receipt.json
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
