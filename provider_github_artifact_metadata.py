@@ -1,4 +1,4 @@
-"""Validate GitHub Actions artifact metadata before receipt ingestion.
+"""Validate GitHub Actions artifact metadata before evidence ingestion.
 
 This module expects metadata obtained independently from GitHub's Actions artifact API.
 It never performs network calls itself.
@@ -9,10 +9,15 @@ import re
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 DIGEST=re.compile(r"^sha256:([0-9a-f]{64})$",re.I)
 
-ARTIFACT_PREFIXES={
+RECEIPT_PREFIXES={
     "WeatherAPI":"weatherapi-probe-receipt-",
     "The Odds API":"theoddsapi-probe-receipt-",
     "API-Sports":"apisports-status-receipt-",
+}
+ATTESTATION_MARKER_PREFIXES={
+    "WeatherAPI":"weatherapi-attestation-verification-",
+    "The Odds API":"theoddsapi-attestation-verification-",
+    "API-Sports":"apisports-attestation-verification-",
 }
 MAX_ARTIFACT_BYTES=1024*1024
 
@@ -27,8 +32,8 @@ def _parse_time(value):
         return None
     return dt.astimezone(timezone.utc)
 
-def build_trusted_binding(metadata, *, provider, trusted_now):
-    if provider not in ARTIFACT_PREFIXES:
+def _build_binding(metadata, *, provider, trusted_now, prefixes, kind):
+    if provider not in prefixes:
         raise ValueError("unsupported provider")
     if not isinstance(metadata,dict):
         raise ValueError("artifact metadata must be object")
@@ -77,7 +82,7 @@ def build_trusted_binding(metadata, *, provider, trusted_now):
     if not isinstance(head_sha,str) or not SHA40.fullmatch(head_sha):
         raise ValueError("invalid workflow head sha")
 
-    expected_name=ARTIFACT_PREFIXES[provider]+str(run_id)
+    expected_name=prefixes[provider]+str(run_id)
     if name!=expected_name:
         raise ValueError("artifact name/run mismatch")
 
@@ -87,11 +92,25 @@ def build_trusted_binding(metadata, *, provider, trusted_now):
 
     return {
         "provider":provider,
+        "artifact_kind":kind,
         "github_artifact_id":artifact_id,
         "github_artifact_name":name,
         "github_artifact_digest":match.group(1).lower(),
         "expected_run_id":str(run_id),
         "expected_commit":head_sha.lower(),
         "head_branch":"main",
+        "repository_id":repo_id,
         "metadata_binding_status":"GITHUB_ARTIFACT_METADATA_MATCH",
     }
+
+def build_trusted_binding(metadata, *, provider, trusted_now):
+    return _build_binding(
+        metadata,provider=provider,trusted_now=trusted_now,
+        prefixes=RECEIPT_PREFIXES,kind="receipt"
+    )
+
+def build_attestation_marker_binding(metadata, *, provider, trusted_now):
+    return _build_binding(
+        metadata,provider=provider,trusted_now=trusted_now,
+        prefixes=ATTESTATION_MARKER_PREFIXES,kind="attestation_verification_marker"
+    )
