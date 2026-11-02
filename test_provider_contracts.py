@@ -21,4 +21,15 @@ class Tests(unittest.TestCase):
     def test_future(self): self.assertEqual(check(replace(E,retrieved_at=(NOW+timedelta(seconds=1)).isoformat()))[0],'HOLD')
     def test_provenance(self): self.assertEqual(check(ids=frozenset())[0],'HOLD')
     def test_naive(self): self.assertEqual(check(replace(E,published_at='2026-11-01T12:00:00'))[0],'HOLD')
+
+    def test_server_error(self): self.assertEqual(check(replace(E,status=503))[0],'HOLD')
+    def test_not_found(self): self.assertEqual(check(replace(E,status=404))[0],'HOLD')
+    def test_invalid_body(self): self.assertEqual(check(replace(E,body=None))[0],'FAIL')
+    def test_missing_field(self): self.assertEqual(check(replace(E,body={'event_id':'e1'}))[0],'FAIL')
+    def test_bad_published_time(self): self.assertEqual(check(replace(E,published_at='not-a-date'))[0],'HOLD')
+    def test_published_after_retrieval(self):
+        self.assertEqual(check(replace(E,published_at=NOW.isoformat(),retrieved_at=(NOW-timedelta(seconds=1)).isoformat()))[0],'HOLD')
+    def test_refetch_does_not_refresh_source(self):
+        self.assertEqual(check(replace(E,published_at=(NOW-timedelta(days=1)).isoformat(),retrieved_at=NOW.isoformat()))[0],'HOLD')
+
 if __name__=='__main__': unittest.main()
