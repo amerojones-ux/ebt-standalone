@@ -35,6 +35,7 @@ def verify_integrity(record: CaptureRecord | None) -> tuple[str, str]:
         expected = canonical_digest(record.payload)
     except (TypeError, ValueError):
         return ("FAIL", "INVALID_CANONICAL_PAYLOAD")
-    if len(record.sha256) != 64 or not hmac.compare_digest(record.sha256, expected):
+    if (not isinstance(record.sha256, str) or len(record.sha256) != 64 or
+        not hmac.compare_digest(record.sha256, expected)):
         return ("FAIL", "CAPTURE_DIGEST_MISMATCH")
     return ("PASS", "CAPTURE_INTEGRITY_ONLY")
