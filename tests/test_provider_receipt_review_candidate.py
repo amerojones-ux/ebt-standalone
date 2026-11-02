@@ -16,6 +16,8 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         )
         c=build_review_candidate(r)
         self.assertEqual(c["provider"],"WeatherAPI")
+        self.assertEqual(c["subject"],"WeatherAPI")
+        self.assertEqual(c["claim"],"live_auth_verified")
         self.assertEqual(c["candidate_status"],"REVIEW_ONLY")
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])

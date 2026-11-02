@@ -53,6 +53,7 @@ def build_review_candidate(receipt):
 
     return {
         "provider":provider,
+        "subject":provider,
         "claim":"live_auth_verified",
         "candidate_status":"REVIEW_ONLY",
         "source_type":"github_actions_receipt",
