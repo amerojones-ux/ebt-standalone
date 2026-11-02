@@ -3,6 +3,8 @@
 This module never edits provider readiness or the evidence ledger. It produces a
 candidate that still requires an authorized reviewer to create a VERIFIED ledger record.
 """
+import hashlib
+import json
 import re
 
 from apisports_status_receipt import verify_receipt as verify_apisports
@@ -51,7 +53,7 @@ def build_review_candidate(receipt):
     if not isinstance(digest,str) or len(digest)!=64:
         raise ValueError("receipt checksum required")
 
-    return {
+    body={
         "provider":provider,
         "subject":provider,
         "claim":"live_auth_verified",
@@ -64,3 +66,7 @@ def build_review_candidate(receipt):
         "readiness_mutation_permitted":False,
         "forecast_activation_permitted":False,
     }
+    canonical=json.dumps(body,sort_keys=True,separators=(",",":")).encode("utf-8")
+    candidate=dict(body)
+    candidate["candidate_sha256"]=hashlib.sha256(canonical).hexdigest()
+    return candidate
