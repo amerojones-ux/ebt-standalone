@@ -21,6 +21,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(c["candidate_status"],"REVIEW_ONLY")
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])
+        self.assertEqual(len(c["candidate_sha256"]),64)
 
     def test_odds_pass_becomes_review_only_candidate(self):
         r=build_odds(
