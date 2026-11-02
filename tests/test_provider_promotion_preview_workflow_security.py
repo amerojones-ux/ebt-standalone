@@ -64,7 +64,7 @@ class ProviderPromotionPreviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn("signed review package artifact count mismatch",text)
         self.assertIn("signed review package artifact expired",text)
         self.assertIn("provider_review_package_ingest_cli.py",text)
-        self.assertIn("--repository "$GITHUB_REPOSITORY"",text)
+        self.assertIn('--repository "$GITHUB_REPOSITORY"',text)
         self.assertIn("--output provider_attested_review_decision.json",text)
 
     def test_preview_uses_committed_ledger_and_readiness_without_writes(self):
