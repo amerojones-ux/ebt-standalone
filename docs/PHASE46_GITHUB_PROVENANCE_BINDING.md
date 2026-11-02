@@ -54,3 +54,8 @@ Reviewer decisions reject candidates without `github_metadata_match: true`.
 The CLI can compare supplied metadata but cannot prove that a human caller obtained those values from GitHub. Independent provenance comes from the actual GitHub connector/API lookup used before ingestion.
 
 No network request, provider secret, ledger mutation, readiness mutation, or forecast activation occurs in this phase.
+
+
+## Phase 47 preferred implementation
+
+The preferred path now uses `provider_github_artifact_metadata.build_trusted_binding()` with the GitHub Actions artifact metadata object. This removes the need for an operator to manually invent the expected run ID or head commit. The lower-level CLI flags remain useful for controlled testing, but production review should derive them from the independently retrieved GitHub artifact metadata.
