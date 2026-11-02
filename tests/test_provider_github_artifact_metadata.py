@@ -1,15 +1,29 @@
+import hashlib
 import io
 import json
 import unittest
 import zipfile
 
 from weatherapi_probe_receipt import build_receipt
-from provider_github_artifact_metadata import build_trusted_binding
+from provider_github_artifact_metadata import (
+    build_attestation_marker_binding,
+    build_trusted_binding,
+)
 from provider_github_artifact_ingest import ingest_github_artifact
 
 RUN=123456
 COMMIT="a"*40
 NOW="2026-11-02T21:00:00+00:00"
+REPO="amerojones-ux/ebt-standalone"
+
+def base_workflow():
+    return {
+        "id":RUN,
+        "repository_id":123,
+        "head_repository_id":123,
+        "head_branch":"main",
+        "head_sha":COMMIT,
+    }
 
 def metadata():
     return {
@@ -20,13 +34,19 @@ def metadata():
         "created_at":"2026-11-02T20:50:00Z",
         "expires_at":"2026-11-09T20:50:00Z",
         "digest":"sha256:"+"b"*64,
-        "workflow_run":{
-            "id":RUN,
-            "repository_id":123,
-            "head_repository_id":123,
-            "head_branch":"main",
-            "head_sha":COMMIT,
-        },
+        "workflow_run":base_workflow(),
+    }
+
+def marker_metadata():
+    return {
+        "id":100,
+        "name":"weatherapi-attestation-verification-123456",
+        "size_in_bytes":2048,
+        "expired":False,
+        "created_at":"2026-11-02T20:52:00Z",
+        "expires_at":"2026-11-09T20:52:00Z",
+        "digest":"sha256:"+"c"*64,
+        "workflow_run":base_workflow(),
     }
 
 def zip_receipt():
@@ -40,24 +60,68 @@ def zip_receipt():
         zf.writestr("weatherapi_probe_receipt.json",raw)
     return out.getvalue()
 
+def verification_marker():
+    body={
+        "schema_version":1,
+        "provider":"WeatherAPI",
+        "verification_status":"VERIFIED",
+        "repository":REPO,
+        "workflow_run_id":str(RUN),
+        "source_commit":COMMIT,
+        "source_ref":"refs/heads/main",
+        "signer_workflow":".github/workflows/weatherapi-live-probe.yml",
+        "attestation_id":"attestation-123",
+        "attestation_url":"https://github.com/"+REPO+"/attestations/attestation-123",
+        "receipt_file":"weatherapi_probe_receipt.json",
+        "verification_tool":"gh attestation verify",
+    }
+    canonical=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+    marker=dict(body)
+    marker["marker_sha256"]=hashlib.sha256(canonical).hexdigest()
+    return marker
+
+def zip_marker():
+    raw=(json.dumps(verification_marker(),sort_keys=True)+"\n").encode()
+    out=io.BytesIO()
+    with zipfile.ZipFile(out,"w",compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("weatherapi_attestation_verification.json",raw)
+    return out.getvalue()
+
 class ProviderGithubArtifactMetadataTests(unittest.TestCase):
-    def test_valid_metadata_builds_binding(self):
+    def test_valid_receipt_metadata_builds_binding(self):
         b=build_trusted_binding(metadata(),provider="WeatherAPI",trusted_now=NOW)
         self.assertEqual(b["expected_run_id"],str(RUN))
         self.assertEqual(b["expected_commit"],COMMIT)
+        self.assertEqual(b["artifact_kind"],"receipt")
         self.assertEqual(b["metadata_binding_status"],"GITHUB_ARTIFACT_METADATA_MATCH")
 
-    def test_preferred_ingestion_uses_metadata_binding(self):
+    def test_valid_marker_metadata_builds_binding(self):
+        b=build_attestation_marker_binding(
+            marker_metadata(),provider="WeatherAPI",trusted_now=NOW
+        )
+        self.assertEqual(b["expected_run_id"],str(RUN))
+        self.assertEqual(b["artifact_kind"],"attestation_verification_marker")
+
+    def test_preferred_ingestion_requires_receipt_and_verified_marker(self):
         r=ingest_github_artifact(
-            metadata(),zip_receipt(),provider="WeatherAPI",trusted_now=NOW
+            metadata(),
+            zip_receipt(),
+            marker_metadata(),
+            zip_marker(),
+            provider="WeatherAPI",
+            repository=REPO,
+            trusted_now=NOW,
         )
         self.assertEqual(r["status"],"REVIEW_ONLY")
         self.assertEqual(
-            r["receipt_ingestion"]["candidate"]["reference"],
+            r["candidate"]["reference"],
             "github-actions-run:"+str(RUN),
         )
-        self.assertIs(
-            r["receipt_ingestion"]["candidate"]["github_metadata_match"],True
+        self.assertIs(r["candidate"]["github_metadata_match"],True)
+        self.assertIs(r["candidate"]["attestation_verified"],True)
+        self.assertEqual(
+            r["candidate"]["attestation_marker_sha256"],
+            r["attestation_verification"]["marker_file_sha256"],
         )
         self.assertFalse(r["ledger_mutation_permitted"])
 
@@ -65,6 +129,13 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         m=metadata(); m["name"]="weatherapi-probe-receipt-999"
         with self.assertRaises(ValueError):
             build_trusted_binding(m,provider="WeatherAPI",trusted_now=NOW)
+
+    def test_marker_artifact_name_must_match_run(self):
+        m=marker_metadata(); m["name"]="weatherapi-attestation-verification-999"
+        with self.assertRaises(ValueError):
+            build_attestation_marker_binding(
+                m,provider="WeatherAPI",trusted_now=NOW
+            )
 
     def test_artifact_must_be_unexpired(self):
         m=metadata(); m["expired"]=True
@@ -91,20 +162,36 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_trusted_binding(m,provider="WeatherAPI",trusted_now=NOW)
 
-    def test_metadata_commit_mismatch_rejects_receipt(self):
-        m=metadata(); m["workflow_run"]["head_sha"]="c"*40
+    def test_marker_run_mismatch_rejected(self):
+        m=marker_metadata()
+        m["workflow_run"]["id"]=999
+        m["name"]="weatherapi-attestation-verification-999"
         with self.assertRaises(ValueError):
             ingest_github_artifact(
-                m,zip_receipt(),provider="WeatherAPI",trusted_now=NOW
+                metadata(),zip_receipt(),m,zip_marker(),
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 
-    def test_metadata_run_mismatch_rejects_receipt(self):
-        m=metadata()
-        m["workflow_run"]["id"]=999
-        m["name"]="weatherapi-probe-receipt-999"
+    def test_marker_commit_mismatch_rejected(self):
+        m=marker_metadata()
+        m["workflow_run"]["head_sha"]="c"*40
         with self.assertRaises(ValueError):
             ingest_github_artifact(
-                m,zip_receipt(),provider="WeatherAPI",trusted_now=NOW
+                metadata(),zip_receipt(),m,zip_marker(),
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_content_tamper_rejected(self):
+        marker=verification_marker()
+        marker["source_commit"]="c"*40
+        raw=json.dumps(marker).encode()
+        out=io.BytesIO()
+        with zipfile.ZipFile(out,"w") as zf:
+            zf.writestr("weatherapi_attestation_verification.json",raw)
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(),zip_receipt(),marker_metadata(),out.getvalue(),
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
             )
 
 if __name__=="__main__":

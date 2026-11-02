@@ -2,7 +2,7 @@ import copy
 import unittest
 
 from apisports_status_receipt import build_receipt
-from provider_receipt_review_candidate import build_review_candidate
+from provider_receipt_review_candidate import build_review_candidate, bind_attestation_verification
 from provider_evidence_review_decision import review_candidate, verify_review_decision
 from provider_evidence_ledger_preview import build_ledger_preview
 import json
@@ -10,6 +10,7 @@ import json
 COMMIT="a"*40
 RUN="12345"
 ARTIFACT="d"*64
+MARKER="e"*64
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -22,7 +23,11 @@ def decision():
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
     )
-    candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
+    pending=build_review_candidate(
+        receipt,artifact_sha256=ARTIFACT,
+        expected_run_id=RUN,expected_commit=COMMIT
+    )
+    candidate=bind_attestation_verification(pending,marker_sha256=MARKER)
     return review_candidate(
         candidate,decision="APPROVE",reviewer="authorized-reviewer",
         reviewed_at=REVIEWED,trusted_now=NOW
@@ -58,7 +63,11 @@ class ProviderEvidenceLedgerPreviewTests(unittest.TestCase):
             {"status":"PASS","category":"authenticated_status_schema"},
             "2026-11-02T20:58:00+00:00",COMMIT,RUN
         )
-        candidate=build_review_candidate(receipt,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)
+        pending=build_review_candidate(
+            receipt,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        candidate=bind_attestation_verification(pending,marker_sha256=MARKER)
         rejected=review_candidate(
             candidate,decision="REJECT",reviewer="authorized-reviewer",
             reviewed_at=REVIEWED,trusted_now=NOW

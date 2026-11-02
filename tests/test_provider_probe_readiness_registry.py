@@ -27,6 +27,8 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertTrue(probe["manual_dispatch_required"])
             self.assertFalse(probe["committed_request_approval"])
             self.assertFalse(probe["execution_claimed"])
+            self.assertTrue(probe["signed_provenance_required"])
+            self.assertTrue(probe["cryptographic_verification_required"])
 
     def test_network_enable_drift_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
@@ -73,6 +75,34 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         r=assess_probe(
             "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_source_digest_verification_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '--source-digest "$GITHUB_SHA"',
+            '--source-digest "untrusted"',
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_signer_workflow_verification_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["API-Sports"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '--signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW"',
+            '--owner amerojones-ux',
+        )
+        r=assess_probe(
+            "API-Sports",
             json_loader=lambda p:cfg[p],
             text_loader=lambda p:wfs[p],
         )

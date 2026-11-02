@@ -42,13 +42,13 @@ def api_receipt():
     )
 
 class ProviderArtifactReceiptIngestTests(unittest.TestCase):
-    def test_weather_artifact_ingests_to_review_only(self):
+    def test_weather_artifact_ingests_pending_attestation(self):
         raw=(json.dumps(weather_receipt(),sort_keys=True)+"\n").encode()
         result=ingest_artifact_bytes(
             zip_one("weatherapi_probe_receipt.json",raw),
             provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT,
         )
-        self.assertEqual(result["ingestion_status"],"REVIEW_ONLY")
+        self.assertEqual(result["ingestion_status"],"PENDING_ATTESTATION")
         self.assertEqual(result["candidate"]["provider"],"WeatherAPI")
         self.assertEqual(result["candidate"]["artifact_sha256"],result["receipt_file_sha256"])
         self.assertEqual(result["candidate"]["receipt_sha256"],result["receipt_internal_sha256"])

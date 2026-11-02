@@ -13,16 +13,25 @@ WORKFLOWS = {
         "path": ROOT / ".github" / "workflows" / "weatherapi-live-probe.yml",
         "receipt": "weatherapi_probe_receipt.json",
         "artifact_prefix": "weatherapi-probe-receipt",
+        "marker": "weatherapi_attestation_verification.json",
+        "marker_prefix": "weatherapi-attestation-verification",
+        "signer": ".github/workflows/weatherapi-live-probe.yml",
     },
     "odds": {
         "path": ROOT / ".github" / "workflows" / "theoddsapi-live-probe.yml",
         "receipt": "theoddsapi_probe_receipt.json",
         "artifact_prefix": "theoddsapi-probe-receipt",
+        "marker": "theoddsapi_attestation_verification.json",
+        "marker_prefix": "theoddsapi-attestation-verification",
+        "signer": ".github/workflows/theoddsapi-live-probe.yml",
     },
     "apisports": {
         "path": ROOT / ".github" / "workflows" / "apisports-status-probe.yml",
         "receipt": "apisports_status_receipt.json",
         "artifact_prefix": "apisports-status-receipt",
+        "marker": "apisports_attestation_verification.json",
+        "marker_prefix": "apisports-attestation-verification",
+        "signer": ".github/workflows/apisports-status-probe.yml",
     },
 }
 UPLOAD_ARTIFACT_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
@@ -49,11 +58,10 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn('default: "NO"', text)
                 self.assertIn("verify_receipt", text)
 
-    def test_live_workflows_persist_only_sanitized_receipt_artifacts(self):
+    def test_live_workflows_persist_only_sanitized_evidence_artifacts(self):
         for name, spec in WORKFLOWS.items():
             with self.subTest(name=name):
                 text = spec["path"].read_text(encoding="utf-8")
-                self.assertIn("if: always()", text)
                 self.assertIn(
                     "actions/upload-artifact@" + UPLOAD_ARTIFACT_SHA,
                     text,
@@ -64,20 +72,49 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 )
                 self.assertIn("path: " + spec["receipt"], text)
                 self.assertIn("if-no-files-found: ignore", text)
+                self.assertIn(
+                    "name: " + spec["marker_prefix"] + "-${{ github.run_id }}",
+                    text,
+                )
+                self.assertIn("path: " + spec["marker"], text)
+                self.assertIn("if-no-files-found: error", text)
                 self.assertIn("retention-days: 7", text)
                 self.assertIn("compression-level: 0", text)
+                self.assertNotIn("path: .", text)
+                self.assertNotIn("path: ./", text)
+                self.assertNotIn("path: **", text)
+                self.assertNotIn("raw_response", text)
+
+    def test_live_workflows_attest_and_verify_exact_receipt_identity(self):
+        for name, spec in WORKFLOWS.items():
+            with self.subTest(name=name):
+                text = spec["path"].read_text(encoding="utf-8")
                 self.assertIn("id: probe", text)
-                self.assertIn('echo "receipt_verified=$receipt_ok" >> "$GITHUB_OUTPUT"', text)
+                self.assertIn(
+                    'echo "receipt_verified=$receipt_ok" >> "$GITHUB_OUTPUT"',
+                    text,
+                )
+                self.assertIn("id: attest", text)
                 self.assertIn(
                     "if: always() && steps.probe.outputs.receipt_verified == '1'",
                     text,
                 )
                 self.assertIn("actions/attest@" + ATTEST_SHA, text)
                 self.assertIn("subject-path: " + spec["receipt"], text)
-                self.assertNotIn("path: .", text)
-                self.assertNotIn("path: ./", text)
-                self.assertNotIn("path: **", text)
-                self.assertNotIn("raw_response", text)
+                self.assertIn("id: verify_attestation", text)
+                self.assertIn('gh attestation verify "$RECEIPT_FILE"', text)
+                self.assertIn('--repo "$GITHUB_REPOSITORY"', text)
+                self.assertIn(
+                    '--signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW"',
+                    text,
+                )
+                self.assertIn('--source-ref "refs/heads/main"', text)
+                self.assertIn('--source-digest "$GITHUB_SHA"', text)
+                self.assertIn("SIGNER_WORKFLOW: " + spec["signer"], text)
+                self.assertIn(
+                    'echo "attestation_verified=1" >> "$GITHUB_OUTPUT"',
+                    text,
+                )
 
     def _assert_direct_no_proxy_opener(self, module):
         fake_opener = Mock()

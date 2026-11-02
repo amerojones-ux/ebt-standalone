@@ -83,7 +83,7 @@ def ingest_artifact_bytes(data, *, provider, expected_run_id, expected_commit):
         raise ValueError("provider/receipt mismatch")
 
     return {
-        "ingestion_status":"REVIEW_ONLY",
+        "ingestion_status":"PENDING_ATTESTATION",
         "provider":provider,
         "receipt_filename":EXPECTED_FILES[provider],
         "receipt_file_sha256":artifact_sha256,

@@ -3,11 +3,12 @@ import unittest
 from apisports_status_receipt import build_receipt as build_apisports
 from theoddsapi_probe_receipt import build_receipt as build_odds
 from weatherapi_probe_receipt import build_receipt as build_weather
-from provider_receipt_review_candidate import build_review_candidate
+from provider_receipt_review_candidate import build_review_candidate, bind_attestation_verification
 
 COMMIT="a"*40
 RUN="123456"
 ARTIFACT="d"*64
+MARKER="e"*64
 
 class ProviderReceiptReviewCandidateTests(unittest.TestCase):
     def test_weather_pass_becomes_review_only_candidate(self):
@@ -19,11 +20,27 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(c["provider"],"WeatherAPI")
         self.assertEqual(c["subject"],"WeatherAPI")
         self.assertEqual(c["claim"],"live_auth_verified")
-        self.assertEqual(c["candidate_status"],"REVIEW_ONLY")
+        self.assertEqual(c["candidate_status"],"REVIEW_ONLY_PENDING_ATTESTATION")
+        self.assertIs(c["attestation_verified"],False)
+        self.assertIsNone(c["attestation_marker_sha256"])
         self.assertIs(c["github_metadata_match"],True)
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])
         self.assertEqual(len(c["candidate_sha256"]),64)
+
+    def test_verified_attestation_promotes_candidate_to_review_only(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        final=bind_attestation_verification(pending,marker_sha256=MARKER)
+        self.assertEqual(final["candidate_status"],"REVIEW_ONLY")
+        self.assertIs(final["attestation_verified"],True)
+        self.assertEqual(final["attestation_marker_sha256"],MARKER)
 
     def test_odds_pass_becomes_review_only_candidate(self):
         r=build_odds(
