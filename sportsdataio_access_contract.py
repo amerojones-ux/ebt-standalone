@@ -81,10 +81,24 @@ def validate_auth_config(config):
         errors.append("forecast must remain disabled")
     return errors
 
+def _normalize_method(method):
+    return method.strip().upper() if isinstance(method, str) else "UNKNOWN"
+
 def can_promote_to_model_evidence(method, entitlement_verified=False, feed_verified=False, freshness_verified=False):
-    """No SportsDataIO source is model evidence until all production gates are independently proven."""
-    info = classify_access(method)
-    if method not in ("LEAGUES_PRODUCTION", "GLOBAL_PRODUCTION"):
+    """Only deep Leagues API production data can become generic model evidence."""
+    normalized = _normalize_method(method)
+    info = classify_access(normalized)
+    if normalized != "LEAGUES_PRODUCTION":
+        return False
+    if not info["live_current"]:
+        return False
+    return bool(entitlement_verified and feed_verified and freshness_verified)
+
+def can_promote_to_schedule_evidence(method, entitlement_verified=False, feed_verified=False, freshness_verified=False):
+    """Topline Global production data may support schedules/scores only after verification."""
+    normalized = _normalize_method(method)
+    info = classify_access(normalized)
+    if normalized not in ("LEAGUES_PRODUCTION", "GLOBAL_PRODUCTION"):
         return False
     if not info["live_current"]:
         return False
