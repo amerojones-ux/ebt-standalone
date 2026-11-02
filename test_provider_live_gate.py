@@ -6,9 +6,10 @@ P=EndpointPolicy("WeatherAPI","api.weatherapi.com","/v1")
 PLAN=LivePlan("WeatherAPI",P,"https://api.weatherapi.com/v1/current.json","X-API-Key","contract-1","approval-1")
 C=frozenset({"contract-1"})
 A=frozenset({"approval-1"})
+B=frozenset({("WeatherAPI","contract-1","x-api-key")})
 class LiveGateTests(unittest.TestCase):
-    def test_approved_plan(self): self.assertEqual(validate_plan(PLAN,approved_contracts=C,approved_approvals=A)[0],"PASS")
-    def test_no_approval(self): self.assertEqual(validate_plan(PLAN,approved_contracts=C,approved_approvals=frozenset())[0],"HOLD")
+    def test_approved_plan(self): self.assertEqual(validate_plan(PLAN,approved_contracts=C,approved_approvals=A,approved_auth_bindings=B)[0],"PASS")
+    def test_no_approval(self): self.assertEqual(validate_plan(PLAN,approved_contracts=C,approved_approvals=frozenset(),approved_auth_bindings=B)[0],"HOLD")
     def test_no_contract(self): self.assertEqual(validate_plan(PLAN,approved_contracts=frozenset(),approved_approvals=A)[0],"HOLD")
     def test_no_credential(self): self.assertEqual(execute(PLAN,credential="",approved_contracts=C,approved_approvals=A).status,"HOLD")
     def test_no_network_when_unapproved(self):
@@ -21,4 +22,8 @@ class LiveGateTests(unittest.TestCase):
     def test_invalid_provider(self):
         from dataclasses import replace
         self.assertEqual(validate_plan(replace(PLAN,provider="Unknown"),approved_contracts=C,approved_approvals=A)[0],"FAIL")
+    def test_auth_binding_required(self):
+        self.assertEqual(validate_plan(PLAN,approved_contracts=C,approved_approvals=A)[0],"HOLD")
+    def test_wrong_provider_binding(self):
+        self.assertEqual(validate_plan(PLAN,approved_contracts=C,approved_approvals=A,approved_auth_bindings=frozenset({("Sportradar","contract-1","x-api-key")}))[0],"HOLD")
 if __name__=="__main__": unittest.main()
