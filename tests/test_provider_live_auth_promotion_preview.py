@@ -4,13 +4,14 @@ import unittest
 from unittest.mock import patch
 
 from apisports_status_receipt import build_receipt
-from provider_receipt_review_candidate import (
-    bind_attestation_verification,
-    build_review_candidate,
-)
+from provider_attested_review_decision import sign_attested_review_decision
 from provider_evidence_review_decision import review_candidate
 from provider_live_auth_promotion_preview import (
     build_live_auth_promotion_preview,
+)
+from provider_receipt_review_candidate import (
+    bind_attestation_verification,
+    build_review_candidate,
 )
 
 COMMIT="a"*40
@@ -21,6 +22,14 @@ REPO="amerojones-ux/ebt-standalone"
 ATTESTATION_ID="attestation-123"
 ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
 SIGNER=".github/workflows/apisports-status-probe.yml"
+REVIEWER="github:reviewer#123"
+REVIEW_RUN="777"
+REVIEW_COMMIT="f"*40
+REVIEW_DECISION_FILE_SHA="1"*64
+REVIEW_MARKER_FILE_SHA="2"*64
+REVIEW_ATTESTATION_ID="review-attestation-123"
+REVIEW_ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+REVIEW_ATTESTATION_ID
+REVIEW_SIGNER=".github/workflows/provider-live-auth-evidence-review.yml"
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -32,7 +41,7 @@ def ledger():
     with open("config/provider_evidence.json",encoding="utf-8") as handle:
         return json.load(handle)
 
-def decision():
+def raw_decision():
     receipt=build_receipt(
         {"status":"PASS","category":"authenticated_status_schema"},
         "2026-11-02T20:58:00+00:00",COMMIT,RUN
@@ -54,16 +63,55 @@ def decision():
     return review_candidate(
         candidate,
         decision="APPROVE",
-        reviewer="authorized-reviewer",
+        reviewer=REVIEWER,
         reviewed_at=REVIEWED,
         trusted_now=NOW,
     )
+
+def attested_decision():
+    raw=raw_decision()
+    proposal=copy.deepcopy(raw["ledger_record_proposal"])
+    proposal.update({
+        "review_repository":REPO,
+        "review_workflow_run_id":REVIEW_RUN,
+        "review_source_commit":REVIEW_COMMIT,
+        "review_github_metadata_match":True,
+        "review_decision_sha256":raw["decision_sha256"],
+        "review_decision_file_sha256":REVIEW_DECISION_FILE_SHA,
+        "review_attestation_marker_sha256":REVIEW_MARKER_FILE_SHA,
+        "review_attestation_id":REVIEW_ATTESTATION_ID,
+        "review_attestation_url":REVIEW_ATTESTATION_URL,
+        "review_signer_workflow":REVIEW_SIGNER,
+    })
+    return sign_attested_review_decision({
+        "subject":raw["subject"],
+        "claim":raw["claim"],
+        "decision":raw["decision"],
+        "reviewer":raw["reviewer"],
+        "reviewed_at":raw["reviewed_at"],
+        "candidate_sha256":raw["candidate_sha256"],
+        "decision_sha256":raw["decision_sha256"],
+        "attested_status":"ATTESTED_APPROVED_FOR_MANUAL_LEDGER_REVIEW",
+        "review_repository":REPO,
+        "review_workflow_run_id":REVIEW_RUN,
+        "review_source_commit":REVIEW_COMMIT,
+        "review_github_metadata_match":True,
+        "review_decision_file_sha256":REVIEW_DECISION_FILE_SHA,
+        "review_attestation_marker_sha256":REVIEW_MARKER_FILE_SHA,
+        "review_attestation_id":REVIEW_ATTESTATION_ID,
+        "review_attestation_url":REVIEW_ATTESTATION_URL,
+        "review_signer_workflow":REVIEW_SIGNER,
+        "ledger_mutation_permitted":False,
+        "readiness_mutation_permitted":False,
+        "forecast_activation_permitted":False,
+        "ledger_record_proposal":proposal,
+    })
 
 class ProviderLiveAuthPromotionPreviewTests(unittest.TestCase):
     def test_preview_sets_only_live_auth_and_stays_safe_hold(self):
         original=readiness()
         result=build_live_auth_promotion_preview(
-            original,ledger(),decision(),trusted_now=NOW
+            original,ledger(),attested_decision(),trusted_now=NOW
         )
         self.assertEqual(
             result["preview_status"],
@@ -94,12 +142,20 @@ class ProviderLiveAuthPromotionPreviewTests(unittest.TestCase):
         self.assertEqual(original["required_providers"],[])
         self.assertEqual(result["preview_readiness"]["required_providers"],[])
 
+    def test_raw_decision_cannot_promote(self):
+        with self.assertRaises(ValueError):
+            build_live_auth_promotion_preview(
+                readiness(),ledger(),raw_decision(),trusted_now=NOW
+            )
+
     def test_original_inputs_are_not_mutated(self):
         r=readiness()
         l=ledger()
         r_before=copy.deepcopy(r)
         l_before=copy.deepcopy(l)
-        build_live_auth_promotion_preview(r,l,decision(),trusted_now=NOW)
+        build_live_auth_promotion_preview(
+            r,l,attested_decision(),trusted_now=NOW
+        )
         self.assertEqual(r,r_before)
         self.assertEqual(l,l_before)
 
@@ -110,15 +166,7 @@ class ProviderLiveAuthPromotionPreviewTests(unittest.TestCase):
                 entry["live_auth_verified"]=True
         with self.assertRaises(ValueError):
             build_live_auth_promotion_preview(
-                r,ledger(),decision(),trusted_now=NOW
-            )
-
-    def test_rejected_decision_cannot_promote(self):
-        approved=decision()
-        approved["decision"]="REJECT"
-        with self.assertRaises(ValueError):
-            build_live_auth_promotion_preview(
-                readiness(),ledger(),approved,trusted_now=NOW
+                r,ledger(),attested_decision(),trusted_now=NOW
             )
 
     def test_forced_non_hold_activation_result_is_rejected(self):
@@ -128,7 +176,7 @@ class ProviderLiveAuthPromotionPreviewTests(unittest.TestCase):
         ):
             with self.assertRaises(ValueError):
                 build_live_auth_promotion_preview(
-                    readiness(),ledger(),decision(),trusted_now=NOW
+                    readiness(),ledger(),attested_decision(),trusted_now=NOW
                 )
 
     def test_preview_refuses_activation_boundary_crossing(self):
@@ -147,11 +195,9 @@ class ProviderLiveAuthPromotionPreviewTests(unittest.TestCase):
                 entry["freshness_verified"]=True
                 entry["model_evidence_allowed"]=True
 
-        # Missing evidence for those already-true claims must fail closed
-        # before live-auth can accidentally become an activation trigger.
         with self.assertRaises(ValueError):
             build_live_auth_promotion_preview(
-                r,ledger(),decision(),trusted_now=NOW
+                r,ledger(),attested_decision(),trusted_now=NOW
             )
 
 if __name__=="__main__":
