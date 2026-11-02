@@ -4,6 +4,8 @@ import hmac
 import json
 import re
 
+from provider_readiness_evidence_gate import validate_record
+
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_ID=re.compile(r"^[0-9]+$")
@@ -108,6 +110,21 @@ def verify_attested_review_decision(value):
         if proposal.get("review_signer_workflow")!=value["review_signer_workflow"]:
             return False
         if proposal.get("review_github_metadata_match") is not True:
+            return False
+        if proposal.get("subject")!=value.get("subject"):
+            return False
+        if proposal.get("claim")!=value.get("claim"):
+            return False
+        if proposal.get("reviewer")!=value.get("reviewer"):
+            return False
+        if proposal.get("reviewed_at")!=value.get("reviewed_at"):
+            return False
+        if validate_record(
+            proposal,
+            subject=value["subject"],
+            claim=value["claim"],
+            trusted_now=None,
+        ):
             return False
 
     expected=value.get("attested_decision_sha256")
