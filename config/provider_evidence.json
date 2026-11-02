@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "providers": [
+    {
+      "name": "TheRundown",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    },
+    {
+      "name": "SportsDataIO",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    },
+    {
+      "name": "The Odds API",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    },
+    {
+      "name": "API-Sports",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    },
+    {
+      "name": "RapidAPI",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    },
+    {
+      "name": "WeatherAPI",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    },
+    {
+      "name": "Sportradar",
+      "evidence": {
+        "live_auth_verified": null,
+        "entitlement_verified": null,
+        "identity_verified": null,
+        "freshness_verified": null,
+        "model_evidence_allowed": null
+      }
+    }
+  ],
+  "model_gates": {
+    "source_provenance_verified": null,
+    "roster_injury_identity_verified": null,
+    "historical_calibration_verified": null,
+    "joint_dependence_verified": null
+  }
+}
