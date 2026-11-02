@@ -61,6 +61,44 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(final["attestation_url"],ATTESTATION_URL)
         self.assertEqual(final["signer_workflow"],SIGNER)
 
+    def test_wrong_source_repository_rejected_during_attestation_bind(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        with self.assertRaises(ValueError):
+            bind_attestation_verification(
+                pending,
+                marker_sha256=MARKER,
+                source_repository="other/repo",
+                attestation_id=ATTESTATION_ID,
+                attestation_url=ATTESTATION_URL,
+                signer_workflow=SIGNER,
+            )
+
+    def test_wrong_signer_rejected_during_attestation_bind(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        with self.assertRaises(ValueError):
+            bind_attestation_verification(
+                pending,
+                marker_sha256=MARKER,
+                source_repository=REPO,
+                attestation_id=ATTESTATION_ID,
+                attestation_url=ATTESTATION_URL,
+                signer_workflow=".github/workflows/apisports-status-probe.yml",
+            )
+
     def test_odds_pass_becomes_review_only_candidate(self):
         r=build_odds(
             {"status":"PASS","category":"authenticated_zero_credit_sports_schema"},
