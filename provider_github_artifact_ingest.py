@@ -3,7 +3,10 @@ from provider_artifact_receipt_ingest import ingest_artifact_bytes
 from provider_attestation_marker_artifact_ingest import (
     ingest_attestation_marker_artifact,
 )
-from provider_github_artifact_metadata import build_trusted_binding
+from provider_github_artifact_metadata import (
+    build_trusted_binding,
+    verify_downloaded_artifact,
+)
 from provider_receipt_review_candidate import bind_attestation_verification
 
 def ingest_github_artifact(
@@ -18,6 +21,9 @@ def ingest_github_artifact(
 ):
     receipt_binding=build_trusted_binding(
         receipt_metadata,provider=provider,trusted_now=trusted_now
+    )
+    receipt_zip_sha256=verify_downloaded_artifact(
+        receipt_binding,receipt_zip_bytes
     )
     marker_result=ingest_attestation_marker_artifact(
         marker_metadata,
@@ -53,6 +59,7 @@ def ingest_github_artifact(
     return {
         "status":"REVIEW_ONLY",
         "receipt_binding":receipt_binding,
+        "receipt_zip_sha256":receipt_zip_sha256,
         "attestation_verification":marker_result,
         "candidate":final_candidate,
         "ledger_mutation_permitted":False,
