@@ -1,10 +1,6 @@
-"""Strict offline endpoint policy checks; no network requests or secrets.
-
-Host and path must match an explicit allowlist. This does not establish TLS
-peer authentication; that requires the actual HTTPS transport and trusted CA.
-"""
+"""Strict offline endpoint allowlisting. No network calls or credentials."""
 from dataclasses import dataclass
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote
 import ipaddress
 
 @dataclass(frozen=True)
@@ -15,6 +11,8 @@ class EndpointPolicy:
 
 def verify_url(policy: EndpointPolicy, url: str) -> tuple[str, str]:
     try:
+        if not isinstance(url, str) or any(ord(ch) < 33 or ord(ch) == 127 for ch in url):
+            return ("FAIL", "URL_INVALID")
         parsed = urlsplit(url)
         host = parsed.hostname
         if parsed.scheme != "https" or not host or not policy.allowed_host:
@@ -33,10 +31,16 @@ def verify_url(policy: EndpointPolicy, url: str) -> tuple[str, str]:
         except ValueError:
             pass
         prefix = policy.allowed_path_prefix
-        if not prefix.startswith("/") or ".." in parsed.path.split("/"):
+        decoded = unquote(parsed.path)
+        if (not prefix.startswith("/") or not decoded.startswith("/") or
+            any(part in (".", "..") for part in decoded.split("/")) or
+            "\\" in decoded or "%" in decoded):
             return ("FAIL", "PATH_POLICY_INVALID")
-        if not (parsed.path == prefix.rstrip("/") or parsed.path.startswith(prefix.rstrip("/") + "/")):
+        normalized_prefix = prefix.rstrip("/")
+        if not (decoded == normalized_prefix or decoded.startswith(normalized_prefix + "/")):
             return ("FAIL", "PATH_NOT_ALLOWLISTED")
+        if parsed.query:
+            return ("FAIL", "QUERY_STRING_REQUIRES_PROVIDER_CONTRACT")
         if parsed.fragment:
             return ("FAIL", "FRAGMENT_FORBIDDEN")
         return ("PASS", "URL_POLICY_ONLY")
