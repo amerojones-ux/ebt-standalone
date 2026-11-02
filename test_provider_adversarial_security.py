@@ -16,4 +16,8 @@ class AdversarialSecurityTests(unittest.TestCase):
         with patch("secure_provider_collector.build_opener") as opener:
             opener.return_value.open.side_effect = OSError("synthetic transport failure")
             self.assertEqual(collect(P,U,headers={"X-API-Key":"dummy"}).status,"HOLD")
+    def test_opener_initialization_failure(self):
+        from unittest.mock import patch
+        with patch("secure_provider_collector.build_opener", side_effect=OSError("synthetic initialization failure")):
+            self.assertEqual(collect(P,U).status,"HOLD")
 if __name__=="__main__": unittest.main()
