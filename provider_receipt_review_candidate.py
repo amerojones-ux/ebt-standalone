@@ -15,6 +15,12 @@ from weatherapi_probe_receipt import verify_receipt as verify_weather
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_ID=re.compile(r"^[0-9]+$")
+SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
+SIGNER_WORKFLOWS={
+    "WeatherAPI":".github/workflows/weatherapi-live-probe.yml",
+    "The Odds API":".github/workflows/theoddsapi-live-probe.yml",
+    "API-Sports":".github/workflows/apisports-status-probe.yml",
+}
 
 SUPPORTED={
     "WeatherAPI":{
@@ -134,18 +140,17 @@ def bind_attestation_verification(
         raise ValueError("candidate already has attestation marker")
     if not isinstance(marker_sha256,str) or not SHA64.fullmatch(marker_sha256):
         raise ValueError("valid attestation marker checksum required")
-    if not isinstance(source_repository,str) or "/" not in source_repository:
-        raise ValueError("source repository required")
+    if source_repository != SOURCE_REPOSITORY:
+        raise ValueError("source repository mismatch")
     if not isinstance(attestation_id,str) or not attestation_id:
         raise ValueError("attestation id required")
     if not isinstance(attestation_url,str) or not attestation_url.startswith(
         "https://github.com/"+source_repository+"/attestations/"
     ):
         raise ValueError("attestation url/repository mismatch")
-    if not isinstance(signer_workflow,str) or not signer_workflow.startswith(
-        ".github/workflows/"
-    ):
-        raise ValueError("signer workflow required")
+    expected_signer=SIGNER_WORKFLOWS.get(candidate.get("provider"))
+    if signer_workflow != expected_signer:
+        raise ValueError("signer workflow mismatch")
 
     body={k:candidate[k] for k in BODY_FIELDS}
     body["candidate_status"]="REVIEW_ONLY"
