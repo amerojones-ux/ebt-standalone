@@ -20,13 +20,22 @@ PATH = "/v1/current.json"
 LOCATION = "Chicago"
 MAX_BODY = 32768
 
+class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject redirects before a second HTTP request can be issued."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
 def _safe_result(status, category, detail=None):
     out = {"status": status, "category": category}
     if detail is not None:
         out["detail"] = detail
     return out
 
-def probe(confirm, opener=urllib.request.urlopen, now_epoch=None):
+def _default_open(request, timeout):
+    opener = urllib.request.build_opener(NoRedirectHandler())
+    return opener.open(request, timeout=timeout)
+
+def probe(confirm, opener=None, now_epoch=None):
     if confirm != APPROVAL:
         return _safe_result("HOLD", "approval_missing")
     key = os.environ.get("EBT_WEATHER_API_KEY")
@@ -40,15 +49,16 @@ def probe(confirm, opener=urllib.request.urlopen, now_epoch=None):
         method="GET",
         headers={"Accept": "application/json", "User-Agent": "EBT-Black-Diamond/WeatherAPI-Auth-Probe"},
     )
+    opener = _default_open if opener is None else opener
     try:
         response = opener(request, timeout=10)
         status = getattr(response, "status", None)
         final_url = getattr(response, "url", url)
         parsed = urllib.parse.urlparse(final_url)
         if parsed.scheme != "https" or parsed.hostname != HOST or parsed.path != PATH:
-            return _safe_result("HOLD", "redirect_or_endpoint_mismatch")
-        if status != 200:
-            return _safe_result("HOLD", "http_status", int(status) if isinstance(status, int) else None)
+            return _safe_result("HOLD", "endpoint_mismatch")
+        if type(status) is not int or status != 200:
+            return _safe_result("HOLD", "http_status", status if type(status) is int else None)
         raw = response.read(MAX_BODY + 1)
         if len(raw) > MAX_BODY:
             return _safe_result("HOLD", "response_too_large")
@@ -61,6 +71,8 @@ def probe(confirm, opener=urllib.request.urlopen, now_epoch=None):
             return _safe_result("HOLD", "data_contract", len(errors))
         return _safe_result("PASS", "authenticated_schema_fresh")
     except urllib.error.HTTPError as exc:
+        if 300 <= exc.code < 400:
+            return _safe_result("HOLD", "redirect_blocked", int(exc.code))
         return _safe_result("HOLD", "http_error", int(exc.code))
     except (urllib.error.URLError, socket.timeout, TimeoutError):
         return _safe_result("HOLD", "transport_error")
