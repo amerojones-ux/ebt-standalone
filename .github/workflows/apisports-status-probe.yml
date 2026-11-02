@@ -105,6 +105,7 @@ jobs:
           ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
           ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
           ATTESTATION_BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+          BUNDLE_EXPORT_FILE: apisports_attestation_bundle.json
           RECEIPT_FILE: apisports_status_receipt.json
           VERIFICATION_MARKER: apisports_attestation_verification.json
           PROVIDER_NAME: API-Sports
@@ -129,12 +130,15 @@ jobs:
             --source-digest "$GITHUB_SHA" \
             --format json > /tmp/attestation-api-verification.json
 
+          cp -- "$ATTESTATION_BUNDLE_PATH" "$BUNDLE_EXPORT_FILE"
+          test -s "$BUNDLE_EXPORT_FILE"
+
           python3 - <<'PY'
           import hashlib
           import json
           import os
 
-          with open(os.environ["ATTESTATION_BUNDLE_PATH"], "rb") as handle:
+          with open(os.environ["BUNDLE_EXPORT_FILE"], "rb") as handle:
               bundle_sha256 = hashlib.sha256(handle.read()).hexdigest()
 
           body = {
@@ -166,6 +170,16 @@ jobs:
           PY
 
           echo "attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Persist exact verified attestation bundle
+        if: always() && steps.verify_attestation.outputs.attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apisports-attestation-bundle-${{ github.run_id }}
+          path: apisports_attestation_bundle.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
 
       - name: Persist attestation verification marker
         if: always() && steps.verify_attestation.outputs.attestation_verified == '1'
