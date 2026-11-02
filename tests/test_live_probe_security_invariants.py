@@ -164,12 +164,27 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     '/tmp/attestation-api-verification.json',
                     text,
                 )
-                self.assertIn('"schema_version": 2', text)
+                self.assertIn('"schema_version": 3', text)
                 self.assertIn(
                     '"verification_modes": ["local_bundle", "github_api"]',
                     text,
                 )
                 self.assertIn('"attestation_bundle_sha256": bundle_sha256', text)
+                self.assertIn('"runner_label": os.environ["RUNNER_LABEL"]', text)
+                self.assertIn('"python_version": os.environ["TOOLCHAIN_PYTHON_VERSION"]', text)
+                self.assertIn('"gh_version": os.environ["TOOLCHAIN_GH_VERSION"]', text)
+                self.assertIn('"setup_python_sha": os.environ["SETUP_PYTHON_SHA"]', text)
+                self.assertIn('"required_attestation_flags": [', text)
+                self.assertIn("RUNNER_LABEL: ubuntu-24.04", text)
+                self.assertIn("SETUP_PYTHON_SHA: " + SETUP_PYTHON_SHA, text)
+                self.assertIn(
+                    "TOOLCHAIN_PYTHON_VERSION: ${{ steps.toolchain.outputs.python_version }}",
+                    text,
+                )
+                self.assertIn(
+                    "TOOLCHAIN_GH_VERSION: ${{ steps.toolchain.outputs.gh_version }}",
+                    text,
+                )
                 self.assertIn(
                     'echo "attestation_verified=1" >> "$GITHUB_OUTPUT"',
                     text,
