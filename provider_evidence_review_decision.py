@@ -13,11 +13,19 @@ SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_REF=re.compile(r"^github-actions-run:[0-9]+$")
 DECISIONS={"APPROVE","REJECT"}
 SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
+SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
+SIGNER_WORKFLOWS={
+    "WeatherAPI":".github/workflows/weatherapi-live-probe.yml",
+    "The Odds API":".github/workflows/theoddsapi-live-probe.yml",
+    "API-Sports":".github/workflows/apisports-status-probe.yml",
+}
 
 CANDIDATE_BODY_FIELDS={
     "provider","subject","claim","candidate_status","source_type","reference",
-    "source_commit","github_metadata_match","receipt_sha256","artifact_sha256",
-    "attestation_verified","attestation_marker_sha256","reviewer_required",
+    "source_repository","source_commit","github_metadata_match",
+    "receipt_sha256","artifact_sha256","attestation_verified",
+    "attestation_marker_sha256","attestation_id","attestation_url",
+    "signer_workflow","reviewer_required",
     "readiness_mutation_permitted","forecast_activation_permitted",
 }
 CANDIDATE_FIELDS=CANDIDATE_BODY_FIELDS|{"candidate_sha256"}
@@ -58,6 +66,8 @@ def verify_candidate(candidate):
         return False
     if not RUN_REF.fullmatch(candidate.get("reference","")):
         return False
+    if candidate.get("source_repository")!=SOURCE_REPOSITORY:
+        return False
     if not SHA40.fullmatch(candidate.get("source_commit","")):
         return False
     if candidate.get("github_metadata_match") is not True:
@@ -69,6 +79,14 @@ def verify_candidate(candidate):
     if candidate.get("attestation_verified") is not True:
         return False
     if not SHA64.fullmatch(candidate.get("attestation_marker_sha256","")):
+        return False
+    if not isinstance(candidate.get("attestation_id"),str) or not candidate["attestation_id"]:
+        return False
+    if not isinstance(candidate.get("attestation_url"),str) or not candidate["attestation_url"].startswith(
+        "https://github.com/"+SOURCE_REPOSITORY+"/attestations/"
+    ):
+        return False
+    if candidate.get("signer_workflow")!=SIGNER_WORKFLOWS[candidate["provider"]]:
         return False
     if candidate.get("reviewer_required") is not True:
         return False
@@ -121,7 +139,9 @@ def verify_review_decision(result):
             return False
         required={
             "status","subject","claim","source_type","reference","reviewed_at",
-            "reviewer","source_commit","artifact_sha256",
+            "reviewer","source_repository","source_commit","receipt_sha256",
+            "artifact_sha256","attestation_marker_sha256","attestation_id",
+            "attestation_url","signer_workflow",
         }
         if set(proposal)!=required:
             return False
@@ -139,9 +159,23 @@ def verify_review_decision(result):
             return False
         if not RUN_REF.fullmatch(proposal.get("reference","")):
             return False
+        if proposal.get("source_repository")!=SOURCE_REPOSITORY:
+            return False
         if not SHA40.fullmatch(proposal.get("source_commit","")):
             return False
+        if not SHA64.fullmatch(proposal.get("receipt_sha256","")):
+            return False
         if not SHA64.fullmatch(proposal.get("artifact_sha256","")):
+            return False
+        if not SHA64.fullmatch(proposal.get("attestation_marker_sha256","")):
+            return False
+        if not isinstance(proposal.get("attestation_id"),str) or not proposal["attestation_id"]:
+            return False
+        if not isinstance(proposal.get("attestation_url"),str) or not proposal["attestation_url"].startswith(
+            "https://github.com/"+SOURCE_REPOSITORY+"/attestations/"
+        ):
+            return False
+        if proposal.get("signer_workflow")!=SIGNER_WORKFLOWS[proposal["subject"]]:
             return False
 
     expected=result.get("decision_sha256")
@@ -192,7 +226,13 @@ def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now)
         "reference":candidate["reference"],
         "reviewed_at":reviewed_at,
         "reviewer":reviewer.strip(),
+        "source_repository":candidate["source_repository"],
         "source_commit":candidate["source_commit"],
+        "receipt_sha256":candidate["receipt_sha256"],
         "artifact_sha256":candidate["artifact_sha256"],
+        "attestation_marker_sha256":candidate["attestation_marker_sha256"],
+        "attestation_id":candidate["attestation_id"],
+        "attestation_url":candidate["attestation_url"],
+        "signer_workflow":candidate["signer_workflow"],
     }
     return _sign_decision(body)
