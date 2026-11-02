@@ -46,7 +46,7 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
         raw=(json.dumps(weather_receipt(),sort_keys=True)+"\n").encode()
         result=ingest_artifact_bytes(
             zip_one("weatherapi_probe_receipt.json",raw),
-            provider="WeatherAPI",
+            provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT,
         )
         self.assertEqual(result["ingestion_status"],"REVIEW_ONLY")
         self.assertEqual(result["candidate"]["provider"],"WeatherAPI")
@@ -63,9 +63,9 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
             ("API-Sports","apisports_status_receipt.json",api_receipt()),
         ]
         for provider,name,receipt in cases:
-            with self.subTest(provider=provider):
+            with self.subTest(provider=provider,expected_run_id=RUN,expected_commit=COMMIT):
                 raw=json.dumps(receipt).encode()
-                r=ingest_artifact_bytes(zip_one(name,raw),provider=provider)
+                r=ingest_artifact_bytes(zip_one(name,raw),provider=provider,expected_run_id=RUN,expected_commit=COMMIT)
                 self.assertEqual(r["candidate"]["provider"],provider)
 
     def test_extra_file_rejected(self):
@@ -74,14 +74,14 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
             zf.writestr("weatherapi_probe_receipt.json",json.dumps(weather_receipt()))
             zf.writestr("extra.txt","x")
         with self.assertRaises(ValueError):
-            ingest_artifact_bytes(out.getvalue(),provider="WeatherAPI")
+            ingest_artifact_bytes(out.getvalue(),provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT)
 
     def test_wrong_or_nested_filename_rejected(self):
         raw=json.dumps(weather_receipt()).encode()
         for name in ("other.json","nested/weatherapi_probe_receipt.json","../weatherapi_probe_receipt.json"):
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
-                    ingest_artifact_bytes(zip_one(name,raw),provider="WeatherAPI")
+                    ingest_artifact_bytes(zip_one(name,raw),provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT)
 
     def test_symlink_member_rejected(self):
         raw=json.dumps(weather_receipt()).encode()
@@ -114,12 +114,12 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ingest_artifact_bytes(
                 zip_one("weatherapi_probe_receipt.json",json.dumps(weather_receipt()).encode()),
-                provider="API-Sports",
+                provider="API-Sports",expected_run_id=RUN,expected_commit=COMMIT,
             )
 
     def test_oversized_zip_rejected(self):
         with self.assertRaises(ValueError):
-            ingest_artifact_bytes(b"x"*(1024*1024+1),provider="WeatherAPI")
+            ingest_artifact_bytes(b"x"*(1024*1024+1),provider="WeatherAPI",expected_run_id=RUN,expected_commit=COMMIT)
 
 if __name__=="__main__":
     unittest.main()
