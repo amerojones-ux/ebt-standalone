@@ -32,7 +32,7 @@ def main():
         print("CHECK:",str(exc))
         return 1
 
-    print("RECEIPT_REVIEW_CANDIDATE: REVIEW_ONLY")
+    print("RECEIPT_REVIEW_CANDIDATE: REVIEW_ONLY_PENDING_ATTESTATION")
     print(json.dumps(candidate,sort_keys=True))
     print("No readiness or evidence-ledger mutation performed.")
     return 0
