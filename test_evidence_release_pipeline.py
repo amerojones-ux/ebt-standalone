@@ -28,4 +28,12 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(run(replace(B,intake=replace(I,source_authenticated=None)))[0],"HOLD")
     def test_invalid_digest(self):
         self.assertEqual(run(replace(B,integrity_record=replace(R,sha256="0"*64)))[0],"HOLD")
+    def test_provider_identity_mismatch(self):
+        self.assertEqual(run(replace(B,integrity_record=replace(R,provider="Sportradar")))[0],"HOLD")
+    def test_endpoint_identity_mismatch(self):
+        self.assertEqual(run(replace(B,integrity_record=replace(R,endpoint_id="other")))[0],"HOLD")
+    def test_publication_timestamp_mismatch(self):
+        self.assertEqual(run(replace(B,integrity_record=replace(R,source_published_at="2026-11-01T11:00:00Z")))[0],"HOLD")
+    def test_evidence_reference_mismatch(self):
+        self.assertEqual(run(replace(B,intake=replace(I,evidence_id="different")))[0],"HOLD")
 if __name__=="__main__": unittest.main()
