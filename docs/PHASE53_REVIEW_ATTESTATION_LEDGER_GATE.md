@@ -96,3 +96,8 @@ provider request
 → still SAFE_HOLD
 
 No provider request, credential access, ledger write, readiness write, forecast activation, or wager action occurs in this phase.
+
+
+## Phase 54 operational handoff
+
+Phase 54 adds a manual/default-NO GitHub Actions workflow that retrieves one exact signed review package, ingests its attested review decision, generates the evidence-backed live-auth promotion preview, enforces `SAFE_HOLD`, and signs/verifies the preview artifact. It does not apply the preview.
