@@ -49,7 +49,7 @@ def zip_receipt():
 def verification_marker(bundle_bytes=None):
     bundle_bytes=bundle_file() if bundle_bytes is None else bundle_bytes
     body={
-        "schema_version":2,
+        "schema_version":3,
         "provider":"WeatherAPI",
         "verification_status":"VERIFIED",
         "repository":REPO,
@@ -63,6 +63,18 @@ def verification_marker(bundle_bytes=None):
         "receipt_file":"weatherapi_probe_receipt.json",
         "verification_tool":"gh attestation verify",
         "verification_modes":["local_bundle","github_api"],
+        "runner_label":"ubuntu-24.04",
+        "python_version":"3.13.7",
+        "gh_version":"2.80.0",
+        "setup_python_sha":"6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "required_attestation_flags":[
+            "--bundle",
+            "--repo",
+            "--signer-workflow",
+            "--source-ref",
+            "--source-digest",
+            "--format",
+        ],
     }
     canonical=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
     marker=dict(body)
@@ -189,6 +201,48 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         bundle_zip=zip_bundle()
         marker=verification_marker()
         marker["verification_modes"]=["github_api"]
+        body={k:v for k,v in marker.items() if k!="marker_sha256"}
+        marker["marker_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        marker_zip=zip_one(
+            "weatherapi_attestation_verification.json",
+            (json.dumps(marker,sort_keys=True)+"\n").encode(),
+        )
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(receipt_zip),receipt_zip,
+                marker_metadata(marker_zip),marker_zip,
+                bundle_metadata(bundle_zip),bundle_zip,
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_toolchain_fingerprint_drift_rejected(self):
+        receipt_zip=zip_receipt()
+        bundle_zip=zip_bundle()
+        marker=verification_marker()
+        marker["python_version"]="3.12.9"
+        body={k:v for k,v in marker.items() if k!="marker_sha256"}
+        marker["marker_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        marker_zip=zip_one(
+            "weatherapi_attestation_verification.json",
+            (json.dumps(marker,sort_keys=True)+"\n").encode(),
+        )
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(receipt_zip),receipt_zip,
+                marker_metadata(marker_zip),marker_zip,
+                bundle_metadata(bundle_zip),bundle_zip,
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_required_flag_drift_rejected(self):
+        receipt_zip=zip_receipt()
+        bundle_zip=zip_bundle()
+        marker=verification_marker()
+        marker["required_attestation_flags"]=["--repo"]
         body={k:v for k,v in marker.items() if k!="marker_sha256"}
         marker["marker_sha256"]=hashlib.sha256(
             json.dumps(body,sort_keys=True,separators=(",",":")).encode()
