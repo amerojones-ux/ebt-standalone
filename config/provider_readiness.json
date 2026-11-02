@@ -1,0 +1,83 @@
+{
+  "forecast_enabled": false,
+  "network_autorun_enabled": false,
+  "required_providers": [],
+  "model_gates": {
+    "source_provenance_verified": false,
+    "roster_injury_identity_verified": false,
+    "historical_calibration_verified": false,
+    "joint_dependence_verified": false
+  },
+  "providers": [
+    {
+      "name": "TheRundown",
+      "role": "secondary_stats",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "SportsDataIO",
+      "role": "primary_stats",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "The Odds API",
+      "role": "market_comparison_only",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "API-Sports",
+      "role": "primary_stats",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "RapidAPI",
+      "role": "aggregator_unresolved",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "WeatherAPI",
+      "role": "weather_context",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "Sportradar",
+      "role": "primary_stats",
+      "contract_ready": true,
+      "live_auth_verified": false,
+      "entitlement_verified": false,
+      "identity_verified": false,
+      "freshness_verified": false,
+      "model_evidence_allowed": false
+    }
+  ]
+}
