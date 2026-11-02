@@ -14,7 +14,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 from weatherapi_contract import validate_current
-from weatherapi_probe_receipt import build_receipt, write_receipt
+from weatherapi_probe_receipt import ALLOWED_CATEGORIES, ALLOWED_STATUS, build_receipt, write_receipt
 
 REQUEST_APPROVAL = "I_APPROVE_ONE_WEATHERAPI_REQUEST"
 PLAN_REVIEW_APPROVAL = "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED"
@@ -38,6 +38,12 @@ class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 def _safe_result(status, category, detail=None):
+    if status not in ALLOWED_STATUS:
+        raise ValueError("result status is not receipt-compatible")
+    if category not in ALLOWED_CATEGORIES:
+        raise ValueError("result category is not receipt-compatible")
+    if detail is not None and type(detail) is not int:
+        raise ValueError("result detail is not receipt-compatible")
     out = {"status": status, "category": category}
     if detail is not None:
         out["detail"] = detail
