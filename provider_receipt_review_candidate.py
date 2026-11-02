@@ -1,9 +1,10 @@
-"""Convert supported sanitized provider PASS receipts into review-only evidence candidates.
+"""Build receipt-derived candidates, then bind verified attestation evidence.
 
-This module never edits provider readiness or the evidence ledger. It produces a
-candidate that still requires an authorized reviewer to create a VERIFIED ledger record.
+A receipt alone can create only REVIEW_ONLY_PENDING_ATTESTATION. Reviewer-eligible
+REVIEW_ONLY status requires a separate verified attestation marker binding.
 """
 import hashlib
+import hmac
 import json
 import re
 
@@ -29,6 +30,32 @@ SUPPORTED={
         "pass_category":"authenticated_status_schema",
     },
 }
+
+BODY_FIELDS={
+    "provider","subject","claim","candidate_status","source_type","reference",
+    "source_commit","github_metadata_match","receipt_sha256","artifact_sha256",
+    "attestation_verified","attestation_marker_sha256","reviewer_required",
+    "readiness_mutation_permitted","forecast_activation_permitted",
+}
+ALL_FIELDS=BODY_FIELDS|{"candidate_sha256"}
+
+def _canonical(body):
+    return json.dumps(body,sort_keys=True,separators=(",",":")).encode("utf-8")
+
+def _sign(body):
+    candidate=dict(body)
+    candidate["candidate_sha256"]=hashlib.sha256(_canonical(body)).hexdigest()
+    return candidate
+
+def verify_candidate_checksum(candidate):
+    if not isinstance(candidate,dict) or set(candidate)!=ALL_FIELDS:
+        return False
+    expected=candidate.get("candidate_sha256")
+    if not isinstance(expected,str) or not SHA64.fullmatch(expected):
+        return False
+    body={k:candidate[k] for k in BODY_FIELDS}
+    actual=hashlib.sha256(_canonical(body)).hexdigest()
+    return hmac.compare_digest(actual,expected)
 
 def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expected_commit):
     if not isinstance(receipt,dict):
@@ -64,22 +91,38 @@ def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expecte
     if commit.lower() != expected_commit.lower():
         raise ValueError("receipt commit does not match trusted GitHub head commit")
 
-    body={
+    return _sign({
         "provider":provider,
         "subject":provider,
         "claim":"live_auth_verified",
-        "candidate_status":"REVIEW_ONLY",
+        "candidate_status":"REVIEW_ONLY_PENDING_ATTESTATION",
         "source_type":"github_actions_receipt",
         "reference":"github-actions-run:"+run_id,
         "source_commit":commit.lower(),
         "github_metadata_match":True,
         "receipt_sha256":receipt_digest,
         "artifact_sha256":artifact_sha256.lower(),
+        "attestation_verified":False,
+        "attestation_marker_sha256":None,
         "reviewer_required":True,
         "readiness_mutation_permitted":False,
         "forecast_activation_permitted":False,
-    }
-    canonical=json.dumps(body,sort_keys=True,separators=(",",":")).encode("utf-8")
-    candidate=dict(body)
-    candidate["candidate_sha256"]=hashlib.sha256(canonical).hexdigest()
-    return candidate
+    })
+
+def bind_attestation_verification(candidate, *, marker_sha256):
+    if not verify_candidate_checksum(candidate):
+        raise ValueError("candidate checksum invalid")
+    if candidate.get("candidate_status")!="REVIEW_ONLY_PENDING_ATTESTATION":
+        raise ValueError("candidate is not pending attestation")
+    if candidate.get("attestation_verified") is not False:
+        raise ValueError("candidate attestation state invalid")
+    if candidate.get("attestation_marker_sha256") is not None:
+        raise ValueError("candidate already has attestation marker")
+    if not isinstance(marker_sha256,str) or not SHA64.fullmatch(marker_sha256):
+        raise ValueError("valid attestation marker checksum required")
+
+    body={k:candidate[k] for k in BODY_FIELDS}
+    body["candidate_status"]="REVIEW_ONLY"
+    body["attestation_verified"]=True
+    body["attestation_marker_sha256"]=marker_sha256.lower()
+    return _sign(body)
