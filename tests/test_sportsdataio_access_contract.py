@@ -4,6 +4,7 @@ from sportsdataio_access_contract import (
     classify_access,
     validate_auth_config,
     can_promote_to_model_evidence,
+    can_promote_to_schedule_evidence,
 )
 
 class SportsDataIoAccessContractTests(unittest.TestCase):
@@ -58,6 +59,15 @@ class SportsDataIoAccessContractTests(unittest.TestCase):
     def test_nonproduction_never_promotes_even_with_flags(self):
         self.assertFalse(can_promote_to_model_evidence("FREE_TRIAL", True, True, True))
         self.assertFalse(can_promote_to_model_evidence("REPLAY", True, True, True))
+
+    def test_global_production_never_promotes_to_generic_model_evidence(self):
+        self.assertFalse(can_promote_to_model_evidence("GLOBAL_PRODUCTION", True, True, True))
+
+    def test_global_production_can_only_promote_to_schedule_evidence(self):
+        self.assertTrue(can_promote_to_schedule_evidence("GLOBAL_PRODUCTION", True, True, True))
+
+    def test_method_normalization_is_consistent(self):
+        self.assertTrue(can_promote_to_model_evidence("  leagues_production  ", True, True, True))
 
 if __name__ == "__main__":
     unittest.main()
