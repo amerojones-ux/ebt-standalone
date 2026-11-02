@@ -33,16 +33,46 @@ jobs:
         inputs.confirm_account_review == 'I_CONFIRM_APISPORTS_STATUS_PRIVACY_AND_RATE_LIMIT_REVIEWED' &&
         inputs.confirm_live_request == 'I_APPROVE_ONE_APISPORTS_STATUS_REQUEST'
       }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: main
           persist-credentials: false
 
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          check-latest: false
+
+      - name: Validate pinned Python and GitHub CLI attestation capabilities
+        id: toolchain
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import sys
+          if sys.version_info[:2] != (3, 13):
+              raise SystemExit("Python 3.13 required")
+          PY
+
+          gh --version
+          gh attestation verify --help > /tmp/gh-attestation-verify-help.txt
+          for flag in \
+            --bundle \
+            --repo \
+            --signer-workflow \
+            --source-ref \
+            --source-digest \
+            --format
+          do
+            grep -F -- "$flag" /tmp/gh-attestation-verify-help.txt >/dev/null
+          done
+          echo "toolchain_verified=1" >> "$GITHUB_OUTPUT"
+
       - name: Execute one sanitized API-Sports status request and verify receipt
         id: probe
+        if: steps.toolchain.outputs.toolchain_verified == '1'
         env:
           EBT_APISPORTS_API_KEY: ${{ secrets.EBT_APISPORTS_API_KEY }}
         run: |
