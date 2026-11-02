@@ -15,7 +15,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 from theoddsapi_contract import validate_quota_headers, validate_sports
-from theoddsapi_probe_receipt import build_receipt, write_receipt
+from theoddsapi_probe_receipt import ALLOWED_CATEGORIES, ALLOWED_STATUS, build_receipt, write_receipt
 
 REQUEST_APPROVAL = "I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST"
 ACCOUNT_REVIEW_APPROVAL = "I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED"
@@ -38,6 +38,12 @@ class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 def _safe_result(status, category, detail=None):
+    if status not in ALLOWED_STATUS:
+        raise ValueError("result status is not receipt-compatible")
+    if category not in ALLOWED_CATEGORIES:
+        raise ValueError("result category is not receipt-compatible")
+    if detail is not None and type(detail) is not int:
+        raise ValueError("result detail is not receipt-compatible")
     out = {"status": status, "category": category}
     if detail is not None:
         out["detail"] = detail
