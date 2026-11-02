@@ -48,3 +48,8 @@ The committed ledger contains no verified records, matching the current all-fals
 - `GLOBAL_PROVIDER_GATE: SAFE_HOLD`
 
 No provider network, secret, quota, or wager action is touched by this phase.
+
+
+## Schema v2 update
+
+Phase 50 supersedes the initial ledger record shape with `schema_version: 2` for live-auth evidence. GitHub Actions receipt records now require the signed-attestation provenance fields documented in `docs/PHASE50_ATTESTED_LEDGER_PROVENANCE.md`. The original evidence-source and claim-binding principles remain unchanged.

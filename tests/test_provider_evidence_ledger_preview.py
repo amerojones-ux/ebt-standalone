@@ -11,6 +11,10 @@ COMMIT="a"*40
 RUN="12345"
 ARTIFACT="d"*64
 MARKER="e"*64
+REPO="amerojones-ux/ebt-standalone"
+ATTESTATION_ID="attestation-123"
+ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
+SIGNER=".github/workflows/apisports-status-probe.yml"
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -27,7 +31,14 @@ def decision():
         receipt,artifact_sha256=ARTIFACT,
         expected_run_id=RUN,expected_commit=COMMIT
     )
-    candidate=bind_attestation_verification(pending,marker_sha256=MARKER)
+    candidate=bind_attestation_verification(
+        pending,
+        marker_sha256=MARKER,
+        source_repository=REPO,
+        attestation_id=ATTESTATION_ID,
+        attestation_url=ATTESTATION_URL,
+        signer_workflow=SIGNER,
+    )
     return review_candidate(
         candidate,decision="APPROVE",reviewer="authorized-reviewer",
         reviewed_at=REVIEWED,trusted_now=NOW
@@ -67,7 +78,14 @@ class ProviderEvidenceLedgerPreviewTests(unittest.TestCase):
             receipt,artifact_sha256=ARTIFACT,
             expected_run_id=RUN,expected_commit=COMMIT
         )
-        candidate=bind_attestation_verification(pending,marker_sha256=MARKER)
+        candidate=bind_attestation_verification(
+            pending,
+            marker_sha256=MARKER,
+            source_repository=REPO,
+            attestation_id=ATTESTATION_ID,
+            attestation_url=ATTESTATION_URL,
+            signer_workflow=SIGNER,
+        )
         rejected=review_candidate(
             candidate,decision="REJECT",reviewer="authorized-reviewer",
             reviewed_at=REVIEWED,trusted_now=NOW

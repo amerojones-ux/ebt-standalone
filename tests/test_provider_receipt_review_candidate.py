@@ -9,6 +9,10 @@ COMMIT="a"*40
 RUN="123456"
 ARTIFACT="d"*64
 MARKER="e"*64
+REPO="amerojones-ux/ebt-standalone"
+ATTESTATION_ID="attestation-123"
+ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
+SIGNER=".github/workflows/weatherapi-live-probe.yml"
 
 class ProviderReceiptReviewCandidateTests(unittest.TestCase):
     def test_weather_pass_becomes_review_only_candidate(self):
@@ -23,6 +27,10 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(c["candidate_status"],"REVIEW_ONLY_PENDING_ATTESTATION")
         self.assertIs(c["attestation_verified"],False)
         self.assertIsNone(c["attestation_marker_sha256"])
+        self.assertIsNone(c["source_repository"])
+        self.assertIsNone(c["attestation_id"])
+        self.assertIsNone(c["attestation_url"])
+        self.assertIsNone(c["signer_workflow"])
         self.assertIs(c["github_metadata_match"],True)
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])
@@ -37,10 +45,59 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             r,artifact_sha256=ARTIFACT,
             expected_run_id=RUN,expected_commit=COMMIT
         )
-        final=bind_attestation_verification(pending,marker_sha256=MARKER)
+        final=bind_attestation_verification(
+            pending,
+            marker_sha256=MARKER,
+            source_repository=REPO,
+            attestation_id=ATTESTATION_ID,
+            attestation_url=ATTESTATION_URL,
+            signer_workflow=SIGNER,
+        )
         self.assertEqual(final["candidate_status"],"REVIEW_ONLY")
         self.assertIs(final["attestation_verified"],True)
         self.assertEqual(final["attestation_marker_sha256"],MARKER)
+        self.assertEqual(final["source_repository"],REPO)
+        self.assertEqual(final["attestation_id"],ATTESTATION_ID)
+        self.assertEqual(final["attestation_url"],ATTESTATION_URL)
+        self.assertEqual(final["signer_workflow"],SIGNER)
+
+    def test_wrong_source_repository_rejected_during_attestation_bind(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        with self.assertRaises(ValueError):
+            bind_attestation_verification(
+                pending,
+                marker_sha256=MARKER,
+                source_repository="other/repo",
+                attestation_id=ATTESTATION_ID,
+                attestation_url=ATTESTATION_URL,
+                signer_workflow=SIGNER,
+            )
+
+    def test_wrong_signer_rejected_during_attestation_bind(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        with self.assertRaises(ValueError):
+            bind_attestation_verification(
+                pending,
+                marker_sha256=MARKER,
+                source_repository=REPO,
+                attestation_id=ATTESTATION_ID,
+                attestation_url=ATTESTATION_URL,
+                signer_workflow=".github/workflows/apisports-status-probe.yml",
+            )
 
     def test_odds_pass_becomes_review_only_candidate(self):
         r=build_odds(

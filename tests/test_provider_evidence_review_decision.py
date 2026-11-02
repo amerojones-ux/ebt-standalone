@@ -9,6 +9,10 @@ COMMIT="a"*40
 RUN="12345"
 ARTIFACT="d"*64
 MARKER="e"*64
+REPO="amerojones-ux/ebt-standalone"
+ATTESTATION_ID="attestation-123"
+ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
+SIGNER=".github/workflows/apisports-status-probe.yml"
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
 
@@ -21,7 +25,14 @@ def candidate():
         receipt,artifact_sha256=ARTIFACT,
         expected_run_id=RUN,expected_commit=COMMIT
     )
-    return bind_attestation_verification(pending,marker_sha256=MARKER)
+    return bind_attestation_verification(
+        pending,
+        marker_sha256=MARKER,
+        source_repository=REPO,
+        attestation_id=ATTESTATION_ID,
+        attestation_url=ATTESTATION_URL,
+        signer_workflow=SIGNER,
+    )
 
 class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_candidate_checksum_verifies(self):
@@ -68,6 +79,11 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         self.assertEqual(r["ledger_record_proposal"]["status"],"VERIFIED")
         self.assertEqual(r["ledger_record_proposal"]["subject"],"API-Sports")
         self.assertEqual(r["ledger_record_proposal"]["claim"],"live_auth_verified")
+        self.assertEqual(r["ledger_record_proposal"]["source_repository"],REPO)
+        self.assertEqual(r["ledger_record_proposal"]["attestation_id"],ATTESTATION_ID)
+        self.assertEqual(r["ledger_record_proposal"]["attestation_url"],ATTESTATION_URL)
+        self.assertEqual(r["ledger_record_proposal"]["signer_workflow"],SIGNER)
+        self.assertEqual(r["ledger_record_proposal"]["attestation_marker_sha256"],MARKER)
         self.assertFalse(r["ledger_mutation_permitted"])
         self.assertFalse(r["readiness_mutation_permitted"])
         self.assertFalse(r["forecast_activation_permitted"])
