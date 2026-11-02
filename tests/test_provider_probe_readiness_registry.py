@@ -29,6 +29,8 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertFalse(probe["execution_claimed"])
             self.assertTrue(probe["signed_provenance_required"])
             self.assertTrue(probe["cryptographic_verification_required"])
+            self.assertTrue(probe["exact_bundle_verification_required"])
+            self.assertTrue(probe["github_api_verification_required"])
 
     def test_network_enable_drift_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
@@ -75,6 +77,34 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         r=assess_probe(
             "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_exact_bundle_verification_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '--bundle "$ATTESTATION_BUNDLE_PATH"',
+            '--bundle "/tmp/untrusted.json"',
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_dual_verification_marker_modes_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '"verification_modes": ["local_bundle", "github_api"]',
+            '"verification_modes": ["github_api"]',
+        )
+        r=assess_probe(
+            "The Odds API",
             json_loader=lambda p:cfg[p],
             text_loader=lambda p:wfs[p],
         )
