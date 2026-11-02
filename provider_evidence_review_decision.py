@@ -12,6 +12,7 @@ SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_REF=re.compile(r"^github-actions-run:[0-9]+$")
 DECISIONS={"APPROVE","REJECT"}
+SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
 
 CANDIDATE_BODY_FIELDS={
     "provider","subject","claim","candidate_status","source_type","reference",
@@ -36,6 +37,8 @@ def _canonical(body):
 
 def verify_candidate(candidate):
     if not isinstance(candidate,dict) or set(candidate)!=CANDIDATE_FIELDS:
+        return False
+    if candidate.get("provider") not in SUPPORTED_PROVIDERS:
         return False
     if candidate.get("provider")!=candidate.get("subject"):
         return False
