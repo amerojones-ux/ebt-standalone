@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import unittest
@@ -126,6 +127,41 @@ class WeatherApiLiveProbeTests(unittest.TestCase):
             )
             self.assertEqual(r["category"], "redirect_blocked")
             self.assertEqual(r["detail"], 302)
+
+    def test_provider_error_codes_are_sanitized(self):
+        cases = {
+            1002: "auth_missing_key",
+            2006: "auth_invalid_key",
+            2007: "quota_exceeded",
+            2008: "key_disabled",
+            2009: "entitlement_denied",
+        }
+        for code, category in cases.items():
+            def fail(req, timeout, code=code):
+                body = io.BytesIO(json.dumps({"error":{"code":code,"message":"SECRET MESSAGE"}}).encode())
+                raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", {}, body)
+            with patch.dict(os.environ, {"EBT_WEATHER_API_KEY": "test-secret"}):
+                r = probe(REQUEST_APPROVAL, PLAN_REVIEW_APPROVAL, opener=fail, now_epoch=NOW)
+                self.assertEqual(r["category"], category)
+                self.assertEqual(r["detail"], code)
+                self.assertNotIn("SECRET MESSAGE", repr(r))
+
+    def test_unknown_provider_error_falls_back_to_http_error(self):
+        def fail(req, timeout):
+            body = io.BytesIO(json.dumps({"error":{"code":9999,"message":"internal"}}).encode())
+            raise urllib.error.HTTPError(req.full_url, 500, "Internal", {}, body)
+        with patch.dict(os.environ, {"EBT_WEATHER_API_KEY": "test-secret"}):
+            r = probe(REQUEST_APPROVAL, PLAN_REVIEW_APPROVAL, opener=fail, now_epoch=NOW)
+            self.assertEqual(r["category"], "http_error")
+            self.assertEqual(r["detail"], 9999)
+
+    def test_malformed_error_body_falls_back_to_status(self):
+        def fail(req, timeout):
+            raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", {}, io.BytesIO(b"{"))
+        with patch.dict(os.environ, {"EBT_WEATHER_API_KEY": "test-secret"}):
+            r = probe(REQUEST_APPROVAL, PLAN_REVIEW_APPROVAL, opener=fail, now_epoch=NOW)
+            self.assertEqual(r["category"], "http_error")
+            self.assertEqual(r["detail"], 403)
 
     def test_no_redirect_handler_refuses_follow_up(self):
         self.assertIsNone(
