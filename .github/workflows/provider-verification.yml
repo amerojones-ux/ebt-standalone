@@ -24,6 +24,8 @@ on:
       - test_provider_adversarial_security.py
       - trust_attestation.py
       - test_trust_attestation.py
+      - provider_live_gate.py
+      - test_provider_live_gate.py
       - .github/workflows/provider-verification.yml
   workflow_dispatch:
 permissions:
@@ -43,4 +45,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Offline provider verification tests
-        run: python -m unittest -v test_provider_verification test_provider_contracts test_provider_capture_integrity test_release_readiness test_provider_intake test_evidence_release_pipeline test_provider_endpoint_policy test_secure_provider_collector test_provider_adversarial_security test_trust_attestation
+        run: python -m unittest -v test_provider_verification test_provider_contracts test_provider_capture_integrity test_release_readiness test_provider_intake test_evidence_release_pipeline test_provider_endpoint_policy test_secure_provider_collector test_provider_adversarial_security test_trust_attestation test_provider_live_gate
