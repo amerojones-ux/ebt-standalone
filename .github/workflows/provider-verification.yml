@@ -7,6 +7,8 @@ on:
     paths:
       - provider_verification.py
       - test_provider_verification.py
+      - provider_contracts.py
+      - test_provider_contracts.py
       - .github/workflows/provider-verification.yml
   workflow_dispatch:
 permissions:
@@ -26,4 +28,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Offline provider verification tests
-        run: python -m unittest -v test_provider_verification
+        run: python -m unittest -v test_provider_verification test_provider_contracts
