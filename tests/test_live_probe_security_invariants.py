@@ -42,6 +42,7 @@ WORKFLOWS = {
 }
 UPLOAD_ARTIFACT_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
 ATTEST_SHA = "1e69f48acb82d1966a394da916b4c1698aa569d6"
+SETUP_PYTHON_SHA = "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
 
 
 class LiveProbeSecurityInvariantTests(unittest.TestCase):
@@ -50,6 +51,9 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
             with self.subTest(name=name):
                 text = spec["path"].read_text(encoding="utf-8")
                 self.assertIn("workflow_dispatch:", text)
+                self.assertIn("runs-on: ubuntu-24.04", text)
+                self.assertNotIn("runs-on: ubuntu-latest", text)
+                self.assertIn("timeout-minutes: 5", text)
                 self.assertIn("github.ref == 'refs/heads/main'", text)
                 self.assertIn("ref: main", text)
                 self.assertIn("persist-credentials: false", text)
@@ -63,6 +67,27 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertNotIn("\n  push:", text)
                 self.assertIn('default: "NO"', text)
                 self.assertIn("verify_receipt", text)
+                self.assertIn("actions/setup-python@" + SETUP_PYTHON_SHA, text)
+                self.assertIn('python-version: "3.13"', text)
+                self.assertIn("check-latest: false", text)
+                self.assertIn("id: toolchain", text)
+                self.assertIn(
+                    "if: steps.toolchain.outputs.toolchain_verified == '1'",
+                    text,
+                )
+                self.assertIn(
+                    'echo "toolchain_verified=1" >> "$GITHUB_OUTPUT"',
+                    text,
+                )
+                for flag in (
+                    "--bundle",
+                    "--repo",
+                    "--signer-workflow",
+                    "--source-ref",
+                    "--source-digest",
+                    "--format",
+                ):
+                    self.assertIn(flag, text)
 
     def test_live_workflows_persist_only_sanitized_evidence_artifacts(self):
         for name, spec in WORKFLOWS.items():
