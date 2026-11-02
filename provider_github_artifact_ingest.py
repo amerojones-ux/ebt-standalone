@@ -3,6 +3,9 @@ from provider_artifact_receipt_ingest import ingest_artifact_bytes
 from provider_attestation_marker_artifact_ingest import (
     ingest_attestation_marker_artifact,
 )
+from provider_attestation_bundle_artifact_ingest import (
+    ingest_attestation_bundle_artifact,
+)
 from provider_github_artifact_metadata import (
     build_trusted_binding,
     verify_downloaded_artifact,
@@ -14,6 +17,8 @@ def ingest_github_artifact(
     receipt_zip_bytes,
     marker_metadata,
     marker_zip_bytes,
+    bundle_metadata,
+    bundle_zip_bytes,
     *,
     provider,
     repository,
@@ -34,9 +39,19 @@ def ingest_github_artifact(
     )
 
     marker_binding=marker_result["binding"]
+    bundle_result=ingest_attestation_bundle_artifact(
+        bundle_metadata,
+        bundle_zip_bytes,
+        provider=provider,
+        trusted_now=trusted_now,
+        expected_bundle_sha256=marker_result["attestation_bundle_sha256"],
+    )
+    bundle_binding=bundle_result["binding"]
     for key in ("expected_run_id","expected_commit","repository_id"):
         if marker_binding[key]!=receipt_binding[key]:
             raise ValueError("receipt/marker GitHub provenance mismatch")
+        if bundle_binding[key]!=receipt_binding[key]:
+            raise ValueError("receipt/bundle GitHub provenance mismatch")
 
     receipt_result=ingest_artifact_bytes(
         receipt_zip_bytes,
@@ -61,6 +76,7 @@ def ingest_github_artifact(
         "receipt_binding":receipt_binding,
         "receipt_zip_sha256":receipt_zip_sha256,
         "attestation_verification":marker_result,
+        "attestation_bundle":bundle_result,
         "candidate":final_candidate,
         "ledger_mutation_permitted":False,
         "readiness_mutation_permitted":False,

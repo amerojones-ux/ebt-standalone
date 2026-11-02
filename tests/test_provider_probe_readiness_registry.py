@@ -31,6 +31,7 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertTrue(probe["cryptographic_verification_required"])
             self.assertTrue(probe["exact_bundle_verification_required"])
             self.assertTrue(probe["github_api_verification_required"])
+            self.assertTrue(probe["persisted_attestation_bundle_required"])
 
     def test_network_enable_drift_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
@@ -105,6 +106,35 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         r=assess_probe(
             "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_persisted_bundle_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            'cp -- "$ATTESTATION_BUNDLE_PATH" "$BUNDLE_EXPORT_FILE"',
+            'true',
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_bundle_artifact_name_drift_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["API-Sports"]
+        expected="name: "+spec["bundle_prefix"]+"-${{ github.run_id }}"
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            expected,
+            "name: wrong-bundle-${{ github.run_id }}",
+        )
+        r=assess_probe(
+            "API-Sports",
             json_loader=lambda p:cfg[p],
             text_loader=lambda p:wfs[p],
         )

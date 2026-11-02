@@ -15,6 +15,8 @@ WORKFLOWS = {
         "artifact_prefix": "weatherapi-probe-receipt",
         "marker": "weatherapi_attestation_verification.json",
         "marker_prefix": "weatherapi-attestation-verification",
+        "bundle": "weatherapi_attestation_bundle.json",
+        "bundle_prefix": "weatherapi-attestation-bundle",
         "signer": ".github/workflows/weatherapi-live-probe.yml",
     },
     "odds": {
@@ -23,6 +25,8 @@ WORKFLOWS = {
         "artifact_prefix": "theoddsapi-probe-receipt",
         "marker": "theoddsapi_attestation_verification.json",
         "marker_prefix": "theoddsapi-attestation-verification",
+        "bundle": "theoddsapi_attestation_bundle.json",
+        "bundle_prefix": "theoddsapi-attestation-bundle",
         "signer": ".github/workflows/theoddsapi-live-probe.yml",
     },
     "apisports": {
@@ -31,6 +35,8 @@ WORKFLOWS = {
         "artifact_prefix": "apisports-status-receipt",
         "marker": "apisports_attestation_verification.json",
         "marker_prefix": "apisports-attestation-verification",
+        "bundle": "apisports_attestation_bundle.json",
+        "bundle_prefix": "apisports-attestation-bundle",
         "signer": ".github/workflows/apisports-status-probe.yml",
     },
 }
@@ -76,6 +82,11 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     "name: " + spec["marker_prefix"] + "-${{ github.run_id }}",
                     text,
                 )
+                self.assertIn(
+                    "name: " + spec["bundle_prefix"] + "-${{ github.run_id }}",
+                    text,
+                )
+                self.assertIn("path: " + spec["bundle"], text)
                 self.assertIn("path: " + spec["marker"], text)
                 self.assertIn("if-no-files-found: error", text)
                 self.assertIn("retention-days: 7", text)

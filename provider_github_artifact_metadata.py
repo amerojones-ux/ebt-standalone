@@ -21,6 +21,11 @@ ATTESTATION_MARKER_PREFIXES={
     "The Odds API":"theoddsapi-attestation-verification-",
     "API-Sports":"apisports-attestation-verification-",
 }
+ATTESTATION_BUNDLE_PREFIXES={
+    "WeatherAPI":"weatherapi-attestation-bundle-",
+    "The Odds API":"theoddsapi-attestation-bundle-",
+    "API-Sports":"apisports-attestation-bundle-",
+}
 MAX_ARTIFACT_BYTES=1024*1024
 
 def _parse_time(value):
@@ -116,6 +121,12 @@ def build_attestation_marker_binding(metadata, *, provider, trusted_now):
     return _build_binding(
         metadata,provider=provider,trusted_now=trusted_now,
         prefixes=ATTESTATION_MARKER_PREFIXES,kind="attestation_verification_marker"
+    )
+
+def build_attestation_bundle_binding(metadata, *, provider, trusted_now):
+    return _build_binding(
+        metadata,provider=provider,trusted_now=trusted_now,
+        prefixes=ATTESTATION_BUNDLE_PREFIXES,kind="attestation_bundle"
     )
 
 

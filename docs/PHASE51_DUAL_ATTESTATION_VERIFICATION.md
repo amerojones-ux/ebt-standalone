@@ -51,3 +51,8 @@ Local `--bundle` verification binds the check to the exact attestation generated
 The final evidence ledger remains schema v2 because it already binds the exact verification-marker file SHA-256 and the GitHub attestation identity. The new bundle hash is therefore transitively bound by the marker without another ledger-schema migration.
 
 No provider request, secret access, evidence promotion, readiness mutation, or forecast activation occurs in this phase.
+
+
+## Phase 53 strengthening
+
+Phase 53 persists the exact verified Sigstore bundle itself as a separate short-lived artifact. The preferred post-run ingestion path now requires receipt + verification marker + exact bundle artifacts from the same run/commit and verifies that the extracted bundle SHA-256 matches the bundle hash bound into marker schema v2.
