@@ -12,6 +12,7 @@ from theoddsapi_probe_receipt import verify_receipt as verify_theodds
 from weatherapi_probe_receipt import verify_receipt as verify_weather
 
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
+SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_ID=re.compile(r"^[0-9]+$")
 
 SUPPORTED={
@@ -29,7 +30,7 @@ SUPPORTED={
     },
 }
 
-def build_review_candidate(receipt):
+def build_review_candidate(receipt, *, artifact_sha256):
     if not isinstance(receipt,dict):
         raise ValueError("receipt must be object")
     provider=receipt.get("provider")
@@ -45,13 +46,15 @@ def build_review_candidate(receipt):
 
     commit=receipt.get("git_commit")
     run_id=receipt.get("github_run_id")
-    digest=receipt.get("receipt_sha256")
+    receipt_digest=receipt.get("receipt_sha256")
     if not isinstance(commit,str) or not SHA40.fullmatch(commit):
         raise ValueError("GitHub source commit required")
     if not isinstance(run_id,str) or not RUN_ID.fullmatch(run_id):
         raise ValueError("GitHub run id required")
-    if not isinstance(digest,str) or len(digest)!=64:
+    if not isinstance(receipt_digest,str) or not SHA64.fullmatch(receipt_digest):
         raise ValueError("receipt checksum required")
+    if not isinstance(artifact_sha256,str) or not SHA64.fullmatch(artifact_sha256):
+        raise ValueError("artifact file checksum required")
 
     body={
         "provider":provider,
@@ -61,7 +64,8 @@ def build_review_candidate(receipt):
         "source_type":"github_actions_receipt",
         "reference":"github-actions-run:"+run_id,
         "source_commit":commit,
-        "artifact_sha256":digest,
+        "receipt_sha256":receipt_digest,
+        "artifact_sha256":artifact_sha256.lower(),
         "reviewer_required":True,
         "readiness_mutation_permitted":False,
         "forecast_activation_permitted":False,
