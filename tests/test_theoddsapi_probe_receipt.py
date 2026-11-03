@@ -3,9 +3,21 @@ import os
 import tempfile
 import unittest
 
-from theoddsapi_probe_receipt import build_receipt, verify_receipt, write_receipt
+from theoddsapi_probe_receipt import build_receipt as _raw_build_receipt, verify_receipt, write_receipt
+
+INTENT_SHA="3"*64
+
+def build_receipt(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_receipt(*args,**kwargs)
 
 class TheOddsApiReceiptTests(unittest.TestCase):
+    def test_missing_execution_intent_checksum_rejected(self):
+        with self.assertRaises(ValueError):
+            _raw_build_receipt(
+                {"status":"HOLD","category":"transport_error"},"x"
+            )
+
     def test_receipt_is_sanitized(self):
         receipt = build_receipt(
             {"status":"PASS","category":"authenticated_zero_credit_sports_schema"},
