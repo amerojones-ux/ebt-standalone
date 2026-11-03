@@ -8,6 +8,8 @@ import hmac
 import json
 import re
 
+from provider_live_request_plan import request_plan_sha256 as canonical_request_plan_sha256
+
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_REF=re.compile(r"^github-actions-run:[0-9]+$")
@@ -24,7 +26,7 @@ CANDIDATE_BODY_FIELDS={
     "provider","subject","claim","candidate_status","source_type","reference",
     "source_repository","source_commit","github_metadata_match",
     "receipt_sha256","artifact_sha256","attestation_verified",
-    "attestation_marker_sha256","attestation_id","attestation_url",
+    "attestation_marker_sha256","request_plan_sha256","attestation_id","attestation_url",
     "signer_workflow","reviewer_required",
     "readiness_mutation_permitted","forecast_activation_permitted",
 }
@@ -79,6 +81,10 @@ def verify_candidate(candidate):
     if candidate.get("attestation_verified") is not True:
         return False
     if not SHA64.fullmatch(candidate.get("attestation_marker_sha256","")):
+        return False
+    if candidate.get("request_plan_sha256")!=canonical_request_plan_sha256(
+        candidate["provider"]
+    ):
         return False
     if not isinstance(candidate.get("attestation_id"),str) or not candidate["attestation_id"]:
         return False
@@ -140,8 +146,8 @@ def verify_review_decision(result):
         required={
             "status","subject","claim","source_type","reference","reviewed_at",
             "reviewer","source_repository","source_commit","receipt_sha256",
-            "artifact_sha256","attestation_marker_sha256","attestation_id",
-            "attestation_url","signer_workflow",
+            "artifact_sha256","attestation_marker_sha256","request_plan_sha256",
+            "attestation_id","attestation_url","signer_workflow",
         }
         if set(proposal)!=required:
             return False
@@ -168,6 +174,10 @@ def verify_review_decision(result):
         if not SHA64.fullmatch(proposal.get("artifact_sha256","")):
             return False
         if not SHA64.fullmatch(proposal.get("attestation_marker_sha256","")):
+            return False
+        if proposal.get("request_plan_sha256")!=canonical_request_plan_sha256(
+            proposal["subject"]
+        ):
             return False
         if not isinstance(proposal.get("attestation_id"),str) or not proposal["attestation_id"]:
             return False
@@ -231,6 +241,7 @@ def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now)
         "receipt_sha256":candidate["receipt_sha256"],
         "artifact_sha256":candidate["artifact_sha256"],
         "attestation_marker_sha256":candidate["attestation_marker_sha256"],
+        "request_plan_sha256":candidate["request_plan_sha256"],
         "attestation_id":candidate["attestation_id"],
         "attestation_url":candidate["attestation_url"],
         "signer_workflow":candidate["signer_workflow"],
