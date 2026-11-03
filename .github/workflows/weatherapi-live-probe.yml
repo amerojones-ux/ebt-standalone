@@ -179,11 +179,13 @@ jobs:
           import json
           import os
 
+          from provider_live_request_plan import request_plan_sha256
+
           with open(os.environ["BUNDLE_EXPORT_FILE"], "rb") as handle:
               bundle_sha256 = hashlib.sha256(handle.read()).hexdigest()
 
           body = {
-              "schema_version": 3,
+              "schema_version": 4,
               "provider": os.environ["PROVIDER_NAME"],
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
@@ -201,6 +203,9 @@ jobs:
               "python_version": os.environ["TOOLCHAIN_PYTHON_VERSION"],
               "gh_version": os.environ["TOOLCHAIN_GH_VERSION"],
               "setup_python_sha": os.environ["SETUP_PYTHON_SHA"],
+              "request_plan_sha256": request_plan_sha256(
+                  os.environ["PROVIDER_NAME"]
+              ),
               "required_attestation_flags": [
                   "--bundle",
                   "--repo",
