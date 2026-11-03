@@ -17,7 +17,10 @@ class ProviderPromotionPreviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:",text)
         self.assertIn('default: "NO"',text)
         self.assertIn("I_APPROVE_LIVE_AUTH_PROMOTION_PREVIEW",text)
+        self.assertIn("github.run_attempt == 1",text)
+        self.assertIn("github.ref_protected == true",text)
         self.assertIn("github.ref == 'refs/heads/main'",text)
+        self.assertIn("concurrency:\n  group: ebt-live-auth-promotion-preview\n  cancel-in-progress: false",text)
         self.assertNotIn("schedule:",text)
         self.assertNotIn("pull_request:",text)
         self.assertNotIn("\npush:",text)
@@ -40,6 +43,11 @@ class ProviderPromotionPreviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn("actions/checkout@"+CHECKOUT_SHA,text)
         self.assertIn("actions/attest@"+ATTEST_SHA,text)
         self.assertIn("actions/upload-artifact@"+UPLOAD_SHA,text)
+        self.assertIn("ref: ${{ github.sha }}",text)
+        self.assertNotIn("ref: main",text)
+        self.assertIn("Verify immutable promotion source checkout",text)
+        self.assertIn('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',text)
+        self.assertIn('test -z "$(git status --porcelain)"',text)
         self.assertIn("persist-credentials: false",text)
 
     def test_source_review_run_is_exact_completed_main_workflow(self):
@@ -96,6 +104,10 @@ class ProviderPromotionPreviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn('--source-ref "refs/heads/main"',text)
         self.assertIn('--source-digest "$GITHUB_SHA"',text)
         self.assertIn("provider_live_auth_promotion_preview_attestation_verification.json",text)
+        self.assertIn('"schema_version": 2',text)
+        self.assertIn('"promotion_workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"])',text)
+        self.assertIn("verify_promotion_preview_attestation_marker",text)
+        self.assertIn("promotion preview attestation marker invalid",text)
 
     def test_uploaded_package_is_sanitized_and_short_lived(self):
         text=self.text
