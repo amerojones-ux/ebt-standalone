@@ -335,6 +335,34 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
 
+    def test_mutable_main_checkout_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "ref: ${{ github.sha }}",
+            "ref: main",
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_checkout_head_verification_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+            "true",
+        )
+        r=assess_probe(
+            "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
     def test_missing_first_attempt_guard_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
         spec=PROBES["WeatherAPI"]
