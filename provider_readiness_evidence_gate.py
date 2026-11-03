@@ -6,6 +6,8 @@ claim-specific evidence record exists and uses an allowed source type.
 from datetime import datetime, timezone
 import re
 
+from provider_live_request_plan import request_plan_sha256 as canonical_request_plan_sha256
+
 PROVIDERS = {
     "TheRundown",
     "SportsDataIO",
@@ -86,7 +88,8 @@ def validate_record(record, *, subject, claim, trusted_now=None):
     }
     provenance_fields = {
         "source_repository", "source_commit", "receipt_sha256",
-        "artifact_sha256", "attestation_marker_sha256", "attestation_id",
+        "artifact_sha256", "attestation_marker_sha256", "request_plan_sha256",
+        "attestation_id",
         "attestation_url", "signer_workflow",
         "review_repository", "review_workflow_run_id", "review_source_commit",
         "review_github_metadata_match", "review_decision_sha256",
@@ -143,6 +146,7 @@ def validate_record(record, *, subject, claim, trusted_now=None):
     receipt_sha = record.get("receipt_sha256")
     artifact_sha = record.get("artifact_sha256")
     marker_sha = record.get("attestation_marker_sha256")
+    request_plan_sha = record.get("request_plan_sha256")
     attestation_id = record.get("attestation_id")
     attestation_url = record.get("attestation_url")
     signer_workflow = record.get("signer_workflow")
@@ -172,6 +176,10 @@ def validate_record(record, *, subject, claim, trusted_now=None):
         not isinstance(marker_sha, str) or not SHA64.fullmatch(marker_sha)
     ):
         errors.append("invalid attestation_marker_sha256")
+    if request_plan_sha is not None and (
+        not isinstance(request_plan_sha, str) or not SHA64.fullmatch(request_plan_sha)
+    ):
+        errors.append("invalid request_plan_sha256")
     if review_source_commit is not None and (
         not isinstance(review_source_commit, str)
         or not SHA40.fullmatch(review_source_commit)
@@ -198,6 +206,10 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             errors.append("github_actions_receipt requires artifact_sha256")
         if marker_sha is None:
             errors.append("github_actions_receipt requires attestation_marker_sha256")
+        if request_plan_sha is None:
+            errors.append("github_actions_receipt requires request_plan_sha256")
+        elif request_plan_sha != canonical_request_plan_sha256(subject):
+            errors.append("github_actions_receipt request_plan_sha256 mismatch")
         if not isinstance(attestation_id, str) or not attestation_id:
             errors.append("github_actions_receipt requires attestation_id")
         if not isinstance(attestation_url, str) or not attestation_url.startswith(
@@ -241,6 +253,7 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             "source_repository": source_repository,
             "receipt_sha256": receipt_sha,
             "attestation_marker_sha256": marker_sha,
+            "request_plan_sha256": request_plan_sha,
             "attestation_id": attestation_id,
             "attestation_url": attestation_url,
             "signer_workflow": signer_workflow,
@@ -266,8 +279,8 @@ def validate_ledger(ledger, *, trusted_now=None):
     errors = []
     if not isinstance(ledger, dict):
         return ["ledger must be object"]
-    if ledger.get("schema_version") != 3:
-        errors.append("schema_version must be 3")
+    if ledger.get("schema_version") != 4:
+        errors.append("schema_version must be 4")
 
     entries = ledger.get("providers")
     if not isinstance(entries, list):
