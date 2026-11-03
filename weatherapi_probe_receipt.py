@@ -41,6 +41,7 @@ BODY_FIELDS = {
     "generated_at_utc",
     "git_commit",
     "github_run_id",
+    "execution_intent_sha256",
     "integrity_model",
 }
 RECEIPT_FIELDS = BODY_FIELDS | {"receipt_sha256"}
@@ -62,10 +63,17 @@ def _validate_result(result):
 def _canonical_body(body):
     return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
-def build_receipt(result, generated_at_utc, commit_sha="", run_id=""):
+def build_receipt(result, generated_at_utc, commit_sha="", run_id="", execution_intent_sha256=""):
     status, category, detail = _validate_result(result)
+    intent_sha = str(execution_intent_sha256).lower()
+    if len(intent_sha) != 64:
+        raise ValueError("execution intent SHA-256 required")
+    try:
+        int(intent_sha, 16)
+    except ValueError as exc:
+        raise ValueError("execution intent SHA-256 invalid") from exc
     body = {
-        "schema_version": 2,
+        "schema_version": 3,
         "provider": "WeatherAPI",
         "endpoint": "https://api.weatherapi.com/v1/current.json",
         "test_location": "Chicago",
@@ -75,6 +83,7 @@ def build_receipt(result, generated_at_utc, commit_sha="", run_id=""):
         "generated_at_utc": str(generated_at_utc),
         "git_commit": str(commit_sha),
         "github_run_id": str(run_id),
+        "execution_intent_sha256": intent_sha,
         "integrity_model": INTEGRITY_MODEL,
     }
     receipt = dict(body)
@@ -84,7 +93,7 @@ def build_receipt(result, generated_at_utc, commit_sha="", run_id=""):
 def verify_receipt(receipt):
     if not isinstance(receipt, dict) or set(receipt) != RECEIPT_FIELDS:
         return False
-    if receipt.get("schema_version") != 2:
+    if receipt.get("schema_version") != 3:
         return False
     if receipt.get("provider") != "WeatherAPI":
         return False
@@ -93,6 +102,13 @@ def verify_receipt(receipt):
     if receipt.get("test_location") != "Chicago":
         return False
     if receipt.get("integrity_model") != INTEGRITY_MODEL:
+        return False
+    intent_sha = receipt.get("execution_intent_sha256")
+    if not isinstance(intent_sha, str) or len(intent_sha) != 64:
+        return False
+    try:
+        int(intent_sha, 16)
+    except ValueError:
         return False
     try:
         _validate_result({
