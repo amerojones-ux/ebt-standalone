@@ -18,7 +18,10 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn('default: "HOLD"',text)
         self.assertIn('default: "NO"',text)
         self.assertIn("inputs.decision != 'HOLD'",text)
+        self.assertIn("github.run_attempt == 1",text)
+        self.assertIn("github.ref_protected == true",text)
         self.assertIn("github.ref == 'refs/heads/main'",text)
+        self.assertIn("concurrency:\n  group: ebt-live-auth-evidence-review\n  cancel-in-progress: false",text)
         self.assertNotIn("schedule:",text)
         self.assertNotIn("pull_request:",text)
         self.assertNotIn("\npush:",text)
@@ -41,6 +44,11 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn("actions/checkout@"+CHECKOUT_SHA,text)
         self.assertIn("actions/upload-artifact@"+UPLOAD_SHA,text)
         self.assertIn("actions/attest@"+ATTEST_SHA,text)
+        self.assertIn("ref: ${{ github.sha }}",text)
+        self.assertNotIn("ref: main",text)
+        self.assertIn("Verify immutable review source checkout",text)
+        self.assertIn('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',text)
+        self.assertIn('test -z "$(git status --porcelain)"',text)
         self.assertIn("persist-credentials: false",text)
 
     def test_source_run_must_be_exact_completed_probe(self):
@@ -52,6 +60,7 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
         ):
             self.assertIn(workflow,text)
         self.assertIn('run.get("event") != "workflow_dispatch"',text)
+        self.assertIn('run.get("run_attempt") != 1',text)
         self.assertIn('run.get("head_branch") != "main"',text)
         self.assertIn('run.get("status") != "completed"',text)
         self.assertIn('run.get("conclusion") != "success"',text)
@@ -114,6 +123,8 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn('--source-ref "refs/heads/main"',text)
         self.assertIn('--source-digest "$GITHUB_SHA"',text)
         self.assertIn("provider_review_decision_attestation_verification.json",text)
+        self.assertIn('"schema_version": 2',text)
+        self.assertIn('"review_workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"])',text)
 
     def test_review_package_is_sanitized_and_nonmutating(self):
         text=self.text
