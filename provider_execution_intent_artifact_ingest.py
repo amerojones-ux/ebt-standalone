@@ -81,6 +81,7 @@ def ingest_execution_intent_artifact(
         "intent_zip_sha256":zip_sha256,
         "intent_file_sha256":hashlib.sha256(raw).hexdigest(),
         "intent_sha256":intent["intent_sha256"],
+        "workflow_run_attempt":intent["workflow_run_attempt"],
         "request_plan_sha256":intent["request_plan_sha256"],
         "actor":intent["actor"],
         "actor_id":intent["actor_id"],
