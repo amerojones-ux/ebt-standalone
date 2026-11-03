@@ -153,6 +153,8 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "/tmp/execution-intent-api-verification.json",
         '"request_plan_sha256":intent["request_plan_sha256"]',
         '"workflow_run_attempt": intent["workflow_run_attempt"]',
+        "verify_execution_intent_marker",
+        "execution intent marker verification failed",
         '"max_requests":intent["max_requests"]',
         'echo "intent_verified=1" >> "$GITHUB_OUTPUT"',
         'handle.write("intent_sha256="+intent["intent_sha256"]+"\\n")',
@@ -199,6 +201,9 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "name: "+spec["bundle_prefix"]+"-${{ github.run_id }}",
         "path: "+spec["bundle"],
         "SIGNER_WORKFLOW: "+spec["signer_workflow"],
+        "provider_attestation_verification_marker",
+        "verify_marker",
+        "receipt attestation marker verification failed",
         'echo "attestation_verified=1" >> "$GITHUB_OUTPUT"',
         "name: "+spec["marker_prefix"]+"-${{ github.run_id }}",
         "path: "+spec["marker"],
@@ -256,6 +261,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "immutable_dispatch_commit_checkout_required":True,
         "protected_ref_runtime_gate_required":True,
         "signed_first_attempt_binding_required":True,
+        "generated_marker_self_verification_required":True,
         "errors":errors,
     }
 
