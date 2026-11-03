@@ -18,6 +18,8 @@ WORKFLOWS = {
         "bundle": "weatherapi_attestation_bundle.json",
         "bundle_prefix": "weatherapi-attestation-bundle",
         "signer": ".github/workflows/weatherapi-live-probe.yml",
+        "secret": "EBT_WEATHER_API_KEY: ${{ secrets.EBT_WEATHER_API_KEY }}",
+        "intent_prefix": "weatherapi-execution-intent",
     },
     "odds": {
         "path": ROOT / ".github" / "workflows" / "theoddsapi-live-probe.yml",
@@ -28,6 +30,8 @@ WORKFLOWS = {
         "bundle": "theoddsapi_attestation_bundle.json",
         "bundle_prefix": "theoddsapi-attestation-bundle",
         "signer": ".github/workflows/theoddsapi-live-probe.yml",
+        "secret": "EBT_THEODDS_API_KEY: ${{ secrets.EBT_THEODDS_API_KEY }}",
+        "intent_prefix": "theoddsapi-execution-intent",
     },
     "apisports": {
         "path": ROOT / ".github" / "workflows" / "apisports-status-probe.yml",
@@ -38,6 +42,8 @@ WORKFLOWS = {
         "bundle": "apisports_attestation_bundle.json",
         "bundle_prefix": "apisports-attestation-bundle",
         "signer": ".github/workflows/apisports-status-probe.yml",
+        "secret": "EBT_APISPORTS_API_KEY: ${{ secrets.EBT_APISPORTS_API_KEY }}",
+        "intent_prefix": "apisports-execution-intent",
     },
 }
 UPLOAD_ARTIFACT_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
@@ -88,6 +94,50 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     "--format",
                 ):
                     self.assertIn(flag, text)
+
+    def test_provider_secret_is_scoped_after_verified_execution_intent(self):
+        for name, spec in WORKFLOWS.items():
+            with self.subTest(name=name):
+                text=spec["path"].read_text(encoding="utf-8")
+                secret_index=text.index(spec["secret"])
+                probe_start=text.rfind("      - name:",0,secret_index)
+                next_step=text.find("      - name:",secret_index)
+                probe_block=text[
+                    probe_start:
+                    len(text) if next_step == -1 else next_step
+                ]
+                self.assertIn(
+                    "steps.verify_intent.outputs.intent_verified == '1'",
+                    probe_block,
+                )
+                self.assertIn(
+                    "steps.toolchain.outputs.toolchain_verified == '1'",
+                    probe_block,
+                )
+                self.assertNotIn("secrets.",text[:probe_start])
+
+                self.assertIn(
+                    "Build sanitized one-shot execution intent",text
+                )
+                self.assertIn("provider_execution_intent_cli.py",text)
+                self.assertIn("subject-path: provider_execution_intent.json",text)
+                self.assertIn("id: attest_intent",text)
+                self.assertIn("id: verify_intent",text)
+                self.assertGreaterEqual(
+                    text.count(
+                        "gh attestation verify provider_execution_intent.json"
+                    ),
+                    2,
+                )
+                self.assertIn(
+                    "name: "+spec["intent_prefix"]+"-${{ github.run_id }}",
+                    text,
+                )
+                self.assertIn(
+                    '"request_plan_sha256":intent["request_plan_sha256"]',
+                    text,
+                )
+                self.assertIn('"max_requests":intent["max_requests"]',text)
 
     def test_live_workflows_persist_only_sanitized_evidence_artifacts(self):
         for name, spec in WORKFLOWS.items():
