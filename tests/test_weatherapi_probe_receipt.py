@@ -26,6 +26,8 @@ class WeatherApiReceiptTests(unittest.TestCase):
             "42",
         )
         self.assertEqual(r["provider"], "WeatherAPI")
+        self.assertEqual(r["schema_version"],3)
+        self.assertEqual(r["execution_intent_sha256"],INTENT_SHA)
         self.assertEqual(r["detail"], 2006)
         self.assertEqual(r["integrity_model"], "sha256-checksum-not-signature")
         self.assertEqual(len(r["receipt_sha256"]), 64)
