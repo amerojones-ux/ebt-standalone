@@ -26,6 +26,21 @@ ATTESTATION_BUNDLE_PREFIXES={
     "The Odds API":"theoddsapi-attestation-bundle-",
     "API-Sports":"apisports-attestation-bundle-",
 }
+EXECUTION_INTENT_PREFIXES={
+    "WeatherAPI":"weatherapi-execution-intent-",
+    "The Odds API":"theoddsapi-execution-intent-",
+    "API-Sports":"apisports-execution-intent-",
+}
+EXECUTION_INTENT_MARKER_PREFIXES={
+    "WeatherAPI":"weatherapi-execution-intent-attestation-verification-",
+    "The Odds API":"theoddsapi-execution-intent-attestation-verification-",
+    "API-Sports":"apisports-execution-intent-attestation-verification-",
+}
+EXECUTION_INTENT_BUNDLE_PREFIXES={
+    "WeatherAPI":"weatherapi-execution-intent-attestation-bundle-",
+    "The Odds API":"theoddsapi-execution-intent-attestation-bundle-",
+    "API-Sports":"apisports-execution-intent-attestation-bundle-",
+}
 MAX_ARTIFACT_BYTES=1024*1024
 
 def _parse_time(value):
@@ -151,3 +166,24 @@ def verify_downloaded_artifact(binding, data):
     if not hmac.compare_digest(actual,expected_digest.lower()):
         raise ValueError("downloaded artifact digest mismatch")
     return actual
+
+
+def build_execution_intent_binding(metadata, *, provider, trusted_now):
+    return _build_binding(
+        metadata,provider=provider,trusted_now=trusted_now,
+        prefixes=EXECUTION_INTENT_PREFIXES,kind="execution_intent"
+    )
+
+def build_execution_intent_marker_binding(metadata, *, provider, trusted_now):
+    return _build_binding(
+        metadata,provider=provider,trusted_now=trusted_now,
+        prefixes=EXECUTION_INTENT_MARKER_PREFIXES,
+        kind="execution_intent_verification_marker"
+    )
+
+def build_execution_intent_bundle_binding(metadata, *, provider, trusted_now):
+    return _build_binding(
+        metadata,provider=provider,trusted_now=trusted_now,
+        prefixes=EXECUTION_INTENT_BUNDLE_PREFIXES,
+        kind="execution_intent_attestation_bundle"
+    )
