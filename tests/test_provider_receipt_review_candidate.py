@@ -46,6 +46,10 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertIsNone(c["attestation_id"])
         self.assertIsNone(c["attestation_url"])
         self.assertIsNone(c["signer_workflow"])
+        self.assertIs(c["execution_intent_verified"],False)
+        self.assertIsNone(c["execution_intent_sha256"])
+        self.assertIsNone(c["execution_actor"])
+        self.assertIsNone(c["execution_max_requests"])
         self.assertIs(c["github_metadata_match"],True)
         self.assertFalse(c["readiness_mutation_permitted"])
         self.assertFalse(c["forecast_activation_permitted"])
@@ -68,6 +72,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             attestation_id=ATTESTATION_ID,
             attestation_url=ATTESTATION_URL,
             signer_workflow=SIGNER,
+            **EXECUTION_KWARGS,
         )
         self.assertEqual(final["candidate_status"],"REVIEW_ONLY")
         self.assertIs(final["attestation_verified"],True)
@@ -77,6 +82,15 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(final["attestation_id"],ATTESTATION_ID)
         self.assertEqual(final["attestation_url"],ATTESTATION_URL)
         self.assertEqual(final["signer_workflow"],SIGNER)
+        self.assertIs(final["execution_intent_verified"],True)
+        self.assertEqual(
+            final["execution_intent_sha256"],
+            EXECUTION_KWARGS["execution_intent_sha256"],
+        )
+        self.assertEqual(
+            final["execution_actor"],EXECUTION_KWARGS["execution_actor"]
+        )
+        self.assertEqual(final["execution_max_requests"],1)
 
     def test_wrong_source_repository_rejected_during_attestation_bind(self):
         r=build_weather(
@@ -96,6 +110,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
                 attestation_id=ATTESTATION_ID,
                 attestation_url=ATTESTATION_URL,
                 signer_workflow=SIGNER,
+                **EXECUTION_KWARGS,
             )
 
     def test_wrong_signer_rejected_during_attestation_bind(self):
@@ -116,6 +131,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
                 attestation_id=ATTESTATION_ID,
                 attestation_url=ATTESTATION_URL,
                 signer_workflow=".github/workflows/apisports-status-probe.yml",
+                **EXECUTION_KWARGS,
             )
 
     def test_odds_pass_becomes_review_only_candidate(self):
