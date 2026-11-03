@@ -4,11 +4,13 @@ from apisports_status_receipt import build_receipt as build_apisports
 from theoddsapi_probe_receipt import build_receipt as build_odds
 from weatherapi_probe_receipt import build_receipt as build_weather
 from provider_receipt_review_candidate import build_review_candidate, bind_attestation_verification
+from provider_live_request_plan import request_plan_sha256
 
 COMMIT="a"*40
 RUN="123456"
 ARTIFACT="d"*64
 MARKER="e"*64
+REQUEST_PLAN=request_plan_sha256("WeatherAPI")
 REPO="amerojones-ux/ebt-standalone"
 ATTESTATION_ID="attestation-123"
 ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
@@ -27,6 +29,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(c["candidate_status"],"REVIEW_ONLY_PENDING_ATTESTATION")
         self.assertIs(c["attestation_verified"],False)
         self.assertIsNone(c["attestation_marker_sha256"])
+        self.assertIsNone(c["request_plan_sha256"])
         self.assertIsNone(c["source_repository"])
         self.assertIsNone(c["attestation_id"])
         self.assertIsNone(c["attestation_url"])
@@ -48,6 +51,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         final=bind_attestation_verification(
             pending,
             marker_sha256=MARKER,
+            request_plan_sha256=REQUEST_PLAN,
             source_repository=REPO,
             attestation_id=ATTESTATION_ID,
             attestation_url=ATTESTATION_URL,
@@ -56,6 +60,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertEqual(final["candidate_status"],"REVIEW_ONLY")
         self.assertIs(final["attestation_verified"],True)
         self.assertEqual(final["attestation_marker_sha256"],MARKER)
+        self.assertEqual(final["request_plan_sha256"],REQUEST_PLAN)
         self.assertEqual(final["source_repository"],REPO)
         self.assertEqual(final["attestation_id"],ATTESTATION_ID)
         self.assertEqual(final["attestation_url"],ATTESTATION_URL)
@@ -74,6 +79,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             bind_attestation_verification(
                 pending,
                 marker_sha256=MARKER,
+            request_plan_sha256=REQUEST_PLAN,
                 source_repository="other/repo",
                 attestation_id=ATTESTATION_ID,
                 attestation_url=ATTESTATION_URL,
@@ -93,6 +99,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             bind_attestation_verification(
                 pending,
                 marker_sha256=MARKER,
+            request_plan_sha256=REQUEST_PLAN,
                 source_repository=REPO,
                 attestation_id=ATTESTATION_ID,
                 attestation_url=ATTESTATION_URL,
