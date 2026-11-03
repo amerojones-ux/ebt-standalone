@@ -78,16 +78,28 @@ jobs:
               echo "source_workflow=.github/workflows/weatherapi-live-probe.yml" >> "$GITHUB_OUTPUT"
               echo "receipt_artifact=weatherapi-probe-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               echo "marker_artifact=weatherapi-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "bundle_artifact=weatherapi-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_artifact=weatherapi-execution-intent-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_marker_artifact=weatherapi-execution-intent-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_bundle_artifact=weatherapi-execution-intent-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               ;;
             "The Odds API")
               echo "source_workflow=.github/workflows/theoddsapi-live-probe.yml" >> "$GITHUB_OUTPUT"
               echo "receipt_artifact=theoddsapi-probe-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               echo "marker_artifact=theoddsapi-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "bundle_artifact=theoddsapi-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_artifact=theoddsapi-execution-intent-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_marker_artifact=theoddsapi-execution-intent-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_bundle_artifact=theoddsapi-execution-intent-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               ;;
             "API-Sports")
               echo "source_workflow=.github/workflows/apisports-status-probe.yml" >> "$GITHUB_OUTPUT"
               echo "receipt_artifact=apisports-status-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               echo "marker_artifact=apisports-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "bundle_artifact=apisports-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_artifact=apisports-execution-intent-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_marker_artifact=apisports-execution-intent-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_bundle_artifact=apisports-execution-intent-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "unsupported provider" >&2
@@ -144,6 +156,10 @@ jobs:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           RECEIPT_ARTIFACT: ${{ steps.contract.outputs.receipt_artifact }}
           MARKER_ARTIFACT: ${{ steps.contract.outputs.marker_artifact }}
+          BUNDLE_ARTIFACT: ${{ steps.contract.outputs.bundle_artifact }}
+          INTENT_ARTIFACT: ${{ steps.contract.outputs.intent_artifact }}
+          INTENT_MARKER_ARTIFACT: ${{ steps.contract.outputs.intent_marker_artifact }}
+          INTENT_BUNDLE_ARTIFACT: ${{ steps.contract.outputs.intent_bundle_artifact }}
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts?per_page=100" > artifacts.json
@@ -164,6 +180,10 @@ jobs:
           wanted = {
               "receipt": os.environ["RECEIPT_ARTIFACT"],
               "marker": os.environ["MARKER_ARTIFACT"],
+              "bundle": os.environ["BUNDLE_ARTIFACT"],
+              "intent": os.environ["INTENT_ARTIFACT"],
+              "intent_marker": os.environ["INTENT_MARKER_ARTIFACT"],
+              "intent_bundle": os.environ["INTENT_BUNDLE_ARTIFACT"],
           }
           resolved = {}
           for key, name in wanted.items():
@@ -204,6 +224,10 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write(f"receipt_id={resolved['receipt']['id']}\n")
               handle.write(f"marker_id={resolved['marker']['id']}\n")
+              handle.write(f"bundle_id={resolved['bundle']['id']}\n")
+              handle.write(f"intent_id={resolved['intent']['id']}\n")
+              handle.write(f"intent_marker_id={resolved['intent_marker']['id']}\n")
+              handle.write(f"intent_bundle_id={resolved['intent_bundle']['id']}\n")
           PY
 
       - name: Download exact source evidence ZIPs
@@ -211,19 +235,40 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RECEIPT_ID: ${{ steps.artifacts.outputs.receipt_id }}
           MARKER_ID: ${{ steps.artifacts.outputs.marker_id }}
+          BUNDLE_ID: ${{ steps.artifacts.outputs.bundle_id }}
+          INTENT_ID: ${{ steps.artifacts.outputs.intent_id }}
+          INTENT_MARKER_ID: ${{ steps.artifacts.outputs.intent_marker_id }}
+          INTENT_BUNDLE_ID: ${{ steps.artifacts.outputs.intent_bundle_id }}
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$RECEIPT_ID/zip" > receipt.zip
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$MARKER_ID/zip" > marker.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$BUNDLE_ID/zip" > bundle.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INTENT_ID/zip" > intent.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INTENT_MARKER_ID/zip" > intent_marker.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$INTENT_BUNDLE_ID/zip" > intent_bundle.zip
           test -s receipt.zip
           test -s marker.zip
+          test -s bundle.zip
+          test -s intent.zip
+          test -s intent_marker.zip
+          test -s intent_bundle.zip
 
       - name: Reconstruct attested REVIEW_ONLY candidate
         env:
           PROVIDER: ${{ inputs.provider }}
         run: |
           set -euo pipefail
-          python3 provider_github_artifact_ingest_cli.py             receipt_metadata.json receipt.zip             marker_metadata.json marker.zip             --provider "$PROVIDER"             --repository "$GITHUB_REPOSITORY"             --output provider_review_candidate.json
+          python3 provider_github_artifact_ingest_cli.py \
+            receipt_metadata.json receipt.zip \
+            marker_metadata.json marker.zip \
+            bundle_metadata.json bundle.zip \
+            intent_metadata.json intent.zip \
+            intent_marker_metadata.json intent_marker.zip \
+            intent_bundle_metadata.json intent_bundle.zip \
+            --provider "$PROVIDER" \
+            --repository "$GITHUB_REPOSITORY" \
+            --output provider_review_candidate.json
 
       - name: Emit GitHub-actor-bound review decision
         id: review
