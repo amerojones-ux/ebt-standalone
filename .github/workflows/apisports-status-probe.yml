@@ -19,6 +19,10 @@ on:
           - "I_APPROVE_ONE_APISPORTS_STATUS_REQUEST"
         default: "NO"
 
+concurrency:
+  group: ebt-live-provider-probes
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
@@ -29,6 +33,7 @@ jobs:
   one-shot-probe:
     if: >-
       ${{
+        github.run_attempt == 1 &&
         github.ref == 'refs/heads/main' &&
         inputs.confirm_account_review == 'I_CONFIRM_APISPORTS_STATUS_PRIVACY_AND_RATE_LIMIT_REVIEWED' &&
         inputs.confirm_live_request == 'I_APPROVE_ONE_APISPORTS_STATUS_REQUEST'

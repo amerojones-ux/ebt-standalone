@@ -19,6 +19,10 @@ on:
           - "I_APPROVE_ONE_WEATHERAPI_REQUEST"
         default: "NO"
 
+concurrency:
+  group: ebt-live-provider-probes
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
@@ -29,6 +33,7 @@ jobs:
   one-shot-probe:
     if: >-
       ${{
+        github.run_attempt == 1 &&
         github.ref == 'refs/heads/main' &&
         inputs.confirm_plan_quota_billing_review == 'I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED' &&
         inputs.confirm_live_request == 'I_APPROVE_ONE_WEATHERAPI_REQUEST'

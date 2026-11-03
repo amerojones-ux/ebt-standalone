@@ -335,6 +335,48 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
 
+    def test_missing_first_attempt_guard_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "github.run_attempt == 1",
+            "github.run_attempt >= 1",
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_global_serialization_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "group: ebt-live-provider-probes",
+            "group: provider-specific-probes",
+        )
+        r=assess_probe(
+            "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_cancel_in_progress_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["API-Sports"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "cancel-in-progress: false",
+            "cancel-in-progress: true",
+        )
+        r=assess_probe(
+            "API-Sports",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
     def test_schedule_trigger_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
         spec=PROBES["WeatherAPI"]
