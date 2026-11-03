@@ -67,7 +67,8 @@ def zip_one(name,payload):
 def zip_receipt():
     receipt=build_receipt(
         {"status":"PASS","category":"authenticated_schema_fresh"},
-        "2026-11-02T20:51:00+00:00",COMMIT,str(RUN)
+        "2026-11-02T20:51:00+00:00",COMMIT,str(RUN),
+        execution_intent()["intent_sha256"],
     )
     raw=(json.dumps(receipt,sort_keys=True)+"\n").encode()
     return zip_one("weatherapi_probe_receipt.json",raw)
@@ -341,6 +342,10 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         self.assertEqual(
             result["execution_intent"]["intent_sha256"],
             result["execution_intent_verification"]["intent_sha256"],
+        )
+        self.assertEqual(
+            result["receipt_execution_intent_sha256"],
+            result["execution_intent"]["intent_sha256"],
         )
         self.assertEqual(
             result["execution_intent"]["actor"],
