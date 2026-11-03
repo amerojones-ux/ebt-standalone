@@ -1,0 +1,325 @@
+name: Provider live-auth controlled promotion apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      promotion_preview_run_id:
+        description: "Completed signed live-auth promotion preview workflow run ID"
+        required: true
+        type: string
+      confirm_apply:
+        description: "Approve controlled live-auth promotion PR creation"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_LIVE_AUTH_PROMOTION_APPLY"
+        default: "NO"
+
+concurrency:
+  group: ebt-live-auth-promotion-apply
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  apply:
+    if: >-
+      ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
+        github.ref == 'refs/heads/main' &&
+        inputs.confirm_apply == 'I_APPROVE_LIVE_AUTH_PROMOTION_APPLY'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify immutable apply source checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Fetch and validate promotion preview workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+        run: |
+          set -euo pipefail
+          case "$PREVIEW_RUN_ID" in
+            ''|*[!0-9]*)
+              echo "promotion_preview_run_id must be numeric" >&2
+              exit 2
+              ;;
+          esac
+
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIEW_RUN_ID" > promotion_run.json
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open("promotion_run.json",encoding="utf-8") as handle:
+              run=json.load(handle)
+
+          if run.get("id")!=int(os.environ["PREVIEW_RUN_ID"]):
+              raise SystemExit("promotion preview run id mismatch")
+          if run.get("event")!="workflow_dispatch":
+              raise SystemExit("promotion preview run was not workflow_dispatch")
+          if run.get("run_attempt")!=1:
+              raise SystemExit("promotion preview run was not first attempt")
+          if run.get("head_branch")!="main":
+              raise SystemExit("promotion preview run was not on main")
+          if run.get("status")!="completed":
+              raise SystemExit("promotion preview run not completed")
+          if run.get("conclusion")!="success":
+              raise SystemExit("promotion preview run did not succeed")
+          if run.get("path")!=".github/workflows/provider-live-auth-promotion-preview.yml":
+              raise SystemExit("promotion preview workflow path mismatch")
+          head_sha=run.get("head_sha")
+          if not isinstance(head_sha,str) or not re.fullmatch(r"[0-9a-fA-F]{40}",head_sha):
+              raise SystemExit("promotion preview head sha invalid")
+          repository=run.get("repository") or {}
+          head_repository=run.get("head_repository") or {}
+          if repository.get("full_name")!=os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("promotion preview repository mismatch")
+          if head_repository.get("id")!=repository.get("id"):
+              raise SystemExit("promotion preview head repository mismatch")
+          PY
+
+      - name: Resolve exact signed promotion preview artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIEW_RUN_ID/artifacts?per_page=100" > promotion_artifacts.json
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          with open("promotion_artifacts.json",encoding="utf-8") as handle:
+              payload=json.load(handle)
+          with open("promotion_run.json",encoding="utf-8") as handle:
+              run=json.load(handle)
+
+          pattern=re.compile(
+              r"^provider-live-auth-promotion-preview-([0-9]+)-"
+              + re.escape(str(run["id"])) + r"$"
+          )
+          matches=[
+              item for item in payload.get("artifacts",[])
+              if isinstance(item,dict)
+              and isinstance(item.get("name"),str)
+              and pattern.fullmatch(item["name"])
+          ]
+          if len(matches)!=1:
+              raise SystemExit("signed promotion preview artifact count mismatch")
+          item=matches[0]
+          if item.get("expired") is not False:
+              raise SystemExit("signed promotion preview artifact expired")
+
+          repository=run["repository"]
+          head_repository=run["head_repository"]
+          metadata={
+              field:item.get(field)
+              for field in (
+                  "id","name","size_in_bytes","expired",
+                  "created_at","expires_at","digest",
+              )
+          }
+          metadata["workflow_run"]={
+              "id":run["id"],
+              "run_attempt":run["run_attempt"],
+              "repository_id":repository["id"],
+              "head_repository_id":head_repository["id"],
+              "head_branch":run["head_branch"],
+              "head_sha":run["head_sha"],
+          }
+          with open("promotion_package_metadata.json","w",encoding="utf-8") as handle:
+              json.dump(metadata,handle,indent=2,sort_keys=True)
+              handle.write("\n")
+
+          review_run_id=pattern.fullmatch(item["name"]).group(1)
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as handle:
+              handle.write(f"artifact_id={item['id']}\n")
+              handle.write(f"review_run_id={review_run_id}\n")
+          PY
+
+      - name: Download exact signed promotion preview package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > promotion_package.zip
+          test -s promotion_package.zip
+
+      - name: Strictly ingest signed promotion preview package
+        run: |
+          set -euo pipefail
+          python3 provider_promotion_preview_package_ingest_cli.py \
+            promotion_package_metadata.json promotion_package.zip \
+            --repository "$GITHUB_REPOSITORY" \
+            --output verified_promotion_package.json
+
+      - name: Build exact SAFE_HOLD promotion files
+        id: build
+        run: |
+          set -euo pipefail
+          python3 provider_live_auth_promotion_apply_cli.py \
+            config/provider_readiness.json \
+            config/provider_evidence.json \
+            verified_promotion_package.json \
+            --readiness-output generated/provider_readiness.json \
+            --ledger-output generated/provider_evidence.json \
+            --manifest-output provider_live_auth_promotion_apply_manifest.json
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+
+          with open("provider_live_auth_promotion_apply_manifest.json",encoding="utf-8") as handle:
+              manifest=json.load(handle)
+          if manifest.get("apply_status")!="VALID_LIVE_AUTH_PROMOTION_APPLY":
+              raise SystemExit("promotion apply manifest invalid")
+          if manifest.get("global_provider_gate")!="SAFE_HOLD":
+              raise SystemExit("promotion apply crossed SAFE_HOLD")
+          if manifest.get("forecast_enabled") is not False:
+              raise SystemExit("forecast unexpectedly enabled")
+          if manifest.get("network_autorun_enabled") is not False:
+              raise SystemExit("network autorun unexpectedly enabled")
+          if manifest.get("forecast_activation_permitted") is not False:
+              raise SystemExit("forecast activation unexpectedly permitted")
+          if manifest.get("provider_network_request_permitted") is not False:
+              raise SystemExit("provider network request unexpectedly permitted")
+
+          for path,key in (
+              ("generated/provider_readiness.json","readiness_file_sha256"),
+              ("generated/provider_evidence.json","ledger_file_sha256"),
+          ):
+              with open(path,"rb") as handle:
+                  manifest[key]=hashlib.sha256(handle.read()).hexdigest()
+          with open("provider_live_auth_promotion_apply_manifest.json","w",encoding="utf-8") as handle:
+              json.dump(manifest,handle,indent=2,sort_keys=True)
+              handle.write("\n")
+
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as handle:
+              handle.write("provider="+manifest["provider"]+"\n")
+              handle.write("apply_sha256="+manifest["apply_sha256"]+"\n")
+          PY
+
+      - name: Attest exact promotion apply manifest
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: provider_live_auth_promotion_apply_manifest.json
+
+      - name: Verify promotion apply manifest attestation
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          test -n "$BUNDLE_PATH"
+          test -f "$BUNDLE_PATH"
+          gh attestation verify provider_live_auth_promotion_apply_manifest.json \
+            --bundle "$BUNDLE_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-live-auth-promotion-apply.yml" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/promotion-apply-attestation-local.json
+          gh attestation verify provider_live_auth_promotion_apply_manifest.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-live-auth-promotion-apply.yml" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/promotion-apply-attestation-api.json
+          echo "apply_attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Create protected-branch promotion pull request
+        id: pr
+        if: steps.verify.outputs.apply_attestation_verified == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROVIDER: ${{ steps.build.outputs.provider }}
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+        run: |
+          set -euo pipefail
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          test "$current_main" = "$GITHUB_SHA"
+
+          slug="$(printf '%s' "$PROVIDER" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//')"
+          branch="promotion/${slug}-live-auth-${PREVIEW_RUN_ID}-${GITHUB_RUN_ID}"
+
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/heads/$branch" \
+            -f sha="$GITHUB_SHA" >/dev/null
+
+          ledger_sha="$(git rev-parse HEAD:config/provider_evidence.json)"
+          readiness_sha="$(git rev-parse HEAD:config/provider_readiness.json)"
+          ledger_b64="$(base64 -w0 generated/provider_evidence.json)"
+          readiness_b64="$(base64 -w0 generated/provider_readiness.json)"
+
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/config/provider_evidence.json" \
+            -f message="promote ${PROVIDER} live-auth evidence" \
+            -f content="$ledger_b64" \
+            -f branch="$branch" \
+            -f sha="$ledger_sha" >/dev/null
+
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/config/provider_readiness.json" \
+            -f message="mark ${PROVIDER} live-auth verified" \
+            -f content="$readiness_b64" \
+            -f branch="$branch" \
+            -f sha="$readiness_sha" >/dev/null
+
+          body="Controlled live-auth promotion generated from signed preview run ${PREVIEW_RUN_ID}.
+
+          Safety invariants:
+          - only live_auth_verified is promoted for ${PROVIDER}
+          - global provider gate remains SAFE_HOLD
+          - forecast_enabled remains false
+          - network_autorun_enabled remains false
+          - no provider request is made by this workflow
+          - merge remains subject to protected-main required status checks"
+
+          pr_json="$(gh api -X POST "repos/$GITHUB_REPOSITORY/pulls" \
+            -f title="Promote ${PROVIDER} live-auth evidence" \
+            -f head="$branch" \
+            -f base="main" \
+            -f body="$body")"
+
+          printf '%s\n' "$pr_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["html_url"])' >> "$GITHUB_STEP_SUMMARY"
+          printf 'pr_number=%s\n' "$(printf '%s\n' "$pr_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["number"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Persist sanitized apply evidence
+        if: always() && steps.verify.outputs.apply_attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: provider-live-auth-promotion-apply-${{ inputs.promotion_preview_run_id }}-${{ github.run_id }}
+          path: |
+            provider_live_auth_promotion_apply_manifest.json
+            generated/provider_readiness.json
+            generated/provider_evidence.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
