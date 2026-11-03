@@ -163,6 +163,11 @@ def ingest_github_artifact(
     )
     if receipt_result["ingestion_status"]!="PENDING_ATTESTATION":
         raise ValueError("receipt ingestion state invalid")
+    if (
+        receipt_result["receipt_execution_intent_sha256"]
+        !=intent_result["intent_sha256"]
+    ):
+        raise ValueError("receipt/execution-intent checksum binding mismatch")
 
     final_candidate=bind_attestation_verification(
         receipt_result["candidate"],
