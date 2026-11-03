@@ -25,6 +25,8 @@ class ApiSportsStatusReceiptTests(unittest.TestCase):
         )
         rendered=json.dumps(r).lower()
         self.assertTrue(verify_receipt(r))
+        self.assertEqual(r["schema_version"],2)
+        self.assertEqual(r["execution_intent_sha256"],INTENT_SHA)
         self.assertNotIn("subscription",rendered)
         self.assertNotIn("remaining",rendered)
         self.assertNotIn("api_key",rendered)
