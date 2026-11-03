@@ -6,6 +6,7 @@ from provider_live_request_plan import (
     PLANS,
     build_request,
     public_plan,
+    request_plan_sha256,
     validate_request,
     validate_response_url,
 )
@@ -150,6 +151,14 @@ class ProviderLiveRequestPlanTests(unittest.TestCase):
             ),
             [],
         )
+
+    def test_request_plan_fingerprint_is_stable_and_provider_specific(self):
+        first=request_plan_sha256("WeatherAPI")
+        second=request_plan_sha256("WeatherAPI")
+        self.assertEqual(first,second)
+        self.assertEqual(len(first),64)
+        self.assertNotEqual(first,request_plan_sha256("The Odds API"))
+        self.assertNotEqual(first,request_plan_sha256("API-Sports"))
 
     def test_unsupported_provider_fails_closed(self):
         with self.assertRaises(ValueError):
