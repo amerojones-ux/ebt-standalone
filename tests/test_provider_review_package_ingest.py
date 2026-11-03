@@ -143,6 +143,13 @@ class ProviderReviewPackageIngestTests(unittest.TestCase):
         self.assertEqual(proposal["review_source_commit"],REVIEW_COMMIT)
         self.assertEqual(proposal["review_signer_workflow"],REVIEW_SIGNER)
         self.assertTrue(proposal["review_github_metadata_match"])
+        self.assertIs(proposal["execution_intent_verified"],True)
+        self.assertEqual(
+            proposal["execution_intent_sha256"],
+            EXECUTION_KWARGS["execution_intent_sha256"],
+        )
+        self.assertEqual(proposal["execution_actor"],"amerojones-ux")
+        self.assertEqual(proposal["execution_max_requests"],1)
 
     def test_valid_rejected_package_is_attested_without_proposal(self):
         result=ingest_review_package(
