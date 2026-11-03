@@ -128,6 +128,7 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     "Build sanitized one-shot execution intent",text
                 )
                 self.assertIn("provider_execution_intent_cli.py",text)
+                self.assertIn('--workflow-run-attempt "$GITHUB_RUN_ATTEMPT"',text)
                 self.assertIn("subject-path: provider_execution_intent.json",text)
                 self.assertIn("id: attest_intent",text)
                 self.assertIn("id: verify_intent",text)
@@ -145,6 +146,7 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     '"request_plan_sha256":intent["request_plan_sha256"]',
                     text,
                 )
+                self.assertIn('"workflow_run_attempt": intent["workflow_run_attempt"]',text)
                 self.assertIn('"max_requests":intent["max_requests"]',text)
                 self.assertIn(
                     'handle.write("intent_sha256="+intent["intent_sha256"]+"\\n")',
