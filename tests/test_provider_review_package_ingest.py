@@ -50,6 +50,7 @@ def candidate():
         attestation_id=PROVIDER_ATTESTATION_ID,
         attestation_url=PROVIDER_ATTESTATION_URL,
         signer_workflow=PROVIDER_SIGNER,
+        **EXECUTION_KWARGS,
     )
 
 def decision(value="APPROVE"):
@@ -113,6 +114,18 @@ def package_zip(decision_value="APPROVE",marker=None,extra=None,decision_obj=Non
             zf.writestr(extra,b"x")
     return out.getvalue()
 
+EXECUTION_KWARGS={
+    "execution_intent_sha256":"3"*64,
+    "execution_intent_file_sha256":"4"*64,
+    "execution_intent_marker_sha256":"5"*64,
+    "execution_intent_bundle_sha256":"6"*64,
+    "execution_intent_attestation_id":"intent-attestation-123",
+    "execution_intent_attestation_url":
+        "https://github.com/"+REPO+"/attestations/intent-attestation-123",
+    "execution_actor":"amerojones-ux",
+    "execution_actor_id":"262097315",
+    "execution_max_requests":1,
+}
 class ProviderReviewPackageIngestTests(unittest.TestCase):
     def test_valid_approved_package_becomes_attested_decision(self):
         result=ingest_review_package(
