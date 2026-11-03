@@ -37,6 +37,10 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertTrue(probe["attestation_cli_capability_preflight_required"])
             self.assertTrue(probe["toolchain_fingerprint_bound"])
             self.assertTrue(probe["request_plan_fingerprint_bound"])
+            self.assertTrue(probe["signed_presecret_execution_intent_required"])
+            self.assertTrue(
+                probe["execution_intent_dual_attestation_verification_required"]
+            )
 
     def test_marker_schema_downgrade_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
@@ -135,6 +139,49 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             text_loader=lambda p:wfs[p],
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_execution_intent_gate_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "steps.verify_intent.outputs.intent_verified == '1'",
+            "true",
+        )
+        result=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(result["status"],"INVALID_HOLD")
+
+    def test_missing_execution_intent_dual_verification_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "/tmp/execution-intent-api-verification.json",
+            "/tmp/missing-api-verification.json",
+        )
+        result=assess_probe(
+            "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(result["status"],"INVALID_HOLD")
+
+    def test_execution_intent_artifact_name_drift_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["API-Sports"]
+        expected="name: "+spec["intent_prefix"]+"-${{ github.run_id }}"
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            expected,
+            "name: wrong-execution-intent-${{ github.run_id }}",
+        )
+        result=assess_probe(
+            "API-Sports",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(result["status"],"INVALID_HOLD")
 
     def test_network_enable_drift_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
