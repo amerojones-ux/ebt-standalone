@@ -100,6 +100,20 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         self.assertEqual(r["ledger_record_proposal"]["attestation_url"],ATTESTATION_URL)
         self.assertEqual(r["ledger_record_proposal"]["signer_workflow"],SIGNER)
         self.assertEqual(r["ledger_record_proposal"]["attestation_marker_sha256"],MARKER)
+        self.assertIs(
+            r["ledger_record_proposal"]["execution_intent_verified"],True
+        )
+        self.assertEqual(
+            r["ledger_record_proposal"]["execution_intent_sha256"],
+            EXECUTION_KWARGS["execution_intent_sha256"],
+        )
+        self.assertEqual(
+            r["ledger_record_proposal"]["execution_actor"],
+            EXECUTION_KWARGS["execution_actor"],
+        )
+        self.assertEqual(
+            r["ledger_record_proposal"]["execution_max_requests"],1
+        )
         self.assertFalse(r["ledger_mutation_permitted"])
         self.assertFalse(r["readiness_mutation_permitted"])
         self.assertFalse(r["forecast_activation_permitted"])
