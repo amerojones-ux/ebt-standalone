@@ -16,6 +16,10 @@ on:
           - "I_APPROVE_LIVE_AUTH_PROMOTION_PREVIEW"
         default: "NO"
 
+concurrency:
+  group: ebt-live-auth-promotion-preview
+  cancel-in-progress: false
+
 permissions:
   contents: read
   actions: read
@@ -27,6 +31,8 @@ jobs:
   preview:
     if: >-
       ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
         github.ref == 'refs/heads/main' &&
         inputs.confirm_preview == 'I_APPROVE_LIVE_AUTH_PROMOTION_PREVIEW'
       }}
@@ -35,8 +41,14 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
+
+      - name: Verify immutable promotion source checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
 
       - name: Fetch and validate signed review workflow run
         env:
@@ -254,10 +266,11 @@ jobs:
               preview = json.load(handle)
 
           body = {
-              "schema_version": 1,
+              "schema_version": 2,
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
               "promotion_workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "promotion_workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
               "review_workflow_run_id": os.environ["REVIEW_RUN_ID"],
               "source_probe_run_id": os.environ["SOURCE_RUN_ID"],
               "source_commit": os.environ["GITHUB_SHA"],
@@ -283,6 +296,30 @@ jobs:
           ) as handle:
               json.dump(marker, handle, indent=2, sort_keys=True)
               handle.write("\n")
+          PY
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          from provider_promotion_preview_attestation_marker import (
+              verify_promotion_preview_attestation_marker,
+          )
+
+          with open(
+              "provider_live_auth_promotion_preview_attestation_verification.json",
+              encoding="utf-8",
+          ) as handle:
+              marker = json.load(handle)
+
+          if not verify_promotion_preview_attestation_marker(
+              marker,
+              expected_run_id=os.environ["GITHUB_RUN_ID"],
+              expected_commit=os.environ["GITHUB_SHA"],
+              expected_review_run_id=os.environ["REVIEW_RUN_ID"],
+              expected_source_probe_run_id=os.environ["SOURCE_RUN_ID"],
+          ):
+              raise SystemExit("promotion preview attestation marker invalid")
           PY
 
           echo "preview_attestation_verified=1" >> "$GITHUB_OUTPUT"
