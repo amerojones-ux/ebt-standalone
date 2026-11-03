@@ -15,13 +15,15 @@ import urllib.request
 from datetime import datetime, timezone
 
 from theoddsapi_contract import validate_quota_headers, validate_sports
+from provider_live_request_plan import build_request, get_plan, validate_response_url
 from theoddsapi_probe_receipt import ALLOWED_CATEGORIES, ALLOWED_STATUS, build_receipt, write_receipt
 
 REQUEST_APPROVAL = "I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST"
 ACCOUNT_REVIEW_APPROVAL = "I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED"
-HOST = "api.the-odds-api.com"
-PATH = "/v4/sports"
-MAX_BODY = 262144
+PLAN = get_plan("The Odds API")
+HOST = PLAN["host"]
+PATH = PLAN["path"]
+MAX_BODY = PLAN["max_body_bytes"]
 MAX_ERROR_BODY = 4096
 
 ERROR_CATEGORIES = {
@@ -100,24 +102,18 @@ def probe(confirm, account_review, opener=None):
     if not key:
         return _safe_result("HOLD", "secret_missing")
 
-    query = urllib.parse.urlencode({"apiKey": key})
-    url = f"https://{HOST}{PATH}?{query}"
-    request = urllib.request.Request(
-        url,
-        method="GET",
-        headers={
-            "Accept": "application/json",
-            "User-Agent": "EBT-Black-Diamond/TheOddsAPI-Auth-Probe",
-        },
-    )
+    try:
+        request = build_request("The Odds API", key)
+    except ValueError:
+        return _safe_result("HOLD", "endpoint_mismatch")
+    url = request.full_url
     opener = _default_open if opener is None else opener
 
     try:
-        response = opener(request, timeout=10)
+        response = opener(request, timeout=PLAN["timeout_seconds"])
         status = getattr(response, "status", None)
         final_url = getattr(response, "url", url)
-        parsed = urllib.parse.urlparse(final_url)
-        if parsed.scheme != "https" or parsed.hostname != HOST or parsed.path != PATH:
+        if validate_response_url(final_url, "The Odds API"):
             return _safe_result("HOLD", "endpoint_mismatch")
         if type(status) is not int or status != 200:
             return _safe_result(
