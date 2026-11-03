@@ -7,6 +7,7 @@ from provider_receipt_review_candidate import build_review_candidate, bind_attes
 from provider_live_request_plan import request_plan_sha256
 
 COMMIT="a"*40
+INTENT_SHA="3"*64
 RUN="123456"
 ARTIFACT="d"*64
 MARKER="e"*64
@@ -28,6 +29,22 @@ EXECUTION_KWARGS={
     "execution_actor_id":"262097315",
     "execution_max_requests":1,
 }
+_raw_build_weather=build_weather
+_raw_build_odds=build_odds
+_raw_build_apisports=build_apisports
+
+def build_weather(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_weather(*args,**kwargs)
+
+def build_odds(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_odds(*args,**kwargs)
+
+def build_apisports(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_apisports(*args,**kwargs)
+
 class ProviderReceiptReviewCandidateTests(unittest.TestCase):
     def test_weather_pass_becomes_review_only_candidate(self):
         r=build_weather(
