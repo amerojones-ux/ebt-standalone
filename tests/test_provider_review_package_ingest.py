@@ -16,6 +16,7 @@ from provider_review_package_ingest import ingest_review_package
 SOURCE_RUN="12345"
 REVIEW_RUN=777
 COMMIT="a"*40
+INTENT_SHA="3"*64
 REVIEW_COMMIT="f"*40
 ARTIFACT="d"*64
 MARKER="e"*64
@@ -30,6 +31,13 @@ REVIEW_ATTESTATION_ID="review-attestation-456"
 REVIEW_ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+REVIEW_ATTESTATION_ID
 REVIEWED="2026-11-02T20:59:00+00:00"
 NOW="2026-11-02T21:00:00+00:00"
+
+
+_raw_build_receipt=build_receipt
+
+def build_receipt(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_receipt(*args,**kwargs)
 
 def candidate():
     receipt=build_receipt(
