@@ -363,6 +363,20 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
 
+    def test_missing_protected_ref_guard_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["API-Sports"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            "github.ref_protected == true",
+            "github.ref_protected == false",
+        )
+        r=assess_probe(
+            "API-Sports",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
     def test_missing_first_attempt_guard_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
         spec=PROBES["WeatherAPI"]

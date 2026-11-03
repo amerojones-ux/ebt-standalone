@@ -119,6 +119,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "runs-on: ubuntu-24.04",
         "timeout-minutes: 5",
         "github.run_attempt == 1",
+        "github.ref_protected == true",
         "concurrency:",
         "group: ebt-live-provider-probes",
         "cancel-in-progress: false",
@@ -251,6 +252,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "first_workflow_attempt_only_required":True,
         "global_live_probe_serialization_required":True,
         "immutable_dispatch_commit_checkout_required":True,
+        "protected_ref_runtime_gate_required":True,
         "errors":errors,
     }
 
