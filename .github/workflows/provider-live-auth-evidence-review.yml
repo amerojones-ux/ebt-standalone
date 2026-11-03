@@ -33,6 +33,10 @@ on:
           - "I_APPROVE_ATTESTED_LIVE_AUTH_EVIDENCE"
         default: "NO"
 
+concurrency:
+  group: ebt-live-auth-evidence-review
+  cancel-in-progress: false
+
 permissions:
   contents: read
   actions: read
@@ -44,6 +48,8 @@ jobs:
   review:
     if: >-
       ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
         github.ref == 'refs/heads/main' &&
         inputs.decision != 'HOLD' &&
         (
@@ -56,8 +62,14 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
+
+      - name: Verify immutable review source checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
 
       - name: Resolve immutable provider review contract
         id: contract
@@ -130,6 +142,8 @@ jobs:
               raise SystemExit("source run id mismatch")
           if run.get("event") != "workflow_dispatch":
               raise SystemExit("source run was not workflow_dispatch")
+          if run.get("run_attempt") != 1:
+              raise SystemExit("source run was not first workflow attempt")
           if run.get("head_branch") != "main":
               raise SystemExit("source run was not on main")
           if run.get("status") != "completed":
@@ -313,10 +327,11 @@ jobs:
           import os
 
           body = {
-              "schema_version": 1,
+              "schema_version": 2,
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
               "review_workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "review_workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
               "source_commit": os.environ["GITHUB_SHA"],
               "source_ref": "refs/heads/main",
               "signer_workflow": ".github/workflows/provider-live-auth-evidence-review.yml",
