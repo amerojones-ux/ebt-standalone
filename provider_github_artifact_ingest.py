@@ -172,6 +172,15 @@ def ingest_github_artifact(
         attestation_id=marker_result["attestation_id"],
         attestation_url=marker_result["attestation_url"],
         signer_workflow=marker_result["signer_workflow"],
+        execution_intent_sha256=intent_result["intent_sha256"],
+        execution_intent_file_sha256=intent_result["intent_file_sha256"],
+        execution_intent_marker_sha256=intent_marker_result["marker_file_sha256"],
+        execution_intent_bundle_sha256=intent_bundle_result["bundle_file_sha256"],
+        execution_intent_attestation_id=intent_marker_result["attestation_id"],
+        execution_intent_attestation_url=intent_marker_result["attestation_url"],
+        execution_actor=intent_result["actor"],
+        execution_actor_id=intent_result["actor_id"],
+        execution_max_requests=intent_result["max_requests"],
     )
 
     return {

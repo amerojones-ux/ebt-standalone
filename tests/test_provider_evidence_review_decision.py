@@ -35,8 +35,21 @@ def candidate():
         attestation_id=ATTESTATION_ID,
         attestation_url=ATTESTATION_URL,
         signer_workflow=SIGNER,
+        **EXECUTION_KWARGS,
     )
 
+EXECUTION_KWARGS={
+    "execution_intent_sha256":"3"*64,
+    "execution_intent_file_sha256":"4"*64,
+    "execution_intent_marker_sha256":"5"*64,
+    "execution_intent_bundle_sha256":"6"*64,
+    "execution_intent_attestation_id":"intent-attestation-123",
+    "execution_intent_attestation_url":
+        "https://github.com/"+REPO+"/attestations/intent-attestation-123",
+    "execution_actor":"amerojones-ux",
+    "execution_actor_id":"262097315",
+    "execution_max_requests":1,
+}
 class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
     def test_candidate_checksum_verifies(self):
         self.assertTrue(verify_candidate(candidate()))
@@ -87,6 +100,20 @@ class ProviderEvidenceReviewDecisionTests(unittest.TestCase):
         self.assertEqual(r["ledger_record_proposal"]["attestation_url"],ATTESTATION_URL)
         self.assertEqual(r["ledger_record_proposal"]["signer_workflow"],SIGNER)
         self.assertEqual(r["ledger_record_proposal"]["attestation_marker_sha256"],MARKER)
+        self.assertIs(
+            r["ledger_record_proposal"]["execution_intent_verified"],True
+        )
+        self.assertEqual(
+            r["ledger_record_proposal"]["execution_intent_sha256"],
+            EXECUTION_KWARGS["execution_intent_sha256"],
+        )
+        self.assertEqual(
+            r["ledger_record_proposal"]["execution_actor"],
+            EXECUTION_KWARGS["execution_actor"],
+        )
+        self.assertEqual(
+            r["ledger_record_proposal"]["execution_max_requests"],1
+        )
         self.assertFalse(r["ledger_mutation_permitted"])
         self.assertFalse(r["readiness_mutation_permitted"])
         self.assertFalse(r["forecast_activation_permitted"])
