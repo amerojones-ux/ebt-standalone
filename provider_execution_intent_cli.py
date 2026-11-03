@@ -13,6 +13,7 @@ def main():
         "review_authorization","request_authorization",
     ):
         parser.add_argument("--"+name.replace("_","-"),dest=name,required=True)
+    parser.add_argument("--workflow-run-attempt",type=int,required=True)
     parser.add_argument("--output",required=True)
     args=parser.parse_args()
     try:
@@ -20,6 +21,7 @@ def main():
             provider=args.provider,
             repository=args.repository,
             workflow_run_id=args.workflow_run_id,
+            workflow_run_attempt=args.workflow_run_attempt,
             source_commit=args.source_commit,
             source_ref=args.source_ref,
             signer_workflow=args.signer_workflow,

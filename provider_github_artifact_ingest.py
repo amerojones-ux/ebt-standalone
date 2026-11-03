@@ -138,6 +138,13 @@ def ingest_github_artifact(
         !=marker_result["request_plan_sha256"]
     ):
         raise ValueError("intent/receipt request-plan mismatch")
+    if (
+        intent_result["workflow_run_attempt"]!=1
+        or intent_marker_result["workflow_run_attempt"]!=1
+        or intent_result["workflow_run_attempt"]
+            !=intent_marker_result["workflow_run_attempt"]
+    ):
+        raise ValueError("execution intent workflow attempt mismatch")
     if intent_result["actor"]!=intent_marker_result["actor"]:
         raise ValueError("execution intent actor mismatch")
     if intent_result["actor_id"]!=intent_marker_result["actor_id"]:

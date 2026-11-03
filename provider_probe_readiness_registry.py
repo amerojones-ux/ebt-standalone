@@ -144,6 +144,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "provider_execution_intent_cli.py",
         "--review-authorization",
         "--request-authorization",
+        '--workflow-run-attempt "$GITHUB_RUN_ATTEMPT"',
         "subject-path: provider_execution_intent.json",
         "id: attest_intent",
         "id: verify_intent",
@@ -151,6 +152,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "/tmp/execution-intent-local-verification.json",
         "/tmp/execution-intent-api-verification.json",
         '"request_plan_sha256":intent["request_plan_sha256"]',
+        '"workflow_run_attempt": intent["workflow_run_attempt"]',
         '"max_requests":intent["max_requests"]',
         'echo "intent_verified=1" >> "$GITHUB_OUTPUT"',
         'handle.write("intent_sha256="+intent["intent_sha256"]+"\\n")',
@@ -253,6 +255,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "global_live_probe_serialization_required":True,
         "immutable_dispatch_commit_checkout_required":True,
         "protected_ref_runtime_gate_required":True,
+        "signed_first_attempt_binding_required":True,
         "errors":errors,
     }
 

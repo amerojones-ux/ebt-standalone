@@ -22,7 +22,7 @@ VERIFICATION_MODES=["local_bundle","github_api"]
 
 BODY_FIELDS={
     "schema_version","provider","verification_status","repository",
-    "workflow_run_id","source_commit","source_ref","signer_workflow",
+    "workflow_run_id","workflow_run_attempt","source_commit","source_ref","signer_workflow",
     "actor","actor_id","intent_sha256","intent_file_sha256",
     "request_plan_sha256","max_requests",
     "attestation_id","attestation_url","attestation_bundle_sha256",
@@ -46,7 +46,7 @@ def verify_execution_intent_marker(
         return False
     if not isinstance(marker,dict) or set(marker)!=ALL_FIELDS:
         return False
-    if marker.get("schema_version")!=1:
+    if marker.get("schema_version")!=2:
         return False
     if marker.get("provider")!=provider:
         return False
@@ -57,6 +57,8 @@ def verify_execution_intent_marker(
     if marker.get("workflow_run_id")!=expected_run_id:
         return False
     if not RUN_ID.fullmatch(marker.get("workflow_run_id","")):
+        return False
+    if type(marker.get("workflow_run_attempt")) is not int or marker["workflow_run_attempt"]!=1:
         return False
     commit=marker.get("source_commit")
     if not isinstance(commit,str) or not SHA40.fullmatch(commit):

@@ -36,7 +36,7 @@ CONTRACTS={
 }
 
 BODY_FIELDS={
-    "schema_version","provider","repository","workflow_run_id",
+    "schema_version","provider","repository","workflow_run_id","workflow_run_attempt",
     "source_commit","source_ref","signer_workflow",
     "actor","actor_id","generated_at_utc",
     "review_authorization","request_authorization",
@@ -65,6 +65,7 @@ def build_execution_intent(
     provider,
     repository,
     workflow_run_id,
+    workflow_run_attempt,
     source_commit,
     source_ref,
     signer_workflow,
@@ -78,10 +79,11 @@ def build_execution_intent(
     if contract is None:
         raise ValueError("unsupported provider")
     body={
-        "schema_version":1,
+        "schema_version":2,
         "provider":provider,
         "repository":repository,
         "workflow_run_id":workflow_run_id,
+        "workflow_run_attempt":workflow_run_attempt,
         "source_commit":source_commit.lower() if isinstance(source_commit,str) else source_commit,
         "source_ref":source_ref,
         "signer_workflow":signer_workflow,
@@ -110,11 +112,13 @@ def verify_execution_intent(value):
     contract=CONTRACTS.get(provider)
     if contract is None:
         return False
-    if value.get("schema_version")!=1:
+    if value.get("schema_version")!=2:
         return False
     if value.get("repository")!=REPOSITORY:
         return False
     if not RUN_ID.fullmatch(value.get("workflow_run_id","")):
+        return False
+    if type(value.get("workflow_run_attempt")) is not int or value["workflow_run_attempt"]!=1:
         return False
     if not SHA40.fullmatch(value.get("source_commit","")):
         return False
