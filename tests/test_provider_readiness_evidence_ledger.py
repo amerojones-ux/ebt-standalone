@@ -54,6 +54,17 @@ def github_record(subject="API-Sports",claim="live_auth_verified"):
         "attestation_id":"attestation-123",
         "attestation_url":"https://github.com/"+REPO+"/attestations/attestation-123",
         "signer_workflow":signer,
+        "execution_intent_verified":True,
+        "execution_intent_sha256":"3"*64,
+        "execution_intent_file_sha256":"4"*64,
+        "execution_intent_marker_sha256":"5"*64,
+        "execution_intent_bundle_sha256":"6"*64,
+        "execution_intent_attestation_id":"intent-attestation-123",
+        "execution_intent_attestation_url":
+            "https://github.com/"+REPO+"/attestations/intent-attestation-123",
+        "execution_actor":"amerojones-ux",
+        "execution_actor_id":"262097315",
+        "execution_max_requests":1,
         "review_repository":REPO,
         "review_workflow_run_id":"777",
         "review_source_commit":"e"*40,
@@ -145,6 +156,11 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
             "attestation_marker_sha256","request_plan_sha256",
             "attestation_id","attestation_url",
             "signer_workflow","source_repository",
+            "execution_intent_verified","execution_intent_sha256",
+            "execution_intent_file_sha256","execution_intent_marker_sha256",
+            "execution_intent_bundle_sha256","execution_intent_attestation_id",
+            "execution_intent_attestation_url","execution_actor",
+            "execution_actor_id","execution_max_requests",
             "review_repository","review_workflow_run_id",
             "review_source_commit","review_github_metadata_match",
             "review_decision_sha256","review_decision_file_sha256",
@@ -161,6 +177,43 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
                         claim="live_auth_verified",trusted_now=NOW
                     )
                 )
+
+    def test_execution_intent_authorization_fields_are_strict(self):
+        for field in (
+            "execution_intent_sha256",
+            "execution_intent_file_sha256",
+            "execution_intent_marker_sha256",
+            "execution_intent_bundle_sha256",
+        ):
+            with self.subTest(field=field):
+                record=github_record()
+                record[field]="0"
+                self.assertTrue(
+                    validate_record(
+                        record,subject="API-Sports",
+                        claim="live_auth_verified",trusted_now=NOW
+                    )
+                )
+
+        for bad in (True,0,2):
+            with self.subTest(execution_max_requests=bad):
+                record=github_record()
+                record["execution_max_requests"]=bad
+                self.assertTrue(
+                    validate_record(
+                        record,subject="API-Sports",
+                        claim="live_auth_verified",trusted_now=NOW
+                    )
+                )
+
+        record=github_record()
+        record["execution_actor"]="bad actor"
+        self.assertTrue(
+            validate_record(
+                record,subject="API-Sports",
+                claim="live_auth_verified",trusted_now=NOW
+            )
+        )
 
     def test_free_form_reviewer_rejected_for_live_auth(self):
         record=github_record()
