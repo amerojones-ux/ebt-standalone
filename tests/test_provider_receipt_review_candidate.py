@@ -64,7 +64,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertIsNone(c["attestation_url"])
         self.assertIsNone(c["signer_workflow"])
         self.assertIs(c["execution_intent_verified"],False)
-        self.assertIsNone(c["execution_intent_sha256"])
+        self.assertEqual(c["execution_intent_sha256"],INTENT_SHA)
         self.assertIsNone(c["execution_actor"])
         self.assertIsNone(c["execution_max_requests"])
         self.assertIs(c["github_metadata_match"],True)
@@ -108,6 +108,29 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             final["execution_actor"],EXECUTION_KWARGS["execution_actor"]
         )
         self.assertEqual(final["execution_max_requests"],1)
+
+    def test_receipt_intent_checksum_mismatch_rejected_during_bind(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        bad=dict(EXECUTION_KWARGS)
+        bad["execution_intent_sha256"]="7"*64
+        with self.assertRaises(ValueError):
+            bind_attestation_verification(
+                pending,
+                marker_sha256=MARKER,
+                request_plan_sha256=REQUEST_PLAN,
+                source_repository=REPO,
+                attestation_id=ATTESTATION_ID,
+                attestation_url=ATTESTATION_URL,
+                signer_workflow=SIGNER,
+                **bad,
+            )
 
     def test_wrong_source_repository_rejected_during_attestation_bind(self):
         r=build_weather(
