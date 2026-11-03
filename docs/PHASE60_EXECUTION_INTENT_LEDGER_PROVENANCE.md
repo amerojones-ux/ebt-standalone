@@ -61,3 +61,8 @@ The durable live-auth record now answers both:
 2. **Who explicitly authorized the one-shot run and under what signed intent?** — via the execution-intent provenance fields.
 
 No provider request, secret access, ledger mutation, readiness mutation, forecast activation or wager action occurs in this phase.
+
+
+## Phase 61 direct receipt binding
+
+Phase 61 strengthens this durable authorization model by placing the signed execution-intent checksum directly inside the sanitized provider receipt body. REVIEW_ONLY therefore requires both durable execution-intent provenance and receipt-level equality with the exact authorizing intent.
