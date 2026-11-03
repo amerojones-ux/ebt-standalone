@@ -50,6 +50,8 @@ RUN_REF = re.compile(r"^github-actions-run:[0-9]+$")
 REVIEW_REF = re.compile(r"^review:[A-Za-z0-9._:/-]+$")
 REPORT_REF = re.compile(r"^validation-report:[A-Za-z0-9._:/-]+$")
 REVIEWER = re.compile(r"^github:[A-Za-z0-9-]+#[0-9]+$")
+ACTOR = re.compile(r"^[A-Za-z0-9-]+$")
+ACTOR_ID = re.compile(r"^[0-9]+$")
 RUN_ID = re.compile(r"^[0-9]+$")
 SOURCE_REPOSITORY = "amerojones-ux/ebt-standalone"
 REVIEW_WORKFLOW = ".github/workflows/provider-live-auth-evidence-review.yml"
@@ -261,9 +263,11 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             errors.append(
                 "github_actions_receipt execution_intent_attestation_url mismatch"
             )
-        if not isinstance(execution_actor,str) or not REVIEWER.match(
-            "github:"+execution_actor+"#"+
-            (execution_actor_id if isinstance(execution_actor_id,str) else "")
+        if (
+            not isinstance(execution_actor,str)
+            or not ACTOR.fullmatch(execution_actor)
+            or not isinstance(execution_actor_id,str)
+            or not ACTOR_ID.fullmatch(execution_actor_id)
         ):
             errors.append("github_actions_receipt execution actor identity invalid")
         if type(execution_max_requests) is not int or execution_max_requests!=1:
