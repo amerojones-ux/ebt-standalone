@@ -347,6 +347,26 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
             result["execution_intent_verification"]["actor"],
         )
         self.assertEqual(result["execution_intent"]["max_requests"],1)
+        self.assertIs(result["candidate"]["execution_intent_verified"],True)
+        self.assertEqual(
+            result["candidate"]["execution_intent_sha256"],
+            result["execution_intent"]["intent_sha256"],
+        )
+        self.assertEqual(
+            result["candidate"]["execution_intent_file_sha256"],
+            result["execution_intent"]["intent_file_sha256"],
+        )
+        self.assertEqual(
+            result["candidate"]["execution_intent_marker_sha256"],
+            result["execution_intent_verification"]["marker_file_sha256"],
+        )
+        self.assertEqual(
+            result["candidate"]["execution_intent_bundle_sha256"],
+            result["execution_intent_bundle"]["bundle_file_sha256"],
+        )
+        self.assertEqual(result["candidate"]["execution_actor"],ACTOR)
+        self.assertEqual(result["candidate"]["execution_actor_id"],ACTOR_ID)
+        self.assertEqual(result["candidate"]["execution_max_requests"],1)
         self.assertEqual(
             result["candidate"]["request_plan_sha256"],
             result["execution_intent"]["request_plan_sha256"],
