@@ -16,6 +16,18 @@ ATTESTATION_ID="attestation-123"
 ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
 SIGNER=".github/workflows/weatherapi-live-probe.yml"
 
+EXECUTION_KWARGS={
+    "execution_intent_sha256":"3"*64,
+    "execution_intent_file_sha256":"4"*64,
+    "execution_intent_marker_sha256":"5"*64,
+    "execution_intent_bundle_sha256":"6"*64,
+    "execution_intent_attestation_id":"intent-attestation-123",
+    "execution_intent_attestation_url":
+        "https://github.com/"+REPO+"/attestations/intent-attestation-123",
+    "execution_actor":"amerojones-ux",
+    "execution_actor_id":"262097315",
+    "execution_max_requests":1,
+}
 class ProviderReceiptReviewCandidateTests(unittest.TestCase):
     def test_weather_pass_becomes_review_only_candidate(self):
         r=build_weather(
