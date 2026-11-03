@@ -124,6 +124,10 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "cancel-in-progress: false",
         "github.ref == 'refs/heads/main'",
         'default: "NO"',
+        "ref: ${{ github.sha }}",
+        "Verify immutable source checkout",
+        'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+        'test -z "$(git status --porcelain)"',
         "persist-credentials: false",
         spec["review_phrase"],
         spec["request_phrase"],
@@ -213,6 +217,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "pull_request:",
         "retention-days: 90",
         "cancel-in-progress: true",
+        "ref: main",
     ]
     for fragment in forbidden:
         if fragment in workflow:
@@ -245,6 +250,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "receipt_execution_intent_direct_binding_required":True,
         "first_workflow_attempt_only_required":True,
         "global_live_probe_serialization_required":True,
+        "immutable_dispatch_commit_checkout_required":True,
         "errors":errors,
     }
 
