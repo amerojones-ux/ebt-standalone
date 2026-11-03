@@ -41,6 +41,9 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             self.assertTrue(
                 probe["execution_intent_dual_attestation_verification_required"]
             )
+            self.assertTrue(
+                probe["receipt_execution_intent_direct_binding_required"]
+            )
 
     def test_marker_schema_downgrade_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
@@ -139,6 +142,20 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
             text_loader=lambda p:wfs[p],
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_receipt_execution_intent_binding_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '--execution-intent-sha256 "${{ steps.intent.outputs.intent_sha256 }}"',
+            '--execution-intent-sha256 "0"',
+        )
+        result=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(result["status"],"INVALID_HOLD")
 
     def test_missing_execution_intent_gate_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
