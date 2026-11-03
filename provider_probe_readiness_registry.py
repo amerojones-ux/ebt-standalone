@@ -141,13 +141,14 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         '--source-digest "$GITHUB_SHA"',
         "/tmp/attestation-local-verification.json",
         "/tmp/attestation-api-verification.json",
-        '"schema_version": 3',
+        '"schema_version": 4',
         '"verification_modes": ["local_bundle", "github_api"]',
         '"attestation_bundle_sha256": bundle_sha256',
         '"runner_label": os.environ["RUNNER_LABEL"]',
         '"python_version": os.environ["TOOLCHAIN_PYTHON_VERSION"]',
         '"gh_version": os.environ["TOOLCHAIN_GH_VERSION"]',
         '"setup_python_sha": os.environ["SETUP_PYTHON_SHA"]',
+        '"request_plan_sha256": request_plan_sha256(',
         '"required_attestation_flags": [',
         "RUNNER_LABEL: ubuntu-24.04",
         "SETUP_PYTHON_SHA: "+SETUP_PYTHON_SHA,
@@ -205,6 +206,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "python_toolchain_pinned":True,
         "attestation_cli_capability_preflight_required":True,
         "toolchain_fingerprint_bound":True,
+        "request_plan_fingerprint_bound":True,
         "errors":errors,
     }
 
