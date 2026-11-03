@@ -105,6 +105,7 @@ jobs:
             --provider "$PROVIDER_NAME" \
             --repository "$GITHUB_REPOSITORY" \
             --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
             --source-commit "$GITHUB_SHA" \
             --source-ref "$GITHUB_REF" \
             --signer-workflow "$SIGNER_WORKFLOW" \
@@ -195,7 +196,7 @@ jobs:
               bundle_sha256=hashlib.sha256(handle.read()).hexdigest()
 
           body={
-              "schema_version":1,
+              "schema_version":2,
               "provider":os.environ["PROVIDER_NAME"],
               "verification_status":"VERIFIED",
               "repository":os.environ["GITHUB_REPOSITORY"],
@@ -381,6 +382,7 @@ jobs:
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
               "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt": intent["workflow_run_attempt"],
               "source_commit": os.environ["GITHUB_SHA"],
               "source_ref": "refs/heads/main",
               "signer_workflow": os.environ["SIGNER_WORKFLOW"],
