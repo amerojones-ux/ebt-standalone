@@ -363,6 +363,34 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
         )
         self.assertEqual(r["status"],"INVALID_HOLD")
 
+    def test_missing_signed_run_attempt_binding_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["WeatherAPI"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '--workflow-run-attempt "$GITHUB_RUN_ATTEMPT"',
+            '--workflow-run-attempt "2"',
+        )
+        r=assess_probe(
+            "WeatherAPI",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
+    def test_missing_run_attempt_marker_binding_invalidates_probe(self):
+        cfg=configs(); wfs=workflows()
+        spec=PROBES["The Odds API"]
+        wfs[spec["workflow"]]=wfs[spec["workflow"]].replace(
+            '"workflow_run_attempt": intent["workflow_run_attempt"]',
+            '"workflow_run_attempt": 2',
+        )
+        r=assess_probe(
+            "The Odds API",
+            json_loader=lambda p:cfg[p],
+            text_loader=lambda p:wfs[p],
+        )
+        self.assertEqual(r["status"],"INVALID_HOLD")
+
     def test_missing_protected_ref_guard_invalidates_probe(self):
         cfg=configs(); wfs=workflows()
         spec=PROBES["API-Sports"]
