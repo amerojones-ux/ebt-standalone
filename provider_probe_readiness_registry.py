@@ -118,6 +118,10 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "workflow_dispatch:",
         "runs-on: ubuntu-24.04",
         "timeout-minutes: 5",
+        "github.run_attempt == 1",
+        "concurrency:",
+        "group: ebt-live-provider-probes",
+        "cancel-in-progress: false",
         "github.ref == 'refs/heads/main'",
         'default: "NO"',
         "persist-credentials: false",
@@ -208,6 +212,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "\n  push:",
         "pull_request:",
         "retention-days: 90",
+        "cancel-in-progress: true",
     ]
     for fragment in forbidden:
         if fragment in workflow:
@@ -238,6 +243,8 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "signed_presecret_execution_intent_required":True,
         "execution_intent_dual_attestation_verification_required":True,
         "receipt_execution_intent_direct_binding_required":True,
+        "first_workflow_attempt_only_required":True,
+        "global_live_probe_serialization_required":True,
         "errors":errors,
     }
 
