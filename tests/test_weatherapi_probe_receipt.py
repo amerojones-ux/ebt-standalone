@@ -3,9 +3,21 @@ import os
 import tempfile
 import unittest
 
-from weatherapi_probe_receipt import build_receipt, verify_receipt, write_receipt
+from weatherapi_probe_receipt import build_receipt as _raw_build_receipt, verify_receipt, write_receipt
+
+INTENT_SHA="3"*64
+
+def build_receipt(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_receipt(*args,**kwargs)
 
 class WeatherApiReceiptTests(unittest.TestCase):
+    def test_missing_execution_intent_checksum_rejected(self):
+        with self.assertRaises(ValueError):
+            _raw_build_receipt(
+                {"status":"HOLD","category":"transport_error"},"x"
+            )
+
     def test_receipt_contains_only_sanitized_fields(self):
         r = build_receipt(
             {"status":"HOLD","category":"auth_invalid_key","detail":2006},
@@ -14,6 +26,8 @@ class WeatherApiReceiptTests(unittest.TestCase):
             "42",
         )
         self.assertEqual(r["provider"], "WeatherAPI")
+        self.assertEqual(r["schema_version"],3)
+        self.assertEqual(r["execution_intent_sha256"],INTENT_SHA)
         self.assertEqual(r["detail"], 2006)
         self.assertEqual(r["integrity_model"], "sha256-checksum-not-signature")
         self.assertEqual(len(r["receipt_sha256"]), 64)

@@ -7,6 +7,7 @@ from provider_receipt_review_candidate import build_review_candidate, bind_attes
 from provider_live_request_plan import request_plan_sha256
 
 COMMIT="a"*40
+INTENT_SHA="3"*64
 RUN="123456"
 ARTIFACT="d"*64
 MARKER="e"*64
@@ -28,6 +29,22 @@ EXECUTION_KWARGS={
     "execution_actor_id":"262097315",
     "execution_max_requests":1,
 }
+_raw_build_weather=build_weather
+_raw_build_odds=build_odds
+_raw_build_apisports=build_apisports
+
+def build_weather(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_weather(*args,**kwargs)
+
+def build_odds(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_odds(*args,**kwargs)
+
+def build_apisports(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_apisports(*args,**kwargs)
+
 class ProviderReceiptReviewCandidateTests(unittest.TestCase):
     def test_weather_pass_becomes_review_only_candidate(self):
         r=build_weather(
@@ -47,7 +64,7 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
         self.assertIsNone(c["attestation_url"])
         self.assertIsNone(c["signer_workflow"])
         self.assertIs(c["execution_intent_verified"],False)
-        self.assertIsNone(c["execution_intent_sha256"])
+        self.assertEqual(c["execution_intent_sha256"],INTENT_SHA)
         self.assertIsNone(c["execution_actor"])
         self.assertIsNone(c["execution_max_requests"])
         self.assertIs(c["github_metadata_match"],True)
@@ -91,6 +108,29 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             final["execution_actor"],EXECUTION_KWARGS["execution_actor"]
         )
         self.assertEqual(final["execution_max_requests"],1)
+
+    def test_receipt_intent_checksum_mismatch_rejected_during_bind(self):
+        r=build_weather(
+            {"status":"PASS","category":"authenticated_schema_fresh"},
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        )
+        pending=build_review_candidate(
+            r,artifact_sha256=ARTIFACT,
+            expected_run_id=RUN,expected_commit=COMMIT
+        )
+        bad=dict(EXECUTION_KWARGS)
+        bad["execution_intent_sha256"]="7"*64
+        with self.assertRaises(ValueError):
+            bind_attestation_verification(
+                pending,
+                marker_sha256=MARKER,
+                request_plan_sha256=REQUEST_PLAN,
+                source_repository=REPO,
+                attestation_id=ATTESTATION_ID,
+                attestation_url=ATTESTATION_URL,
+                signer_workflow=SIGNER,
+                **bad,
+            )
 
     def test_wrong_source_repository_rejected_during_attestation_bind(self):
         r=build_weather(

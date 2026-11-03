@@ -11,6 +11,7 @@ from provider_artifact_receipt_ingest import ingest_artifact_bytes
 
 COMMIT="a"*40
 RUN="123456"
+INTENT_SHA="3"*64
 
 def zip_one(name,payload,*,external_attr=None,flag_bits=0):
     out=io.BytesIO()
@@ -26,19 +27,19 @@ def zip_one(name,payload,*,external_attr=None,flag_bits=0):
 def weather_receipt():
     return build_weather(
         {"status":"PASS","category":"authenticated_schema_fresh"},
-        "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        "2026-11-02T20:00:00+00:00",COMMIT,RUN,INTENT_SHA
     )
 
 def odds_receipt():
     return build_odds(
         {"status":"PASS","category":"authenticated_zero_credit_sports_schema"},
-        "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        "2026-11-02T20:00:00+00:00",COMMIT,RUN,INTENT_SHA
     )
 
 def api_receipt():
     return build_apisports(
         {"status":"PASS","category":"authenticated_status_schema"},
-        "2026-11-02T20:00:00+00:00",COMMIT,RUN
+        "2026-11-02T20:00:00+00:00",COMMIT,RUN,INTENT_SHA
     )
 
 class ProviderArtifactReceiptIngestTests(unittest.TestCase):
@@ -52,6 +53,7 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
         self.assertEqual(result["candidate"]["provider"],"WeatherAPI")
         self.assertEqual(result["candidate"]["artifact_sha256"],result["receipt_file_sha256"])
         self.assertEqual(result["candidate"]["receipt_sha256"],result["receipt_internal_sha256"])
+        self.assertEqual(result["receipt_execution_intent_sha256"],INTENT_SHA)
         self.assertNotEqual(result["receipt_file_sha256"],result["receipt_internal_sha256"])
         self.assertFalse(result["ledger_mutation_permitted"])
         self.assertFalse(result["readiness_mutation_permitted"])
@@ -102,7 +104,7 @@ class ProviderArtifactReceiptIngestTests(unittest.TestCase):
     def test_hold_receipt_rejected_from_review_candidate(self):
         receipt=build_weather(
             {"status":"HOLD","category":"transport_error"},
-            "2026-11-02T20:00:00+00:00",COMMIT,RUN
+            "2026-11-02T20:00:00+00:00",COMMIT,RUN,INTENT_SHA
         )
         with self.assertRaises(ValueError):
             ingest_artifact_bytes(

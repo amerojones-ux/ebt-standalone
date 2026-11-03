@@ -88,6 +88,7 @@ def ingest_artifact_bytes(data, *, provider, expected_run_id, expected_commit):
         "receipt_filename":EXPECTED_FILES[provider],
         "receipt_file_sha256":artifact_sha256,
         "receipt_internal_sha256":receipt["receipt_sha256"],
+        "receipt_execution_intent_sha256":receipt["execution_intent_sha256"],
         "candidate":candidate,
         "ledger_mutation_permitted":False,
         "readiness_mutation_permitted":False,

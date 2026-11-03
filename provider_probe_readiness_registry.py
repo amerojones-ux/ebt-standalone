@@ -144,6 +144,8 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         '"request_plan_sha256":intent["request_plan_sha256"]',
         '"max_requests":intent["max_requests"]',
         'echo "intent_verified=1" >> "$GITHUB_OUTPUT"',
+        'handle.write("intent_sha256="+intent["intent_sha256"]+"\\n")',
+        '--execution-intent-sha256 "${{ steps.intent.outputs.intent_sha256 }}"',
         "name: "+spec["intent_prefix"]+"-${{ github.run_id }}",
         "name: "+spec["intent_bundle_prefix"]+"-${{ github.run_id }}",
         "name: "+spec["intent_marker_prefix"]+"-${{ github.run_id }}",
@@ -235,6 +237,7 @@ def assess_probe(name, *, json_loader=_load_json, text_loader=_read):
         "request_plan_fingerprint_bound":True,
         "signed_presecret_execution_intent_required":True,
         "execution_intent_dual_attestation_verification_required":True,
+        "receipt_execution_intent_direct_binding_required":True,
         "errors":errors,
     }
 

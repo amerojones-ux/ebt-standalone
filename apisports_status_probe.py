@@ -130,6 +130,7 @@ def main():
     parser.add_argument("--confirm",required=True)
     parser.add_argument("--account-review",required=True)
     parser.add_argument("--receipt-path")
+    parser.add_argument("--execution-intent-sha256",required=True)
     args=parser.parse_args()
 
     result=probe(args.confirm,args.account_review)
@@ -140,6 +141,7 @@ def main():
             datetime.now(timezone.utc).isoformat(),
             os.environ.get("GITHUB_SHA",""),
             os.environ.get("GITHUB_RUN_ID",""),
+            args.execution_intent_sha256,
         )
         write_receipt(args.receipt_path,receipt)
 

@@ -64,10 +64,15 @@ def zip_one(name,payload):
         zf.writestr(name,payload)
     return out.getvalue()
 
-def zip_receipt():
+def zip_receipt(intent_sha=None):
+    intent_sha=(
+        execution_intent()["intent_sha256"]
+        if intent_sha is None else intent_sha
+    )
     receipt=build_receipt(
         {"status":"PASS","category":"authenticated_schema_fresh"},
-        "2026-11-02T20:51:00+00:00",COMMIT,str(RUN)
+        "2026-11-02T20:51:00+00:00",COMMIT,str(RUN),
+        intent_sha,
     )
     raw=(json.dumps(receipt,sort_keys=True)+"\n").encode()
     return zip_one("weatherapi_probe_receipt.json",raw)
@@ -343,6 +348,10 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
             result["execution_intent_verification"]["intent_sha256"],
         )
         self.assertEqual(
+            result["receipt_execution_intent_sha256"],
+            result["execution_intent"]["intent_sha256"],
+        )
+        self.assertEqual(
             result["execution_intent"]["actor"],
             result["execution_intent_verification"]["actor"],
         )
@@ -372,6 +381,16 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
             result["execution_intent"]["request_plan_sha256"],
         )
         self.assertFalse(result["ledger_mutation_permitted"])
+
+    def test_receipt_bound_to_wrong_execution_intent_is_rejected(self):
+        args=list(good_inputs())
+        receipt_zip=zip_receipt("0"*64)
+        args[0]=metadata(receipt_zip)
+        args[1]=receipt_zip
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                *args,provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
 
     def test_receipt_bundle_is_required_and_hash_bound(self):
         args=list(good_inputs())

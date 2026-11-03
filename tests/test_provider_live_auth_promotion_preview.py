@@ -16,6 +16,7 @@ from provider_receipt_review_candidate import (
 from provider_live_request_plan import request_plan_sha256
 
 COMMIT="a"*40
+INTENT_SHA="3"*64
 RUN="12345"
 ARTIFACT="d"*64
 MARKER="e"*64
@@ -34,6 +35,13 @@ REVIEW_ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+REVIEW_ATTEST
 REVIEW_SIGNER=".github/workflows/provider-live-auth-evidence-review.yml"
 NOW="2026-11-02T21:00:00+00:00"
 REVIEWED="2026-11-02T20:59:00+00:00"
+
+
+_raw_build_receipt=build_receipt
+
+def build_receipt(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_receipt(*args,**kwargs)
 
 def readiness():
     with open("config/provider_readiness.json",encoding="utf-8") as handle:
