@@ -11,6 +11,7 @@ import re
 from apisports_status_receipt import verify_receipt as verify_apisports
 from theoddsapi_probe_receipt import verify_receipt as verify_theodds
 from weatherapi_probe_receipt import verify_receipt as verify_weather
+from provider_live_request_plan import request_plan_sha256 as canonical_request_plan_sha256
 
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
@@ -41,7 +42,7 @@ BODY_FIELDS={
     "provider","subject","claim","candidate_status","source_type","reference",
     "source_repository","source_commit","github_metadata_match",
     "receipt_sha256","artifact_sha256","attestation_verified",
-    "attestation_marker_sha256","attestation_id","attestation_url",
+    "attestation_marker_sha256","request_plan_sha256","attestation_id","attestation_url",
     "signer_workflow","reviewer_required",
     "readiness_mutation_permitted","forecast_activation_permitted",
 }
@@ -113,6 +114,7 @@ def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expecte
         "artifact_sha256":artifact_sha256.lower(),
         "attestation_verified":False,
         "attestation_marker_sha256":None,
+        "request_plan_sha256":None,
         "attestation_id":None,
         "attestation_url":None,
         "signer_workflow":None,
@@ -125,6 +127,7 @@ def bind_attestation_verification(
     candidate,
     *,
     marker_sha256,
+    request_plan_sha256,
     source_repository,
     attestation_id,
     attestation_url,
@@ -140,6 +143,12 @@ def bind_attestation_verification(
         raise ValueError("candidate already has attestation marker")
     if not isinstance(marker_sha256,str) or not SHA64.fullmatch(marker_sha256):
         raise ValueError("valid attestation marker checksum required")
+    if not isinstance(request_plan_sha256,str) or not SHA64.fullmatch(request_plan_sha256):
+        raise ValueError("valid request plan checksum required")
+    if request_plan_sha256.lower()!=canonical_request_plan_sha256(
+        candidate.get("provider")
+    ):
+        raise ValueError("request plan checksum mismatch")
     if source_repository != SOURCE_REPOSITORY:
         raise ValueError("source repository mismatch")
     if not isinstance(attestation_id,str) or not attestation_id:
@@ -157,6 +166,7 @@ def bind_attestation_verification(
     body["source_repository"]=source_repository
     body["attestation_verified"]=True
     body["attestation_marker_sha256"]=marker_sha256.lower()
+    body["request_plan_sha256"]=request_plan_sha256.lower()
     body["attestation_id"]=attestation_id
     body["attestation_url"]=attestation_url
     body["signer_workflow"]=signer_workflow
