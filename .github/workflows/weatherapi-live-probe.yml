@@ -77,6 +77,180 @@ jobs:
           echo "gh_version=$gh_version" >> "$GITHUB_OUTPUT"
           echo "toolchain_verified=1" >> "$GITHUB_OUTPUT"
 
+      - name: Build sanitized one-shot execution intent
+        id: intent
+        if: >-
+          ${{
+            steps.toolchain.outputs.toolchain_verified == '1' &&
+            steps.verify_intent.outputs.intent_verified == '1'
+          }}
+        env:
+          PROVIDER_NAME: WeatherAPI
+          REVIEW_AUTHORIZATION: ${{ inputs.confirm_plan_quota_billing_review }}
+          REQUEST_AUTHORIZATION: ${{ inputs.confirm_live_request }}
+          SIGNER_WORKFLOW: .github/workflows/weatherapi-live-probe.yml
+          ACTOR_NAME: ${{ github.actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          python3 provider_execution_intent_cli.py \
+            --provider "$PROVIDER_NAME" \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --source-commit "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --signer-workflow "$SIGNER_WORKFLOW" \
+            --actor "$ACTOR_NAME" \
+            --actor-id "$ACTOR_ID" \
+            --review-authorization "$REVIEW_AUTHORIZATION" \
+            --request-authorization "$REQUEST_AUTHORIZATION" \
+            --output provider_execution_intent.json
+
+          python3 - <<'PY'
+          import json
+          from provider_execution_intent import verify_execution_intent
+          with open("provider_execution_intent.json", encoding="utf-8") as handle:
+              intent=json.load(handle)
+          raise SystemExit(0 if verify_execution_intent(intent) else 1)
+          PY
+
+          echo "intent_prepared=1" >> "$GITHUB_OUTPUT"
+
+      - name: Attest one-shot execution intent
+        id: attest_intent
+        if: steps.intent.outputs.intent_prepared == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: provider_execution_intent.json
+
+      - name: Verify signed one-shot execution intent
+        id: verify_intent
+        if: >-
+          ${{
+            always() &&
+            steps.intent.outputs.intent_prepared == '1' &&
+            steps.attest_intent.outcome == 'success'
+          }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest_intent.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest_intent.outputs.attestation-url }}
+          ATTESTATION_BUNDLE_PATH: ${{ steps.attest_intent.outputs.bundle-path }}
+          INTENT_BUNDLE_EXPORT_FILE: weatherapi_execution_intent_attestation_bundle.json
+          INTENT_MARKER_FILE: weatherapi_execution_intent_attestation_verification.json
+          PROVIDER_NAME: WeatherAPI
+          SIGNER_WORKFLOW: .github/workflows/weatherapi-live-probe.yml
+          RUNNER_LABEL: ubuntu-24.04
+          SETUP_PYTHON_SHA: 6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+          TOOLCHAIN_PYTHON_VERSION: ${{ steps.toolchain.outputs.python_version }}
+          TOOLCHAIN_GH_VERSION: ${{ steps.toolchain.outputs.gh_version }}
+        run: |
+          set -euo pipefail
+          test -n "$ATTESTATION_BUNDLE_PATH"
+          test -f "$ATTESTATION_BUNDLE_PATH"
+
+          gh attestation verify provider_execution_intent.json \
+            --bundle "$ATTESTATION_BUNDLE_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/execution-intent-local-verification.json
+
+          gh attestation verify provider_execution_intent.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/$SIGNER_WORKFLOW" \
+            --source-ref "refs/heads/main" \
+            --source-digest "$GITHUB_SHA" \
+            --format json > /tmp/execution-intent-api-verification.json
+
+          cp -- "$ATTESTATION_BUNDLE_PATH" "$INTENT_BUNDLE_EXPORT_FILE"
+          test -s "$INTENT_BUNDLE_EXPORT_FILE"
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from provider_execution_intent import verify_execution_intent
+
+          with open("provider_execution_intent.json","rb") as handle:
+              intent_bytes=handle.read()
+          with open("provider_execution_intent.json",encoding="utf-8") as handle:
+              intent=json.load(handle)
+          if not verify_execution_intent(intent):
+              raise SystemExit("execution intent verification failed")
+          with open(os.environ["INTENT_BUNDLE_EXPORT_FILE"],"rb") as handle:
+              bundle_sha256=hashlib.sha256(handle.read()).hexdigest()
+
+          body={
+              "schema_version":1,
+              "provider":os.environ["PROVIDER_NAME"],
+              "verification_status":"VERIFIED",
+              "repository":os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "source_commit":os.environ["GITHUB_SHA"],
+              "source_ref":"refs/heads/main",
+              "signer_workflow":os.environ["SIGNER_WORKFLOW"],
+              "actor":intent["actor"],
+              "actor_id":intent["actor_id"],
+              "intent_sha256":intent["intent_sha256"],
+              "intent_file_sha256":hashlib.sha256(intent_bytes).hexdigest(),
+              "request_plan_sha256":intent["request_plan_sha256"],
+              "max_requests":intent["max_requests"],
+              "attestation_id":os.environ.get("ATTESTATION_ID",""),
+              "attestation_url":os.environ.get("ATTESTATION_URL",""),
+              "attestation_bundle_sha256":bundle_sha256,
+              "verification_tool":"gh attestation verify",
+              "verification_modes":["local_bundle","github_api"],
+              "runner_label":os.environ["RUNNER_LABEL"],
+              "python_version":os.environ["TOOLCHAIN_PYTHON_VERSION"],
+              "gh_version":os.environ["TOOLCHAIN_GH_VERSION"],
+              "setup_python_sha":os.environ["SETUP_PYTHON_SHA"],
+          }
+          canonical=json.dumps(
+              body,sort_keys=True,separators=(",",":")
+          ).encode("utf-8")
+          marker=dict(body)
+          marker["marker_sha256"]=hashlib.sha256(canonical).hexdigest()
+          with open(
+              os.environ["INTENT_MARKER_FILE"],"w",encoding="utf-8"
+          ) as handle:
+              json.dump(marker,handle,indent=2,sort_keys=True)
+              handle.write("\n")
+          PY
+
+          echo "intent_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Persist signed execution intent
+        if: always() && steps.verify_intent.outputs.intent_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weatherapi-execution-intent-${{ github.run_id }}
+          path: provider_execution_intent.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Persist execution intent attestation bundle
+        if: always() && steps.verify_intent.outputs.intent_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weatherapi-execution-intent-attestation-bundle-${{ github.run_id }}
+          path: weatherapi_execution_intent_attestation_bundle.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Persist execution intent verification marker
+        if: always() && steps.verify_intent.outputs.intent_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weatherapi-execution-intent-attestation-verification-${{ github.run_id }}
+          path: weatherapi_execution_intent_attestation_verification.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
       - name: Execute one sanitized WeatherAPI request and verify receipt
         id: probe
         if: steps.toolchain.outputs.toolchain_verified == '1'
