@@ -138,6 +138,14 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     text,
                 )
                 self.assertIn('"max_requests":intent["max_requests"]',text)
+                self.assertIn(
+                    'handle.write("intent_sha256="+intent["intent_sha256"]+"\\n")',
+                    text,
+                )
+                self.assertIn(
+                    '--execution-intent-sha256 "${{ steps.intent.outputs.intent_sha256 }}"',
+                    probe_block,
+                )
 
     def test_live_workflows_persist_only_sanitized_evidence_artifacts(self):
         for name, spec in WORKFLOWS.items():
