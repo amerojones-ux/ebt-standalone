@@ -93,3 +93,8 @@ It has no provider secret reference, no repository-content write permission, no 
 Phase 53 closes this boundary: the final evidence ledger and all promotion previews now require the signed review-workflow attestation package, not merely the raw review decision.
 
 No provider request, credential read, ledger write, readiness write, forecast activation, or wager action occurs in this phase.
+
+
+## Phase 59 source-evidence repair
+
+Phase 59 repairs the review workflow's source-artifact ingestion path. REVIEW_ONLY reconstruction now requires the receipt, receipt verification marker, receipt Sigstore bundle, signed execution intent, execution-intent verification marker and execution-intent Sigstore bundle from the same probe run/commit.

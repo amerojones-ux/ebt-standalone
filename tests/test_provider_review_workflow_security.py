@@ -58,20 +58,41 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
         self.assertIn('run.get("path") != expected_workflow',text)
         self.assertIn('repository.get("full_name") != os.environ["GITHUB_REPOSITORY"]',text)
 
-    def test_exact_receipt_and_marker_artifacts_are_required(self):
+    def test_exact_receipt_bundle_and_execution_intent_artifacts_are_required(self):
         text=self.text
         for fragment in (
             "weatherapi-probe-receipt-$SOURCE_RUN_ID",
             "weatherapi-attestation-verification-$SOURCE_RUN_ID",
+            "weatherapi-attestation-bundle-$SOURCE_RUN_ID",
+            "weatherapi-execution-intent-$SOURCE_RUN_ID",
+            "weatherapi-execution-intent-attestation-verification-$SOURCE_RUN_ID",
+            "weatherapi-execution-intent-attestation-bundle-$SOURCE_RUN_ID",
             "theoddsapi-probe-receipt-$SOURCE_RUN_ID",
             "theoddsapi-attestation-verification-$SOURCE_RUN_ID",
+            "theoddsapi-attestation-bundle-$SOURCE_RUN_ID",
+            "theoddsapi-execution-intent-$SOURCE_RUN_ID",
+            "theoddsapi-execution-intent-attestation-verification-$SOURCE_RUN_ID",
+            "theoddsapi-execution-intent-attestation-bundle-$SOURCE_RUN_ID",
             "apisports-status-receipt-$SOURCE_RUN_ID",
             "apisports-attestation-verification-$SOURCE_RUN_ID",
+            "apisports-attestation-bundle-$SOURCE_RUN_ID",
+            "apisports-execution-intent-$SOURCE_RUN_ID",
+            "apisports-execution-intent-attestation-verification-$SOURCE_RUN_ID",
+            "apisports-execution-intent-attestation-bundle-$SOURCE_RUN_ID",
         ):
             self.assertIn(fragment,text)
         self.assertIn("artifact count mismatch",text)
         self.assertIn("artifact expired",text)
         self.assertIn("provider_github_artifact_ingest_cli.py",text)
+        for fragment in (
+            "receipt_metadata.json receipt.zip",
+            "marker_metadata.json marker.zip",
+            "bundle_metadata.json bundle.zip",
+            "intent_metadata.json intent.zip",
+            "intent_marker_metadata.json intent_marker.zip",
+            "intent_bundle_metadata.json intent_bundle.zip",
+        ):
+            self.assertIn(fragment,text)
 
     def test_reviewer_identity_comes_from_github_actor(self):
         text=self.text
