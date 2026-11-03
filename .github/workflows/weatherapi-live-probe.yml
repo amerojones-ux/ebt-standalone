@@ -79,11 +79,7 @@ jobs:
 
       - name: Build sanitized one-shot execution intent
         id: intent
-        if: >-
-          ${{
-            steps.toolchain.outputs.toolchain_verified == '1' &&
-            steps.verify_intent.outputs.intent_verified == '1'
-          }}
+        if: steps.toolchain.outputs.toolchain_verified == '1'
         env:
           PROVIDER_NAME: WeatherAPI
           REVIEW_AUTHORIZATION: ${{ inputs.confirm_plan_quota_billing_review }}
@@ -253,7 +249,11 @@ jobs:
 
       - name: Execute one sanitized WeatherAPI request and verify receipt
         id: probe
-        if: steps.toolchain.outputs.toolchain_verified == '1'
+        if: >-
+          ${{
+            steps.toolchain.outputs.toolchain_verified == '1' &&
+            steps.verify_intent.outputs.intent_verified == '1'
+          }}
         env:
           EBT_WEATHER_API_KEY: ${{ secrets.EBT_WEATHER_API_KEY }}
         run: |
