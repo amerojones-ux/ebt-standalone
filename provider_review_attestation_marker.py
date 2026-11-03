@@ -14,7 +14,7 @@ ATTESTATION_ID=re.compile(r"^[A-Za-z0-9._:-]+$")
 
 BODY_FIELDS={
     "schema_version","verification_status","repository",
-    "review_workflow_run_id","source_commit","source_ref",
+    "review_workflow_run_id","review_workflow_run_attempt","source_commit","source_ref",
     "signer_workflow","reviewer","attestation_id","attestation_url",
     "decision_file","verification_tool",
 }
@@ -31,7 +31,7 @@ def verify_review_attestation_marker(
 ):
     if not isinstance(marker,dict) or set(marker)!=ALL_FIELDS:
         return False
-    if marker.get("schema_version")!=1:
+    if marker.get("schema_version")!=2:
         return False
     if marker.get("verification_status")!="VERIFIED":
         return False
@@ -40,6 +40,8 @@ def verify_review_attestation_marker(
     if marker.get("review_workflow_run_id")!=expected_run_id:
         return False
     if not RUN_ID.fullmatch(marker.get("review_workflow_run_id","")):
+        return False
+    if type(marker.get("review_workflow_run_attempt")) is not int or marker["review_workflow_run_attempt"]!=1:
         return False
     commit=marker.get("source_commit")
     if not isinstance(commit,str) or not SHA40.fullmatch(commit):

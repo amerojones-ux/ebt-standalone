@@ -74,12 +74,15 @@ def _validate_metadata(metadata, *, trusted_now):
     if not isinstance(workflow,dict):
         raise ValueError("review workflow metadata required")
     run_id=workflow.get("id")
+    run_attempt=workflow.get("run_attempt")
     repo_id=workflow.get("repository_id")
     head_repo_id=workflow.get("head_repository_id")
     branch=workflow.get("head_branch")
     commit=workflow.get("head_sha")
     if type(run_id) is not int or run_id<=0:
         raise ValueError("invalid review workflow run id")
+    if type(run_attempt) is not int or run_attempt!=1:
+        raise ValueError("review workflow run attempt must equal 1")
     if type(repo_id) is not int or repo_id<=0:
         raise ValueError("invalid review repository id")
     if type(head_repo_id) is not int or head_repo_id!=repo_id:
@@ -99,6 +102,7 @@ def _validate_metadata(metadata, *, trusted_now):
         "artifact_digest":match.group(1).lower(),
         "source_run_id":source_run_id,
         "review_run_id":str(run_id),
+        "review_run_attempt":run_attempt,
         "review_commit":commit.lower(),
         "repository_id":repo_id,
     }

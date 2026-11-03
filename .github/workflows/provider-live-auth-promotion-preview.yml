@@ -68,6 +68,8 @@ jobs:
               raise SystemExit("review run id mismatch")
           if run.get("event") != "workflow_dispatch":
               raise SystemExit("review run was not workflow_dispatch")
+          if run.get("run_attempt") != 1:
+              raise SystemExit("review run was not first workflow attempt")
           if run.get("head_branch") != "main":
               raise SystemExit("review run was not on main")
           if run.get("status") != "completed":
@@ -138,6 +140,7 @@ jobs:
           }
           metadata["workflow_run"] = {
               "id": run["id"],
+              "run_attempt": run["run_attempt"],
               "repository_id": repository["id"],
               "head_repository_id": head_repository["id"],
               "head_branch": run["head_branch"],

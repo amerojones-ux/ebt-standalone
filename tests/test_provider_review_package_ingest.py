@@ -72,10 +72,11 @@ def decision(value="APPROVE"):
 
 def review_marker(reviewer=REVIEWER,commit=REVIEW_COMMIT):
     body={
-        "schema_version":1,
+        "schema_version":2,
         "verification_status":"VERIFIED",
         "repository":REPO,
         "review_workflow_run_id":str(REVIEW_RUN),
+        "review_workflow_run_attempt":1,
         "source_commit":commit,
         "source_ref":"refs/heads/main",
         "signer_workflow":REVIEW_SIGNER,
@@ -101,6 +102,7 @@ def metadata(name=None,run_id=REVIEW_RUN,commit=REVIEW_COMMIT):
         "digest":"sha256:"+"9"*64,
         "workflow_run":{
             "id":run_id,
+            "run_attempt":1,
             "repository_id":123,
             "head_repository_id":123,
             "head_branch":"main",
@@ -166,6 +168,27 @@ class ProviderReviewPackageIngestTests(unittest.TestCase):
         self.assertTrue(verify_attested_review_decision(result))
         self.assertEqual(result["attested_status"],"ATTESTED_REJECTED")
         self.assertIsNone(result["ledger_record_proposal"])
+
+    def test_review_workflow_rerun_metadata_rejected(self):
+        bad=metadata()
+        bad["workflow_run"]["run_attempt"]=2
+        with self.assertRaises(ValueError):
+            ingest_review_package(
+                bad,package_zip(),repository=REPO,trusted_now=NOW
+            )
+
+    def test_review_marker_rerun_rejected_even_when_resigned(self):
+        bad=review_marker()
+        bad["review_workflow_run_attempt"]=2
+        body={k:v for k,v in bad.items() if k!="marker_sha256"}
+        bad["marker_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        with self.assertRaises(ValueError):
+            ingest_review_package(
+                metadata(),package_zip(marker=bad),
+                repository=REPO,trusted_now=NOW,
+            )
 
     def test_wrong_repository_rejected(self):
         with self.assertRaises(ValueError):
