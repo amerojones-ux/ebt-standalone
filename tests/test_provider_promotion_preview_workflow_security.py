@@ -49,6 +49,7 @@ class ProviderPromotionPreviewWorkflowSecurityTests(unittest.TestCase):
             text,
         )
         self.assertIn('run.get("event") != "workflow_dispatch"',text)
+        self.assertIn('run.get("run_attempt") != 1',text)
         self.assertIn('run.get("head_branch") != "main"',text)
         self.assertIn('run.get("status") != "completed"',text)
         self.assertIn('run.get("conclusion") != "success"',text)
@@ -63,6 +64,7 @@ class ProviderPromotionPreviewWorkflowSecurityTests(unittest.TestCase):
         )
         self.assertIn("signed review package artifact count mismatch",text)
         self.assertIn("signed review package artifact expired",text)
+        self.assertIn('"run_attempt": run["run_attempt"]',text)
         self.assertIn("provider_review_package_ingest_cli.py",text)
         self.assertIn('--repository "$GITHUB_REPOSITORY"',text)
         self.assertIn("--output provider_attested_review_decision.json",text)
