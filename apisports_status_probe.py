@@ -15,6 +15,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 from apisports_status_contract import validate_rate_headers, validate_status_payload
+from provider_live_request_plan import build_request, get_plan, validate_response_url
 from apisports_status_receipt import (
     ALLOWED_CATEGORIES,
     ALLOWED_STATUS,
@@ -24,9 +25,10 @@ from apisports_status_receipt import (
 
 REQUEST_APPROVAL="I_APPROVE_ONE_APISPORTS_STATUS_REQUEST"
 ACCOUNT_REVIEW_APPROVAL="I_CONFIRM_APISPORTS_STATUS_PRIVACY_AND_RATE_LIMIT_REVIEWED"
-HOST="v1.american-football.api-sports.io"
-PATH="/status"
-MAX_BODY=65536
+PLAN=get_plan("API-Sports")
+HOST=PLAN["host"]
+PATH=PLAN["path"]
+MAX_BODY=PLAN["max_body_bytes"]
 
 class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,req,fp,code,msg,headers,newurl):
@@ -76,20 +78,18 @@ def probe(confirm,account_review,opener=None):
     if not key:
         return _safe_result("HOLD","secret_missing")
 
-    url=f"https://{HOST}{PATH}"
-    request=urllib.request.Request(
-        url,
-        method="GET",
-        headers={"x-apisports-key":key},
-    )
+    try:
+        request=build_request("API-Sports",key)
+    except ValueError:
+        return _safe_result("HOLD","endpoint_mismatch")
+    url=request.full_url
     opener=_default_open if opener is None else opener
 
     try:
-        response=opener(request,timeout=10)
+        response=opener(request,timeout=PLAN["timeout_seconds"])
         status=getattr(response,"status",None)
         final_url=getattr(response,"url",url)
-        parsed=urllib.parse.urlparse(final_url)
-        if parsed.scheme!="https" or parsed.hostname!=HOST or parsed.path!=PATH:
+        if validate_response_url(final_url,"API-Sports"):
             return _safe_result("HOLD","endpoint_mismatch")
         if type(status) is not int or status != 200:
             return _safe_result(
