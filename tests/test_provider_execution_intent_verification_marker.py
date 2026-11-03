@@ -16,11 +16,12 @@ COMMIT="a"*40
 def marker(provider="WeatherAPI"):
     contract=CONTRACTS[provider]
     body={
-        "schema_version":1,
+        "schema_version":2,
         "provider":provider,
         "verification_status":"VERIFIED",
         "repository":REPO,
         "workflow_run_id":RUN,
+        "workflow_run_attempt":1,
         "source_commit":COMMIT,
         "source_ref":"refs/heads/main",
         "signer_workflow":contract["workflow"],
@@ -93,6 +94,19 @@ class ProviderExecutionIntentVerificationMarkerTests(unittest.TestCase):
                 expected_run_id=RUN,expected_commit=COMMIT
             )
         )
+
+    def test_workflow_run_attempt_must_be_integer_one(self):
+        for bad in (True,0,2,"1"):
+            with self.subTest(bad=bad):
+                value=marker()
+                value["workflow_run_attempt"]=bad
+                resign(value)
+                self.assertFalse(
+                    verify_execution_intent_marker(
+                        value,provider="WeatherAPI",
+                        expected_run_id=RUN,expected_commit=COMMIT
+                    )
+                )
 
     def test_max_requests_bool_or_two_rejected(self):
         for bad in (True,2):
