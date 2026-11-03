@@ -4,11 +4,13 @@ from apisports_status_receipt import build_receipt as build_apisports
 from provider_receipt_review_candidate import build_review_candidate, bind_attestation_verification
 from provider_evidence_review_decision import review_candidate, verify_candidate
 from provider_readiness_evidence_gate import validate_record
+from provider_live_request_plan import request_plan_sha256
 
 COMMIT="a"*40
 RUN="12345"
 ARTIFACT="d"*64
 MARKER="e"*64
+REQUEST_PLAN=request_plan_sha256("API-Sports")
 REPO="amerojones-ux/ebt-standalone"
 ATTESTATION_ID="attestation-123"
 ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+ATTESTATION_ID
@@ -28,6 +30,7 @@ def candidate():
     return bind_attestation_verification(
         pending,
         marker_sha256=MARKER,
+        request_plan_sha256=REQUEST_PLAN,
         source_repository=REPO,
         attestation_id=ATTESTATION_ID,
         attestation_url=ATTESTATION_URL,

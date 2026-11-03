@@ -19,6 +19,7 @@ COMMIT="a"*40
 REVIEW_COMMIT="f"*40
 ARTIFACT="d"*64
 MARKER="e"*64
+REQUEST_PLAN=request_plan_sha256("API-Sports")
 REPO="amerojones-ux/ebt-standalone"
 PROVIDER_ATTESTATION_ID="attestation-123"
 PROVIDER_ATTESTATION_URL="https://github.com/"+REPO+"/attestations/"+PROVIDER_ATTESTATION_ID
@@ -44,6 +45,7 @@ def candidate():
     return bind_attestation_verification(
         pending,
         marker_sha256=MARKER,
+        request_plan_sha256=REQUEST_PLAN,
         source_repository=REPO,
         attestation_id=PROVIDER_ATTESTATION_ID,
         attestation_url=PROVIDER_ATTESTATION_URL,
@@ -200,3 +202,4 @@ class ProviderReviewPackageIngestTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+from provider_live_request_plan import request_plan_sha256

@@ -58,3 +58,8 @@ Phase 50 supersedes the initial ledger record shape with `schema_version: 2` for
 ## Schema v3 update
 
 Phase 53 supersedes schema v2 with `schema_version: 3` for live-auth evidence. In addition to provider-side signed provenance, live-auth records now require GitHub-actor reviewer identity and the signed/verified review-workflow provenance chain. Raw review decisions are no longer sufficient for ledger preview or readiness promotion.
+
+
+## Schema v4 update
+
+Phase 57 supersedes schema v3 with `schema_version: 4` for live-auth evidence. All schema-v3 provider-side and reviewer-side provenance remains mandatory, and live-auth records additionally require the canonical provider `request_plan_sha256`.

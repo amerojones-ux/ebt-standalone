@@ -7,6 +7,7 @@ from provider_readiness_evidence_gate import (
     validate_ledger,
     validate_record,
 )
+from provider_live_request_plan import request_plan_sha256
 
 NOW="2026-11-02T20:30:00+00:00"
 REPO="amerojones-ux/ebt-standalone"
@@ -49,6 +50,7 @@ def github_record(subject="API-Sports",claim="live_auth_verified"):
         "receipt_sha256":"b"*64,
         "artifact_sha256":"c"*64,
         "attestation_marker_sha256":"d"*64,
+        "request_plan_sha256":request_plan_sha256(subject),
         "attestation_id":"attestation-123",
         "attestation_url":"https://github.com/"+REPO+"/attestations/attestation-123",
         "signer_workflow":signer,
@@ -140,7 +142,8 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
     def test_github_receipt_requires_full_signed_provenance(self):
         fields=[
             "source_commit","receipt_sha256","artifact_sha256",
-            "attestation_marker_sha256","attestation_id","attestation_url",
+            "attestation_marker_sha256","request_plan_sha256",
+            "attestation_id","attestation_url",
             "signer_workflow","source_repository",
             "review_repository","review_workflow_run_id",
             "review_source_commit","review_github_metadata_match",
@@ -184,6 +187,16 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
         record["review_decision_file_sha256"]="123"
         record["review_attestation_marker_sha256"]="123"
         self.assertTrue(validate_record(record,subject="API-Sports",claim="live_auth_verified",trusted_now=NOW))
+
+    def test_wrong_request_plan_fingerprint_rejected(self):
+        record=github_record()
+        record["request_plan_sha256"]="0"*64
+        self.assertTrue(
+            validate_record(
+                record,subject="API-Sports",
+                claim="live_auth_verified",trusted_now=NOW
+            )
+        )
 
     def test_bad_commit_and_hashes_rejected(self):
         record=github_record()
