@@ -29,10 +29,10 @@ class PromotionApplyWorkflowSecurityTests(unittest.TestCase):
         self.assertNotIn("pull_request:\n",text)
         self.assertNotIn("\npush:",text)
 
-    def test_write_permissions_are_explicitly_limited_to_pr_path(self):
+    def test_write_permissions_are_limited_to_branch_preparation(self):
         text=self.text
         self.assertIn("  contents: write",text)
-        self.assertIn("  pull-requests: write",text)
+        self.assertNotIn("pull-requests: write",text)
         self.assertIn("  actions: read",text)
         self.assertNotIn("actions: write",text)
         self.assertNotIn("secrets.",text)
@@ -69,7 +69,7 @@ class PromotionApplyWorkflowSecurityTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden,text)
 
-    def test_manifest_is_attested_before_pr_creation(self):
+    def test_manifest_is_attested_before_branch_creation(self):
         text=self.text
         self.assertIn("actions/attest@"+ATTEST_SHA,text)
         self.assertIn("subject-path: provider_live_auth_promotion_apply_manifest.json",text)
@@ -81,18 +81,19 @@ class PromotionApplyWorkflowSecurityTests(unittest.TestCase):
             2,
         )
         verify_index=text.index('echo "apply_attestation_verified=1"')
-        pr_index=text.index("- name: Create protected-branch promotion pull request")
-        self.assertLess(verify_index,pr_index)
+        branch_index=text.index("- name: Create protected promotion branch")
+        self.assertLess(verify_index,branch_index)
 
-    def test_workflow_opens_pr_but_never_merges_or_directly_updates_main(self):
+    def test_workflow_prepares_branch_but_never_opens_or_merges_pr(self):
         text=self.text
         self.assertIn('git/ref/heads/main',text)
         self.assertIn('test "$current_main" = "$GITHUB_SHA"',text)
         self.assertIn('refs/heads/$branch',text)
         self.assertIn('contents/config/provider_evidence.json',text)
         self.assertIn('contents/config/provider_readiness.json',text)
-        self.assertIn('repos/$GITHUB_REPOSITORY/pulls',text)
-        self.assertIn('-f base="main"',text)
+        self.assertIn('promotion_branch=%s',text)
+        self.assertIn("The workflow intentionally does not open or merge a pull request.",text)
+        self.assertNotIn('repos/$GITHUB_REPOSITORY/pulls',text)
         self.assertNotIn("merge_pull_request",text)
         self.assertNotIn("/merges",text)
         self.assertNotIn("git push",text)

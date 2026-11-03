@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       confirm_apply:
-        description: "Approve controlled live-auth promotion PR creation"
+        description: "Approve controlled live-auth promotion branch preparation"
         required: true
         type: choice
         options:
@@ -22,7 +22,6 @@ concurrency:
 
 permissions:
   contents: write
-  pull-requests: write
   actions: read
   id-token: write
   attestations: write
@@ -255,8 +254,8 @@ jobs:
             --format json > /tmp/promotion-apply-attestation-api.json
           echo "apply_attestation_verified=1" >> "$GITHUB_OUTPUT"
 
-      - name: Create protected-branch promotion pull request
-        id: pr
+      - name: Create protected promotion branch
+        id: branch
         if: steps.verify.outputs.apply_attestation_verified == '1'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -292,24 +291,17 @@ jobs:
             -f branch="$branch" \
             -f sha="$readiness_sha" >/dev/null
 
-          body="Controlled live-auth promotion generated from signed preview run ${PREVIEW_RUN_ID}.
-
-          Safety invariants:
-          - only live_auth_verified is promoted for ${PROVIDER}
-          - global provider gate remains SAFE_HOLD
-          - forecast_enabled remains false
-          - network_autorun_enabled remains false
-          - no provider request is made by this workflow
-          - merge remains subject to protected-main required status checks"
-
-          pr_json="$(gh api -X POST "repos/$GITHUB_REPOSITORY/pulls" \
-            -f title="Promote ${PROVIDER} live-auth evidence" \
-            -f head="$branch" \
-            -f base="main" \
-            -f body="$body")"
-
-          printf '%s\n' "$pr_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["html_url"])' >> "$GITHUB_STEP_SUMMARY"
-          printf 'pr_number=%s\n' "$(printf '%s\n' "$pr_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["number"])')" >> "$GITHUB_OUTPUT"
+          printf 'promotion_branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Promotion branch prepared"
+            echo
+            echo "Provider: $PROVIDER"
+            echo "Branch: `$branch`"
+            echo "Base commit: `$GITHUB_SHA`"
+            echo
+            echo "The workflow intentionally does not open or merge a pull request."
+            echo "Open the PR through an authorized external GitHub client after reviewing this branch."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Persist sanitized apply evidence
         if: always() && steps.verify.outputs.apply_attestation_verified == '1'
