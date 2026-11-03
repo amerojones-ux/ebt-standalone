@@ -125,7 +125,7 @@ def build_review_candidate(receipt, *, artifact_sha256, expected_run_id, expecte
         "attestation_url":None,
         "signer_workflow":None,
         "execution_intent_verified":False,
-        "execution_intent_sha256":None,
+        "execution_intent_sha256":receipt["execution_intent_sha256"],
         "execution_intent_file_sha256":None,
         "execution_intent_marker_sha256":None,
         "execution_intent_bundle_sha256":None,
@@ -186,6 +186,10 @@ def bind_attestation_verification(
     if signer_workflow != expected_signer:
         raise ValueError("signer workflow mismatch")
 
+    if candidate.get("execution_intent_sha256")!=str(
+        execution_intent_sha256
+    ).lower():
+        raise ValueError("receipt/execution-intent checksum binding mismatch")
     for label,value in (
         ("execution_intent_sha256",execution_intent_sha256),
         ("execution_intent_file_sha256",execution_intent_file_sha256),
