@@ -262,6 +262,54 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                     text,
                 )
 
+    def test_generated_evidence_markers_are_runtime_self_verified(self):
+        for name, spec in WORKFLOWS.items():
+            with self.subTest(name=name):
+                text=spec["path"].read_text(encoding="utf-8")
+
+                intent_start=text.index(
+                    "      - name: Verify signed one-shot execution intent"
+                )
+                intent_end=text.index(
+                    "      - name: Persist signed execution intent",
+                    intent_start,
+                )
+                intent_block=text[intent_start:intent_end]
+                self.assertIn(
+                    '"workflow_run_attempt":intent["workflow_run_attempt"]',
+                    intent_block,
+                )
+                self.assertIn(
+                    "verify_execution_intent_marker",
+                    intent_block,
+                )
+                self.assertIn(
+                    "execution intent marker verification failed",
+                    intent_block,
+                )
+
+                receipt_start=text.index(
+                    "      - name: Verify signed receipt provenance"
+                )
+                receipt_end=text.index(
+                    "      - name: Persist exact verified attestation bundle",
+                    receipt_start,
+                )
+                receipt_block=text[receipt_start:receipt_end]
+                self.assertNotIn(
+                    'intent["workflow_run_attempt"]',
+                    receipt_block,
+                )
+                self.assertIn(
+                    "provider_attestation_verification_marker",
+                    receipt_block,
+                )
+                self.assertIn("verify_marker",receipt_block)
+                self.assertIn(
+                    "receipt attestation marker verification failed",
+                    receipt_block,
+                )
+
     def _assert_direct_no_proxy_opener(self, module):
         fake_opener = Mock()
         fake_response = object()
