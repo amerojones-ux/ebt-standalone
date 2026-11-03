@@ -79,6 +79,7 @@ def ingest_execution_intent_marker_artifact(
         "marker_file_sha256":hashlib.sha256(raw).hexdigest(),
         "marker_internal_sha256":marker["marker_sha256"],
         "intent_sha256":marker["intent_sha256"],
+        "workflow_run_attempt":marker["workflow_run_attempt"],
         "intent_file_sha256":marker["intent_file_sha256"],
         "request_plan_sha256":marker["request_plan_sha256"],
         "actor":marker["actor"],
