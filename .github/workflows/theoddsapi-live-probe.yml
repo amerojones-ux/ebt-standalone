@@ -104,10 +104,14 @@ jobs:
 
           python3 - <<'PY'
           import json
+          import os
           from provider_execution_intent import verify_execution_intent
           with open("provider_execution_intent.json", encoding="utf-8") as handle:
               intent=json.load(handle)
-          raise SystemExit(0 if verify_execution_intent(intent) else 1)
+          if not verify_execution_intent(intent):
+              raise SystemExit(1)
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as handle:
+              handle.write("intent_sha256="+intent["intent_sha256"]+"\n")
           PY
 
           echo "intent_prepared=1" >> "$GITHUB_OUTPUT"
@@ -261,7 +265,8 @@ jobs:
           python3 theoddsapi_live_probe.py \
             --account-review "I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED" \
             --confirm "I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST" \
-            --receipt-path theoddsapi_probe_receipt.json
+            --receipt-path theoddsapi_probe_receipt.json \
+            --execution-intent-sha256 "${{ steps.intent.outputs.intent_sha256 }}"
           probe_exit=$?
 
           receipt_ok=0
