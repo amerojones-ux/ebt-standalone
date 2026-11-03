@@ -13,6 +13,8 @@ from provider_live_request_plan import request_plan_sha256 as canonical_request_
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_REF=re.compile(r"^github-actions-run:[0-9]+$")
+ACTOR=re.compile(r"^[A-Za-z0-9-]+$")
+ACTOR_ID=re.compile(r"^[0-9]+$")
 DECISIONS={"APPROVE","REJECT"}
 SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
 SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
@@ -27,7 +29,11 @@ CANDIDATE_BODY_FIELDS={
     "source_repository","source_commit","github_metadata_match",
     "receipt_sha256","artifact_sha256","attestation_verified",
     "attestation_marker_sha256","request_plan_sha256","attestation_id","attestation_url",
-    "signer_workflow","reviewer_required",
+    "signer_workflow","execution_intent_verified","execution_intent_sha256",
+    "execution_intent_file_sha256","execution_intent_marker_sha256",
+    "execution_intent_bundle_sha256","execution_intent_attestation_id",
+    "execution_intent_attestation_url","execution_actor","execution_actor_id",
+    "execution_max_requests","reviewer_required",
     "readiness_mutation_permitted","forecast_activation_permitted",
 }
 CANDIDATE_FIELDS=CANDIDATE_BODY_FIELDS|{"candidate_sha256"}
@@ -94,6 +100,37 @@ def verify_candidate(candidate):
         return False
     if candidate.get("signer_workflow")!=SIGNER_WORKFLOWS[candidate["provider"]]:
         return False
+    if candidate.get("execution_intent_verified") is not True:
+        return False
+    for field in (
+        "execution_intent_sha256",
+        "execution_intent_file_sha256",
+        "execution_intent_marker_sha256",
+        "execution_intent_bundle_sha256",
+    ):
+        if not SHA64.fullmatch(candidate.get(field,"")):
+            return False
+    if (
+        not isinstance(candidate.get("execution_intent_attestation_id"),str)
+        or not candidate["execution_intent_attestation_id"]
+    ):
+        return False
+    if (
+        not isinstance(candidate.get("execution_intent_attestation_url"),str)
+        or not candidate["execution_intent_attestation_url"].startswith(
+            "https://github.com/"+SOURCE_REPOSITORY+"/attestations/"
+        )
+    ):
+        return False
+    if not ACTOR.fullmatch(candidate.get("execution_actor","")):
+        return False
+    if not ACTOR_ID.fullmatch(candidate.get("execution_actor_id","")):
+        return False
+    if (
+        type(candidate.get("execution_max_requests")) is not int
+        or candidate["execution_max_requests"]!=1
+    ):
+        return False
     if candidate.get("reviewer_required") is not True:
         return False
     if candidate.get("readiness_mutation_permitted") is not False:
@@ -148,6 +185,11 @@ def verify_review_decision(result):
             "reviewer","source_repository","source_commit","receipt_sha256",
             "artifact_sha256","attestation_marker_sha256","request_plan_sha256",
             "attestation_id","attestation_url","signer_workflow",
+            "execution_intent_verified","execution_intent_sha256",
+            "execution_intent_file_sha256","execution_intent_marker_sha256",
+            "execution_intent_bundle_sha256","execution_intent_attestation_id",
+            "execution_intent_attestation_url","execution_actor",
+            "execution_actor_id","execution_max_requests",
         }
         if set(proposal)!=required:
             return False
@@ -186,6 +228,37 @@ def verify_review_decision(result):
         ):
             return False
         if proposal.get("signer_workflow")!=SIGNER_WORKFLOWS[proposal["subject"]]:
+            return False
+        if proposal.get("execution_intent_verified") is not True:
+            return False
+        for field in (
+            "execution_intent_sha256",
+            "execution_intent_file_sha256",
+            "execution_intent_marker_sha256",
+            "execution_intent_bundle_sha256",
+        ):
+            if not SHA64.fullmatch(proposal.get(field,"")):
+                return False
+        if (
+            not isinstance(proposal.get("execution_intent_attestation_id"),str)
+            or not proposal["execution_intent_attestation_id"]
+        ):
+            return False
+        if (
+            not isinstance(proposal.get("execution_intent_attestation_url"),str)
+            or not proposal["execution_intent_attestation_url"].startswith(
+                "https://github.com/"+SOURCE_REPOSITORY+"/attestations/"
+            )
+        ):
+            return False
+        if not ACTOR.fullmatch(proposal.get("execution_actor","")):
+            return False
+        if not ACTOR_ID.fullmatch(proposal.get("execution_actor_id","")):
+            return False
+        if (
+            type(proposal.get("execution_max_requests")) is not int
+            or proposal["execution_max_requests"]!=1
+        ):
             return False
 
     expected=result.get("decision_sha256")
@@ -245,5 +318,15 @@ def review_candidate(candidate, *, decision, reviewer, reviewed_at, trusted_now)
         "attestation_id":candidate["attestation_id"],
         "attestation_url":candidate["attestation_url"],
         "signer_workflow":candidate["signer_workflow"],
+        "execution_intent_verified":candidate["execution_intent_verified"],
+        "execution_intent_sha256":candidate["execution_intent_sha256"],
+        "execution_intent_file_sha256":candidate["execution_intent_file_sha256"],
+        "execution_intent_marker_sha256":candidate["execution_intent_marker_sha256"],
+        "execution_intent_bundle_sha256":candidate["execution_intent_bundle_sha256"],
+        "execution_intent_attestation_id":candidate["execution_intent_attestation_id"],
+        "execution_intent_attestation_url":candidate["execution_intent_attestation_url"],
+        "execution_actor":candidate["execution_actor"],
+        "execution_actor_id":candidate["execution_actor_id"],
+        "execution_max_requests":candidate["execution_max_requests"],
     }
     return _sign_decision(body)
