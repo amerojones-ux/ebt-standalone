@@ -63,3 +63,8 @@ Phase 53 supersedes schema v2 with `schema_version: 3` for live-auth evidence. I
 ## Schema v4 update
 
 Phase 57 supersedes schema v3 with `schema_version: 4` for live-auth evidence. All schema-v3 provider-side and reviewer-side provenance remains mandatory, and live-auth records additionally require the canonical provider `request_plan_sha256`.
+
+
+## Schema v5 update
+
+Phase 60 supersedes schema v4 with `schema_version: 5` for live-auth evidence. All earlier provider/request-plan/reviewer provenance remains mandatory, and live-auth records additionally retain the complete signed one-shot execution-intent authorization chain, including GitHub actor identity and exact `execution_max_requests: 1`.
