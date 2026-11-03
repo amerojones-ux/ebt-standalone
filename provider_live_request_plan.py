@@ -3,6 +3,8 @@
 Pure request construction/validation. No network calls and no environment access.
 Credential values are accepted by the builder but are never returned by validators.
 """
+import hashlib
+import json
 import urllib.parse
 import urllib.request
 
@@ -221,3 +223,11 @@ def public_plan(provider):
         "retries":plan["retries"],
         "max_body_bytes":plan["max_body_bytes"],
     }
+
+
+def request_plan_sha256(provider):
+    public=public_plan(provider)
+    canonical=json.dumps(
+        public,sort_keys=True,separators=(",",":")
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
