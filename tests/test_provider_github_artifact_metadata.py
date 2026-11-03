@@ -11,6 +11,7 @@ from provider_github_artifact_metadata import (
     build_trusted_binding,
 )
 from provider_github_artifact_ingest import ingest_github_artifact
+from provider_live_request_plan import request_plan_sha256
 
 RUN=123456
 COMMIT="a"*40
@@ -49,7 +50,7 @@ def zip_receipt():
 def verification_marker(bundle_bytes=None):
     bundle_bytes=bundle_file() if bundle_bytes is None else bundle_bytes
     body={
-        "schema_version":3,
+        "schema_version":4,
         "provider":"WeatherAPI",
         "verification_status":"VERIFIED",
         "repository":REPO,
@@ -67,6 +68,7 @@ def verification_marker(bundle_bytes=None):
         "python_version":"3.13.7",
         "gh_version":"2.80.0",
         "setup_python_sha":"6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "request_plan_sha256":request_plan_sha256("WeatherAPI"),
         "required_attestation_flags":[
             "--bundle",
             "--repo",
@@ -153,6 +155,10 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         self.assertEqual(
             r["candidate"]["attestation_marker_sha256"],
             r["attestation_verification"]["marker_file_sha256"],
+        )
+        self.assertEqual(
+            r["candidate"]["request_plan_sha256"],
+            request_plan_sha256("WeatherAPI"),
         )
         self.assertFalse(r["ledger_mutation_permitted"])
 
@@ -243,6 +249,27 @@ class ProviderGithubArtifactMetadataTests(unittest.TestCase):
         bundle_zip=zip_bundle()
         marker=verification_marker()
         marker["required_attestation_flags"]=["--repo"]
+        body={k:v for k,v in marker.items() if k!="marker_sha256"}
+        marker["marker_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        marker_zip=zip_one(
+            "weatherapi_attestation_verification.json",
+            (json.dumps(marker,sort_keys=True)+"\n").encode(),
+        )
+        with self.assertRaises(ValueError):
+            ingest_github_artifact(
+                metadata(receipt_zip),receipt_zip,
+                marker_metadata(marker_zip),marker_zip,
+                bundle_metadata(bundle_zip),bundle_zip,
+                provider="WeatherAPI",repository=REPO,trusted_now=NOW
+            )
+
+    def test_marker_request_plan_drift_rejected(self):
+        receipt_zip=zip_receipt()
+        bundle_zip=zip_bundle()
+        marker=verification_marker()
+        marker["request_plan_sha256"]="0"*64
         body={k:v for k,v in marker.items() if k!="marker_sha256"}
         marker["marker_sha256"]=hashlib.sha256(
             json.dumps(body,sort_keys=True,separators=(",",":")).encode()
