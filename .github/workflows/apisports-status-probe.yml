@@ -201,7 +201,7 @@ jobs:
               "verification_status":"VERIFIED",
               "repository":os.environ["GITHUB_REPOSITORY"],
               "workflow_run_id":os.environ["GITHUB_RUN_ID"],
-              "workflow_run_attempt":intent["workflow_run_attempt"],
+              "workflow_run_attempt": intent["workflow_run_attempt"],
               "source_commit":os.environ["GITHUB_SHA"],
               "source_ref":"refs/heads/main",
               "signer_workflow":os.environ["SIGNER_WORKFLOW"],
