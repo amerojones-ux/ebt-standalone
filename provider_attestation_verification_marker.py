@@ -4,6 +4,8 @@ import hmac
 import json
 import re
 
+from provider_live_request_plan import request_plan_sha256
+
 SHA40=re.compile(r"^[0-9a-f]{40}$",re.I)
 SHA64=re.compile(r"^[0-9a-f]{64}$",re.I)
 RUN_ID=re.compile(r"^[0-9]+$")
@@ -43,7 +45,7 @@ BODY_FIELDS={
     "attestation_id","attestation_url","attestation_bundle_sha256",
     "receipt_file","verification_tool","verification_modes",
     "runner_label","python_version","gh_version","setup_python_sha",
-    "required_attestation_flags",
+    "request_plan_sha256","required_attestation_flags",
 }
 ALL_FIELDS=BODY_FIELDS|{"marker_sha256"}
 
@@ -55,7 +57,7 @@ def verify_marker(marker, *, provider, repository, expected_run_id, expected_com
         return False
     if not isinstance(marker,dict) or set(marker)!=ALL_FIELDS:
         return False
-    if marker.get("schema_version")!=3:
+    if marker.get("schema_version")!=4:
         return False
     if marker.get("provider")!=provider:
         return False
@@ -111,6 +113,8 @@ def verify_marker(marker, *, provider, repository, expected_run_id, expected_com
     if not isinstance(gh_version,str) or not GH_VERSION.fullmatch(gh_version):
         return False
     if marker.get("setup_python_sha")!=SETUP_PYTHON_SHA:
+        return False
+    if marker.get("request_plan_sha256")!=request_plan_sha256(provider):
         return False
     if marker.get("required_attestation_flags")!=REQUIRED_ATTESTATION_FLAGS:
         return False
