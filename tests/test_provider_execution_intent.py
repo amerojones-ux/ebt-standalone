@@ -19,6 +19,7 @@ def valid(provider):
         provider=provider,
         repository=REPO,
         workflow_run_id=RUN,
+        workflow_run_attempt=1,
         source_commit=COMMIT,
         source_ref="refs/heads/main",
         signer_workflow=contract["workflow"],
@@ -42,6 +43,8 @@ class ProviderExecutionIntentTests(unittest.TestCase):
             with self.subTest(provider=provider):
                 value=valid(provider)
                 self.assertTrue(verify_execution_intent(value))
+                self.assertEqual(value["schema_version"],2)
+                self.assertEqual(value["workflow_run_attempt"],1)
                 self.assertEqual(value["max_requests"],1)
                 self.assertFalse(value["ledger_mutation_permitted"])
                 self.assertFalse(value["readiness_mutation_permitted"])
@@ -87,6 +90,14 @@ class ProviderExecutionIntentTests(unittest.TestCase):
         value["request_plan_sha256"]="0"*64
         resign(value)
         self.assertFalse(verify_execution_intent(value))
+
+    def test_workflow_run_attempt_must_be_integer_one(self):
+        for bad in (True,0,2,"1"):
+            with self.subTest(value=bad):
+                value=valid("WeatherAPI")
+                value["workflow_run_attempt"]=bad
+                resign(value)
+                self.assertFalse(verify_execution_intent(value))
 
     def test_request_count_cannot_be_bool_or_more_than_one(self):
         for bad in (True,2,0):
