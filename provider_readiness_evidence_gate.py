@@ -91,6 +91,11 @@ def validate_record(record, *, subject, claim, trusted_now=None):
         "artifact_sha256", "attestation_marker_sha256", "request_plan_sha256",
         "attestation_id",
         "attestation_url", "signer_workflow",
+        "execution_intent_verified","execution_intent_sha256",
+        "execution_intent_file_sha256","execution_intent_marker_sha256",
+        "execution_intent_bundle_sha256","execution_intent_attestation_id",
+        "execution_intent_attestation_url","execution_actor",
+        "execution_actor_id","execution_max_requests",
         "review_repository", "review_workflow_run_id", "review_source_commit",
         "review_github_metadata_match", "review_decision_sha256",
         "review_decision_file_sha256", "review_attestation_marker_sha256",
@@ -150,6 +155,16 @@ def validate_record(record, *, subject, claim, trusted_now=None):
     attestation_id = record.get("attestation_id")
     attestation_url = record.get("attestation_url")
     signer_workflow = record.get("signer_workflow")
+    execution_intent_verified = record.get("execution_intent_verified")
+    execution_intent_sha = record.get("execution_intent_sha256")
+    execution_intent_file_sha = record.get("execution_intent_file_sha256")
+    execution_intent_marker_sha = record.get("execution_intent_marker_sha256")
+    execution_intent_bundle_sha = record.get("execution_intent_bundle_sha256")
+    execution_intent_attestation_id = record.get("execution_intent_attestation_id")
+    execution_intent_attestation_url = record.get("execution_intent_attestation_url")
+    execution_actor = record.get("execution_actor")
+    execution_actor_id = record.get("execution_actor_id")
+    execution_max_requests = record.get("execution_max_requests")
     review_repository = record.get("review_repository")
     review_workflow_run_id = record.get("review_workflow_run_id")
     review_source_commit = record.get("review_source_commit")
@@ -180,6 +195,16 @@ def validate_record(record, *, subject, claim, trusted_now=None):
         not isinstance(request_plan_sha, str) or not SHA64.fullmatch(request_plan_sha)
     ):
         errors.append("invalid request_plan_sha256")
+    for label,value in (
+        ("execution_intent_sha256",execution_intent_sha),
+        ("execution_intent_file_sha256",execution_intent_file_sha),
+        ("execution_intent_marker_sha256",execution_intent_marker_sha),
+        ("execution_intent_bundle_sha256",execution_intent_bundle_sha),
+    ):
+        if value is not None and (
+            not isinstance(value,str) or not SHA64.fullmatch(value)
+        ):
+            errors.append("invalid "+label)
     if review_source_commit is not None and (
         not isinstance(review_source_commit, str)
         or not SHA40.fullmatch(review_source_commit)
@@ -210,6 +235,41 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             errors.append("github_actions_receipt requires request_plan_sha256")
         elif request_plan_sha != canonical_request_plan_sha256(subject):
             errors.append("github_actions_receipt request_plan_sha256 mismatch")
+        if execution_intent_verified is not True:
+            errors.append("github_actions_receipt requires execution_intent_verified")
+        for label,value in (
+            ("execution_intent_sha256",execution_intent_sha),
+            ("execution_intent_file_sha256",execution_intent_file_sha),
+            ("execution_intent_marker_sha256",execution_intent_marker_sha),
+            ("execution_intent_bundle_sha256",execution_intent_bundle_sha),
+        ):
+            if value is None:
+                errors.append("github_actions_receipt requires "+label)
+        if (
+            not isinstance(execution_intent_attestation_id,str)
+            or not execution_intent_attestation_id
+        ):
+            errors.append(
+                "github_actions_receipt requires execution_intent_attestation_id"
+            )
+        if (
+            not isinstance(execution_intent_attestation_url,str)
+            or not execution_intent_attestation_url.startswith(
+                "https://github.com/" + SOURCE_REPOSITORY + "/attestations/"
+            )
+        ):
+            errors.append(
+                "github_actions_receipt execution_intent_attestation_url mismatch"
+            )
+        if not isinstance(execution_actor,str) or not REVIEWER.match(
+            "github:"+execution_actor+"#"+
+            (execution_actor_id if isinstance(execution_actor_id,str) else "")
+        ):
+            errors.append("github_actions_receipt execution actor identity invalid")
+        if type(execution_max_requests) is not int or execution_max_requests!=1:
+            errors.append(
+                "github_actions_receipt execution_max_requests must equal 1"
+            )
         if not isinstance(attestation_id, str) or not attestation_id:
             errors.append("github_actions_receipt requires attestation_id")
         if not isinstance(attestation_url, str) or not attestation_url.startswith(
@@ -257,6 +317,16 @@ def validate_record(record, *, subject, claim, trusted_now=None):
             "attestation_id": attestation_id,
             "attestation_url": attestation_url,
             "signer_workflow": signer_workflow,
+            "execution_intent_verified": execution_intent_verified,
+            "execution_intent_sha256": execution_intent_sha,
+            "execution_intent_file_sha256": execution_intent_file_sha,
+            "execution_intent_marker_sha256": execution_intent_marker_sha,
+            "execution_intent_bundle_sha256": execution_intent_bundle_sha,
+            "execution_intent_attestation_id": execution_intent_attestation_id,
+            "execution_intent_attestation_url": execution_intent_attestation_url,
+            "execution_actor": execution_actor,
+            "execution_actor_id": execution_actor_id,
+            "execution_max_requests": execution_max_requests,
             "review_repository": review_repository,
             "review_workflow_run_id": review_workflow_run_id,
             "review_source_commit": review_source_commit,
@@ -279,8 +349,8 @@ def validate_ledger(ledger, *, trusted_now=None):
     errors = []
     if not isinstance(ledger, dict):
         return ["ledger must be object"]
-    if ledger.get("schema_version") != 4:
-        errors.append("schema_version must be 4")
+    if ledger.get("schema_version") != 5:
+        errors.append("schema_version must be 5")
 
     entries = ledger.get("providers")
     if not isinstance(entries, list):
