@@ -14,14 +14,16 @@ import urllib.request
 from datetime import datetime, timezone
 
 from weatherapi_contract import validate_current
+from provider_live_request_plan import build_request, get_plan, validate_response_url
 from weatherapi_probe_receipt import ALLOWED_CATEGORIES, ALLOWED_STATUS, build_receipt, write_receipt
 
 REQUEST_APPROVAL = "I_APPROVE_ONE_WEATHERAPI_REQUEST"
 PLAN_REVIEW_APPROVAL = "I_CONFIRM_WEATHERAPI_PLAN_QUOTA_AND_BILLING_REVIEWED"
-HOST = "api.weatherapi.com"
-PATH = "/v1/current.json"
-LOCATION = "Chicago"
-MAX_BODY = 32768
+PLAN = get_plan("WeatherAPI")
+HOST = PLAN["host"]
+PATH = PLAN["path"]
+LOCATION = PLAN["fixed_query"]["q"]
+MAX_BODY = PLAN["max_body_bytes"]
 MAX_ERROR_BODY = 4096
 
 WEATHERAPI_ERROR_CATEGORIES = {
@@ -89,23 +91,17 @@ def probe(confirm, plan_review, opener=None, now_epoch=None):
     if not key:
         return _safe_result("HOLD", "secret_missing")
 
-    query = urllib.parse.urlencode({"key": key, "q": LOCATION, "aqi": "no"})
-    url = f"https://{HOST}{PATH}?{query}"
-    request = urllib.request.Request(
-        url,
-        method="GET",
-        headers={
-            "Accept": "application/json",
-            "User-Agent": "EBT-Black-Diamond/WeatherAPI-Auth-Probe",
-        },
-    )
+    try:
+        request = build_request("WeatherAPI", key)
+    except ValueError:
+        return _safe_result("HOLD", "endpoint_mismatch")
+    url = request.full_url
     opener = _default_open if opener is None else opener
     try:
-        response = opener(request, timeout=10)
+        response = opener(request, timeout=PLAN["timeout_seconds"])
         status = getattr(response, "status", None)
         final_url = getattr(response, "url", url)
-        parsed = urllib.parse.urlparse(final_url)
-        if parsed.scheme != "https" or parsed.hostname != HOST or parsed.path != PATH:
+        if validate_response_url(final_url, "WeatherAPI"):
             return _safe_result("HOLD", "endpoint_mismatch")
         if type(status) is not int or status != 200:
             return _safe_result(
