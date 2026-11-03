@@ -65,6 +65,7 @@ def ingest_github_artifact(
     final_candidate=bind_attestation_verification(
         receipt_result["candidate"],
         marker_sha256=marker_result["marker_file_sha256"],
+        request_plan_sha256=marker_result["request_plan_sha256"],
         source_repository=repository,
         attestation_id=marker_result["attestation_id"],
         attestation_url=marker_result["attestation_url"],
