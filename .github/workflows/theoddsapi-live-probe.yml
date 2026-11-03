@@ -34,6 +34,7 @@ jobs:
     if: >-
       ${{
         github.run_attempt == 1 &&
+        github.ref_protected == true &&
         github.ref == 'refs/heads/main' &&
         inputs.confirm_account_review == 'I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED' &&
         inputs.confirm_live_request == 'I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST'
