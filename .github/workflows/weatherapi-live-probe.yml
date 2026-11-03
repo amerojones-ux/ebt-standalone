@@ -201,6 +201,7 @@ jobs:
               "verification_status":"VERIFIED",
               "repository":os.environ["GITHUB_REPOSITORY"],
               "workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt":intent["workflow_run_attempt"],
               "source_commit":os.environ["GITHUB_SHA"],
               "source_ref":"refs/heads/main",
               "signer_workflow":os.environ["SIGNER_WORKFLOW"],
@@ -230,6 +231,29 @@ jobs:
           ) as handle:
               json.dump(marker,handle,indent=2,sort_keys=True)
               handle.write("\n")
+          PY
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          from provider_execution_intent_verification_marker import (
+              verify_execution_intent_marker,
+          )
+
+          with open(
+              os.environ["INTENT_MARKER_FILE"],
+              encoding="utf-8",
+          ) as handle:
+              marker=json.load(handle)
+
+          if not verify_execution_intent_marker(
+              marker,
+              provider=os.environ["PROVIDER_NAME"],
+              expected_run_id=os.environ["GITHUB_RUN_ID"],
+              expected_commit=os.environ["GITHUB_SHA"],
+          ):
+              raise SystemExit("execution intent marker verification failed")
           PY
 
           echo "intent_verified=1" >> "$GITHUB_OUTPUT"
@@ -382,7 +406,6 @@ jobs:
               "verification_status": "VERIFIED",
               "repository": os.environ["GITHUB_REPOSITORY"],
               "workflow_run_id": os.environ["GITHUB_RUN_ID"],
-              "workflow_run_attempt": intent["workflow_run_attempt"],
               "source_commit": os.environ["GITHUB_SHA"],
               "source_ref": "refs/heads/main",
               "signer_workflow": os.environ["SIGNER_WORKFLOW"],
@@ -418,6 +441,28 @@ jobs:
           ) as handle:
               json.dump(marker, handle, indent=2, sort_keys=True)
               handle.write("\n")
+          PY
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          from provider_attestation_verification_marker import verify_marker
+
+          with open(
+              os.environ["VERIFICATION_MARKER"],
+              encoding="utf-8",
+          ) as handle:
+              marker=json.load(handle)
+
+          if not verify_marker(
+              marker,
+              provider=os.environ["PROVIDER_NAME"],
+              repository=os.environ["GITHUB_REPOSITORY"],
+              expected_run_id=os.environ["GITHUB_RUN_ID"],
+              expected_commit=os.environ["GITHUB_SHA"],
+          ):
+              raise SystemExit("receipt attestation marker verification failed")
           PY
 
           echo "attestation_verified=1" >> "$GITHUB_OUTPUT"
