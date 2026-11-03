@@ -62,6 +62,7 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 self.assertIn("timeout-minutes: 5", text)
                 self.assertIn("github.ref == 'refs/heads/main'", text)
                 self.assertIn("github.run_attempt == 1", text)
+                self.assertIn("github.ref_protected == true", text)
                 self.assertIn("concurrency:\n  group: ebt-live-provider-probes\n  cancel-in-progress: false", text)
                 self.assertNotIn("cancel-in-progress: true", text)
                 self.assertIn("ref: ${{ github.sha }}", text)
