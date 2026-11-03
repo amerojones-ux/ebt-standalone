@@ -27,6 +27,8 @@ class TheOddsApiReceiptTests(unittest.TestCase):
         )
         rendered = json.dumps(receipt)
         self.assertIs(receipt["zero_usage_credit_required"], True)
+        self.assertEqual(receipt["schema_version"],3)
+        self.assertEqual(receipt["execution_intent_sha256"],INTENT_SHA)
         self.assertEqual(receipt["integrity_model"], "sha256-checksum-not-signature")
         self.assertEqual(len(receipt["receipt_sha256"]), 64)
         self.assertTrue(verify_receipt(receipt))
