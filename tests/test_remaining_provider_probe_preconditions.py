@@ -30,6 +30,47 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
             self.assertFalse(provider["forecast_activation_permitted"])
             self.assertGreater(len(provider["blockers"]),0)
 
+    def test_committed_sportsdataio_free_trial_stays_blocked_by_scope_conflict(self):
+        cfg=load_configs()[FILES["SportsDataIO"]]
+        self.assertEqual(cfg["declared_access_method"],"FREE_TRIAL")
+        result=assess_sportsdataio(cfg)
+        self.assertEqual(result["status"],"BLOCKED_PRECONDITION")
+        self.assertIn(
+            "official Free Trial scope conflict unresolved",
+            result["blockers"],
+        )
+        self.assertIn("Free Trial scope not reconciled",result["blockers"])
+
+    def test_free_trial_complete_route_still_blocks_until_scope_reconciled(self):
+        cfg=load_configs()[FILES["SportsDataIO"]]
+        cfg.update({
+            "probe_product":"NFL League API",
+            "probe_endpoint":"https://api.sportsdata.io/v3/nfl/scores/json/AreAnyGamesInProgress",
+            "quota_reviewed":True,
+            "overage_reviewed":True,
+        })
+        result=assess_sportsdataio(cfg)
+        self.assertEqual(result["status"],"BLOCKED_PRECONDITION")
+        self.assertIn(
+            "official Free Trial scope conflict unresolved",
+            result["blockers"],
+        )
+
+    def test_reconciled_free_trial_route_requires_hardened_implementation_but_not_model_evidence(self):
+        cfg=load_configs()[FILES["SportsDataIO"]]
+        cfg.update({
+            "official_scope_status":"RECONCILED",
+            "trial_scope_reconciled":True,
+            "probe_product":"NFL League API",
+            "probe_endpoint":"https://api.sportsdata.io/v3/nfl/scores/json/AreAnyGamesInProgress",
+            "quota_reviewed":True,
+            "overage_reviewed":True,
+        })
+        result=assess_sportsdataio(cfg)
+        self.assertEqual(result["status"],"IMPLEMENTATION_REQUIRED")
+        self.assertEqual(result["blockers"],[])
+        self.assertFalse(cfg["model_evidence_allowed"])
+
     def test_sportsdataio_complete_route_requires_implementation(self):
         cfg=load_configs()[FILES["SportsDataIO"]]
         cfg.update({
