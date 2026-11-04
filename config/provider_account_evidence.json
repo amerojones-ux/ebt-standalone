@@ -28,7 +28,9 @@
       "access_level_verified": false,
       "quota_verified": false,
       "live_request_permitted": false,
-      "model_evidence_allowed": false
+      "model_evidence_allowed": false,
+      "subscription_details_verified": false,
+      "product_inventory_verified": false
     },
     {
       "name": "RapidAPI",
@@ -47,7 +49,9 @@
       "overage_verified": false,
       "exact_endpoint_verified": false,
       "live_request_permitted": false,
-      "model_evidence_allowed": false
+      "model_evidence_allowed": false,
+      "subscription_verified": false,
+      "route_binding_verified": false
     }
   ]
 }
