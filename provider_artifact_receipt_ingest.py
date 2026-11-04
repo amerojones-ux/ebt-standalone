@@ -16,6 +16,7 @@ MAX_RECEIPT_BYTES=65536
 EXPECTED_FILES={
     "WeatherAPI":"weatherapi_probe_receipt.json",
     "The Odds API":"theoddsapi_probe_receipt.json",
+    "TheRundown":"therundown_probe_receipt.json",
     "API-Sports":"apisports_status_receipt.json",
 }
 
