@@ -42,6 +42,9 @@ jobs:
       - name: Assert prepared live probes remain default-deny
         run: python provider_probe_readiness_registry_cli.py
 
+      - name: Assert remaining provider probes stay fail-closed
+        run: python remaining_provider_probe_preconditions_cli.py
+
       - name: Check command-line entry point
         run: python ebt_cli.py --help
 
