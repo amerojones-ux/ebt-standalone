@@ -48,6 +48,12 @@ def validate_consistency(*,registry=None,config_loader=_load_json):
                 errors.append("SportsDataIO quota review unsupported")
             if cfg.get("overage_reviewed") is True and account.get("overage_verified") is not True:
                 errors.append("SportsDataIO overage review unsupported")
+            if isinstance(cfg.get("probe_product"),str) and cfg.get("probe_product").strip():
+                if account.get("exact_product_verified") is not True:
+                    errors.append("SportsDataIO product scope unsupported")
+            if isinstance(cfg.get("probe_endpoint"),str) and cfg.get("probe_endpoint").strip():
+                if account.get("exact_feed_verified") is not True:
+                    errors.append("SportsDataIO endpoint scope unsupported")
 
         elif provider=="Sportradar":
             pairs=(
@@ -62,6 +68,12 @@ def validate_consistency(*,registry=None,config_loader=_load_json):
             for cfg_field,evidence_field in pairs:
                 if cfg.get(cfg_field) is True and account.get(evidence_field) is not True:
                     errors.append("Sportradar "+cfg_field+" unsupported")
+            if isinstance(cfg.get("product_name"),str) and cfg.get("product_name").strip():
+                if account.get("exact_product_verified") is not True:
+                    errors.append("Sportradar product name unsupported")
+            if cfg.get("access_level") in {"trial","production"}:
+                if account.get("access_level_verified") is not True:
+                    errors.append("Sportradar access level unsupported")
 
         elif provider=="RapidAPI":
             pairs=(
@@ -89,5 +101,12 @@ def validate_consistency(*,registry=None,config_loader=_load_json):
             if isinstance(cfg.get("billing_object"),str) and cfg.get("billing_object").strip():
                 if account.get("billing_object_verified") is not True:
                     errors.append("RapidAPI billing object unsupported")
+            if isinstance(cfg.get("probe_endpoint"),str) and cfg.get("probe_endpoint").strip():
+                if account.get("exact_endpoint_verified") is not True:
+                    errors.append("RapidAPI endpoint unsupported")
+            if cfg.get("endpoint_reviewed") is True and not (
+                isinstance(cfg.get("probe_endpoint"),str) and cfg.get("probe_endpoint").strip()
+            ):
+                errors.append("RapidAPI reviewed endpoint missing")
 
     return errors
