@@ -3,7 +3,7 @@
   "secret_name": "EBT_SPORTSDATA_API_KEY",
   "auth_header": "Ocp-Apim-Subscription-Key",
   "allow_query_key": false,
-  "declared_access_method": "UNKNOWN",
+  "declared_access_method": "FREE_TRIAL",
   "probe_product": "",
   "probe_endpoint": "",
   "quota_reviewed": false,
@@ -12,5 +12,10 @@
   "forecast_enabled": false,
   "entitlement_verified": false,
   "feed_verified": false,
-  "freshness_verified": false
+  "freshness_verified": false,
+  "account_access_confirmed": true,
+  "scrambled_data_acknowledged": true,
+  "trial_scope_reconciled": false,
+  "official_scope_status": "CONFLICTING",
+  "model_evidence_allowed": false
 }
