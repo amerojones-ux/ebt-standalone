@@ -14,8 +14,24 @@ SUBMITTER=re.compile(r"^github:[A-Za-z0-9-]+#[0-9]+$")
 PROVIDERS={"SportsDataIO","Sportradar","RapidAPI"}
 SOURCE_TYPES={"ACCOUNT_PORTAL","PROVIDER_SUPPORT"}
 
+FACT_FIELDS={
+    "SportsDataIO":{
+        "source_type","scope_status","product_name","feed_scope",
+        "endpoint","quota_reviewed","overage_reviewed",
+    },
+    "Sportradar":{
+        "source_type","product_name","package_name","access_level",
+        "quota_reviewed",
+    },
+    "RapidAPI":{
+        "source_type","product_name","host","pricing_type","plan_name",
+        "billing_object","endpoint","quota_reviewed","overage_reviewed",
+    },
+}
+
 BODY_FIELDS={
     "schema_version","claim_type","provider","source_type","source_reference",
+    "submitted_facts",
     "submitter","repository","workflow_run_id","workflow_run_attempt",
     "source_commit","transition","claim_verified_against_provider_source",
     "write_permitted","network_request_permitted",
@@ -29,7 +45,7 @@ def _canonical(value):
 def verify_account_metadata_claim(value):
     if not isinstance(value,dict) or set(value)!=ALL_FIELDS:
         return False
-    if value.get("schema_version")!=1:
+    if value.get("schema_version")!=2:
         return False
     if value.get("claim_type")!="ACCOUNT_METADATA_CLAIM":
         return False
@@ -37,6 +53,26 @@ def verify_account_metadata_claim(value):
         return False
     if value.get("source_type") not in SOURCE_TYPES:
         return False
+    facts=value.get("submitted_facts")
+    if not isinstance(facts,dict):
+        return False
+    expected_fact_fields=FACT_FIELDS.get(value.get("provider"))
+    if expected_fact_fields is None or set(facts)!=expected_fact_fields:
+        return False
+    if facts.get("source_type")!=value.get("source_type"):
+        return False
+    for key,val in facts.items():
+        lowered=str(key).casefold()
+        if any(fragment in lowered for fragment in (
+            "secret","token","password","credential","api_key","apikey"
+        )):
+            return False
+        if isinstance(val,str):
+            low=val.casefold()
+            if any(fragment in low for fragment in (
+                "bearer ","authorization:","api_key=","apikey="
+            )):
+                return False
     ref=value.get("source_reference")
     if not isinstance(ref,str) or not re.fullmatch(r"[A-Za-z0-9 ._/#()-]{1,160}",ref):
         return False
