@@ -33,7 +33,7 @@
       "name": "The Odds API",
       "role": "market_comparison_only",
       "contract_ready": true,
-      "live_auth_verified": false,
+      "live_auth_verified": true,
       "entitlement_verified": false,
       "identity_verified": false,
       "freshness_verified": false,
