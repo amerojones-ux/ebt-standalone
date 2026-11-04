@@ -108,11 +108,12 @@ jobs:
           )):
               raise SystemExit("transition safety flags invalid")
           claim={
-              "schema_version":1,
+              "schema_version":2,
               "claim_type":"ACCOUNT_METADATA_CLAIM",
               "provider":"SportsDataIO",
               "source_type":facts["source_type"],
               "source_reference":ref,
+              "submitted_facts":facts,
               "submitter":"github:"+os.environ["ACTOR"]+"#"+os.environ["ACTOR_ID"],
               "repository":os.environ["GITHUB_REPOSITORY"],
               "workflow_run_id":os.environ["GITHUB_RUN_ID"],
