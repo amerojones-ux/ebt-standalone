@@ -60,7 +60,7 @@ PLANS={
         "max_requests":1,
         "allow_redirects":False,
         "retries":0,
-        "max_body_bytes":524288,
+        "max_body_bytes":8388608,
     },
     "API-Sports":{
         "scheme":"https",

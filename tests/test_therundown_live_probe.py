@@ -87,6 +87,43 @@ class TheRundownLiveProbeTests(unittest.TestCase):
             )
         self.assertEqual(result["category"],"datapoint_header_invalid")
 
+    def test_valid_json_larger_than_old_512k_limit_passes(self):
+        payload={"sample":"x"*(700*1024)}
+        with patch.dict(os.environ,{"EBT_THERUNDOWN_API_KEY":"secret"}):
+            result=probe(
+                REQUEST_APPROVAL,
+                ACCOUNT_REVIEW_APPROVAL,
+                opener=lambda req,timeout:FakeResponse(payload),
+            )
+        self.assertEqual(result["status"],"PASS")
+
+    def test_declared_content_length_over_new_cap_holds_before_read(self):
+        class NeverRead(FakeResponse):
+            def read(self,n=-1):
+                raise AssertionError("body must not be read when content-length exceeds cap")
+        headers={"Content-Length":str(9*1024*1024)}
+        with patch.dict(os.environ,{"EBT_THERUNDOWN_API_KEY":"secret"}):
+            result=probe(
+                REQUEST_APPROVAL,
+                ACCOUNT_REVIEW_APPROVAL,
+                opener=lambda req,timeout:NeverRead(headers=headers),
+            )
+        self.assertEqual(result["category"],"response_too_large")
+        self.assertEqual(result["detail"],9*1024*1024)
+
+    def test_actual_body_over_new_cap_holds(self):
+        class Oversize(FakeResponse):
+            def read(self,n=-1):
+                return b"x"*n
+        with patch.dict(os.environ,{"EBT_THERUNDOWN_API_KEY":"secret"}):
+            result=probe(
+                REQUEST_APPROVAL,
+                ACCOUNT_REVIEW_APPROVAL,
+                opener=lambda req,timeout:Oversize(),
+            )
+        self.assertEqual(result["category"],"response_too_large")
+        self.assertEqual(result["detail"],therundown_live_probe.MAX_BODY+1)
+
     def test_malformed_or_empty_json_holds(self):
         class Bad(FakeResponse):
             def read(self,n=-1): return b"{"
