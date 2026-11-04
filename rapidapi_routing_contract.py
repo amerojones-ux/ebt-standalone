@@ -1,10 +1,36 @@
 """Offline RapidAPI routing/billing gate. No network or secrets."""
 import re
+import urllib.parse
 
 HOST = re.compile(r"^[a-z0-9][a-z0-9.-]*[a-z0-9]$", re.I)
 PRICING_TYPES = {"UNKNOWN", "FREE", "PAY_PER_USE", "FREEMIUM", "PAID"}
 
 AMBIGUOUS_PRODUCT_NAMES = {"", "all", "sports", "api", "unknown", "any"}
+
+def validate_endpoint(value,host):
+    if not isinstance(value,str) or not value:
+        return ["exact endpoint required"]
+    parsed=urllib.parse.urlsplit(value)
+    errors=[]
+    if parsed.scheme!="https":
+        errors.append("endpoint must use https")
+    if parsed.hostname!=host:
+        errors.append("endpoint host mismatch")
+    if parsed.username is not None or parsed.password is not None:
+        errors.append("endpoint userinfo forbidden")
+    try:
+        port=parsed.port
+    except ValueError:
+        port="invalid"
+    if port is not None:
+        errors.append("endpoint explicit port forbidden")
+    if not parsed.path or parsed.path=="/":
+        errors.append("endpoint path required")
+    if parsed.query:
+        errors.append("endpoint query forbidden")
+    if parsed.fragment:
+        errors.append("endpoint fragment forbidden")
+    return errors
 
 def validate_plan(plan):
     errors = []
@@ -34,6 +60,12 @@ def validate_plan(plan):
     host = plan.get("rapidapi_host")
     if not isinstance(host, str) or not HOST.fullmatch(host) or "." not in host:
         errors.append("exact RapidAPI host required")
+
+    endpoint=plan.get("probe_endpoint")
+    if plan.get("endpoint_reviewed") is True:
+        errors.extend(validate_endpoint(endpoint,host))
+    elif isinstance(endpoint,str) and endpoint.strip():
+        errors.append("endpoint cannot be populated before review")
 
     pricing = plan.get("pricing_type")
     if pricing not in PRICING_TYPES:
