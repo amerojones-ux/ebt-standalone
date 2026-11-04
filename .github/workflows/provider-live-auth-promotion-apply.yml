@@ -296,7 +296,7 @@ jobs:
             echo "### Promotion branch prepared"
             echo
             echo "Provider: $PROVIDER"
-            echo "Branch: `$branch`"
+            printf 'Branch: `%s`\n' "$branch"
             echo "Base commit: `$GITHUB_SHA`"
             echo
             echo "The workflow intentionally does not open or merge a pull request."
