@@ -13,7 +13,7 @@ RUN_ID=re.compile(r"^[0-9]+$")
 REVIEWER=re.compile(r"^github:[A-Za-z0-9-]+#[0-9]+$")
 SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
 REVIEW_WORKFLOW=".github/workflows/provider-live-auth-evidence-review.yml"
-SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
+SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports","TheRundown"}
 
 BODY_FIELDS={
     "subject","claim","decision","reviewer","reviewed_at",
