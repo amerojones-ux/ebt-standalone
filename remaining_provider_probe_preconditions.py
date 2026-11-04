@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import urllib.parse
 
-from sportsdataio_access_contract import ACCESS_METHODS
+from sportsdataio_access_contract import ACCESS_METHODS, free_trial_probe_blockers, validate_auth_config
 from rapidapi_routing_contract import PRICING_TYPES
 
 ROOT=Path(__file__).resolve().parent
@@ -74,20 +74,15 @@ def _sportsdata_endpoint_ok(value):
 def assess_sportsdataio(cfg):
     safety=[]
     blockers=[]
-    expected={
-        "provider":"SportsDataIO",
-        "secret_name":"EBT_SPORTSDATA_API_KEY",
-        "auth_header":"Ocp-Apim-Subscription-Key",
-        "allow_query_key":False,
-        "network_enabled":False,
-        "forecast_enabled":False,
-    }
+    expected={"provider":"SportsDataIO"}
     for key,value in expected.items():
         if cfg.get(key)!=value:
             safety.append(key+" safety mismatch")
+    safety.extend(validate_auth_config(cfg))
     method=cfg.get("declared_access_method")
     if method not in ACCESS_METHODS or method=="UNKNOWN":
         blockers.append("exact SportsDataIO access mode not classified")
+    blockers.extend(free_trial_probe_blockers(cfg))
     product=cfg.get("probe_product")
     if not isinstance(product,str) or not product.strip():
         blockers.append("exact subscribed API product not identified")
