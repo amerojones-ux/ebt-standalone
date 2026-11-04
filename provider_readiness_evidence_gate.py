@@ -58,6 +58,7 @@ REVIEW_WORKFLOW = ".github/workflows/provider-live-auth-evidence-review.yml"
 SIGNER_WORKFLOWS = {
     "WeatherAPI": ".github/workflows/weatherapi-live-probe.yml",
     "The Odds API": ".github/workflows/theoddsapi-live-probe.yml",
+    "TheRundown": ".github/workflows/therundown-live-probe.yml",
     "API-Sports": ".github/workflows/apisports-status-probe.yml",
 }
 
