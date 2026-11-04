@@ -53,6 +53,9 @@ class ProviderLiveRequestPlanTests(unittest.TestCase):
         self.assertEqual(headers,{"x-apisports-key":"SECRET"})
         self.assertEqual(validate_request(req,"API-Sports"),[])
 
+    def test_therundown_sample_has_bounded_8mib_ceiling(self):
+        self.assertEqual(PLANS["TheRundown"]["max_body_bytes"],8*1024*1024)
+
     def test_all_plans_are_one_shot_no_redirect_no_retry(self):
         for provider,plan in PLANS.items():
             with self.subTest(provider=provider):
