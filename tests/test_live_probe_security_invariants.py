@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import apisports_status_probe
 import theoddsapi_live_probe
 import weatherapi_live_probe
+import therundown_live_probe
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -32,6 +33,18 @@ WORKFLOWS = {
         "signer": ".github/workflows/theoddsapi-live-probe.yml",
         "secret": "EBT_THEODDS_API_KEY: ${{ secrets.EBT_THEODDS_API_KEY }}",
         "intent_prefix": "theoddsapi-execution-intent",
+    },
+    "therundown": {
+        "path": ROOT / ".github" / "workflows" / "therundown-live-probe.yml",
+        "receipt": "therundown_probe_receipt.json",
+        "artifact_prefix": "therundown-probe-receipt",
+        "marker": "therundown_attestation_verification.json",
+        "marker_prefix": "therundown-attestation-verification",
+        "bundle": "therundown_attestation_bundle.json",
+        "bundle_prefix": "therundown-attestation-bundle",
+        "signer": ".github/workflows/therundown-live-probe.yml",
+        "secret": "EBT_THERUNDOWN_API_KEY: ${{ secrets.EBT_THERUNDOWN_API_KEY }}",
+        "intent_prefix": "therundown-execution-intent",
     },
     "apisports": {
         "path": ROOT / ".github" / "workflows" / "apisports-status-probe.yml",
@@ -340,6 +353,10 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
 
     def test_theoddsapi_default_opener_disables_environment_proxies(self):
         self._assert_direct_no_proxy_opener(theoddsapi_live_probe)
+
+    def test_therundown_default_opener_disables_proxies_and_default_headers(self):
+        opener = self._assert_direct_no_proxy_opener(therundown_live_probe)
+        self.assertEqual(opener.addheaders, [])
 
     def test_apisports_default_opener_disables_proxies_and_default_headers(self):
         opener = self._assert_direct_no_proxy_opener(apisports_status_probe)

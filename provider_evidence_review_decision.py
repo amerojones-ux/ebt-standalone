@@ -16,11 +16,12 @@ RUN_REF=re.compile(r"^github-actions-run:[0-9]+$")
 ACTOR=re.compile(r"^[A-Za-z0-9-]+$")
 ACTOR_ID=re.compile(r"^[0-9]+$")
 DECISIONS={"APPROVE","REJECT"}
-SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports"}
+SUPPORTED_PROVIDERS={"WeatherAPI","The Odds API","API-Sports","TheRundown"}
 SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
 SIGNER_WORKFLOWS={
     "WeatherAPI":".github/workflows/weatherapi-live-probe.yml",
     "The Odds API":".github/workflows/theoddsapi-live-probe.yml",
+    "TheRundown":".github/workflows/therundown-live-probe.yml",
     "API-Sports":".github/workflows/apisports-status-probe.yml",
 }
 

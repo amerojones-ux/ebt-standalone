@@ -8,6 +8,7 @@ import hmac
 import json
 import re
 
+from therundown_probe_receipt import verify_receipt as verify_therundown
 from apisports_status_receipt import verify_receipt as verify_apisports
 from theoddsapi_probe_receipt import verify_receipt as verify_theodds
 from weatherapi_probe_receipt import verify_receipt as verify_weather
@@ -22,6 +23,7 @@ SOURCE_REPOSITORY="amerojones-ux/ebt-standalone"
 SIGNER_WORKFLOWS={
     "WeatherAPI":".github/workflows/weatherapi-live-probe.yml",
     "The Odds API":".github/workflows/theoddsapi-live-probe.yml",
+    "TheRundown":".github/workflows/therundown-live-probe.yml",
     "API-Sports":".github/workflows/apisports-status-probe.yml",
 }
 
@@ -33,6 +35,10 @@ SUPPORTED={
     "The Odds API":{
         "verify":verify_theodds,
         "pass_category":"authenticated_zero_credit_sports_schema",
+    },
+    "TheRundown":{
+        "verify":verify_therundown,
+        "pass_category":"authenticated_zero_datapoint_sample_json",
     },
     "API-Sports":{
         "verify":verify_apisports,

@@ -6,6 +6,7 @@ from unittest.mock import patch
 import apisports_status_probe
 import theoddsapi_live_probe
 import weatherapi_live_probe
+import therundown_live_probe
 from provider_live_request_plan import get_plan, validate_request
 
 NOW=1800000000
@@ -85,6 +86,30 @@ class LiveProbeRequestPlanIntegrationTests(unittest.TestCase):
         self.assertEqual(len(opener.calls),1)
         request,timeout=opener.calls[0]
         self.assertEqual(timeout,get_plan("The Odds API")["timeout_seconds"])
+
+    def test_therundown_probe_uses_exact_plan_once(self):
+        response=Response(
+            "https://therundown.io/api/v2/stats/sample",
+            {"sample":{"fixed":True}},
+            {"x-datapoints":"0"},
+        )
+        opener=CountingOpener(response,"TheRundown")
+        with patch.dict(
+            os.environ,{"EBT_THERUNDOWN_API_KEY":"test-secret"},clear=True
+        ):
+            result=therundown_live_probe.probe(
+                therundown_live_probe.REQUEST_APPROVAL,
+                therundown_live_probe.ACCOUNT_REVIEW_APPROVAL,
+                opener=opener,
+            )
+        self.assertEqual(result["status"],"PASS")
+        self.assertEqual(len(opener.calls),1)
+        request,timeout=opener.calls[0]
+        self.assertEqual(timeout,get_plan("TheRundown")["timeout_seconds"])
+        self.assertEqual(
+            request.full_url,
+            "https://therundown.io/api/v2/stats/sample",
+        )
 
     def test_apisports_probe_uses_exact_plan_once(self):
         response=Response(

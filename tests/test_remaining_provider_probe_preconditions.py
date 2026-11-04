@@ -8,7 +8,6 @@ from remaining_provider_probe_preconditions import (
     assess_rapidapi,
     assess_sportradar,
     assess_sportsdataio,
-    assess_therundown,
 )
 
 def load_configs():
@@ -22,7 +21,7 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
     def test_committed_state_is_blocked_safe(self):
         result=assess_all()
         self.assertEqual(result["status"],"BLOCKED_SAFE")
-        self.assertEqual(result["provider_count"],4)
+        self.assertEqual(result["provider_count"],3)
         self.assertFalse(result["network_request_permitted"])
         for provider in result["providers"]:
             self.assertEqual(provider["status"],"BLOCKED_PRECONDITION")
@@ -30,18 +29,6 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
             self.assertFalse(provider["secret_access_permitted"])
             self.assertFalse(provider["forecast_activation_permitted"])
             self.assertGreater(len(provider["blockers"]),0)
-
-    def test_therundown_complete_account_review_requires_implementation(self):
-        cfg=load_configs()[FILES["TheRundown"]]
-        cfg.update({
-            "plan_name":"FREE",
-            "data_delay_verified":True,
-            "datapoint_quota_reviewed":True,
-            "overage_behavior_reviewed":True,
-        })
-        result=assess_therundown(cfg)
-        self.assertEqual(result["status"],"IMPLEMENTATION_REQUIRED")
-        self.assertEqual(result["blockers"],[])
 
     def test_sportsdataio_complete_route_requires_implementation(self):
         cfg=load_configs()[FILES["SportsDataIO"]]
@@ -117,9 +104,9 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
         self.assertEqual(result["blockers"],[])
 
     def test_network_enable_is_invalid_hold(self):
-        cfg=load_configs()[FILES["TheRundown"]]
+        cfg=load_configs()[FILES["RapidAPI"]]
         cfg["network_enabled"]=True
-        result=assess_therundown(cfg)
+        result=assess_rapidapi(cfg)
         self.assertEqual(result["status"],"INVALID_HOLD")
 
     def test_overall_ready_transition_fails_closed(self):

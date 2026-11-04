@@ -16,6 +16,7 @@ MAX_BUNDLE_BYTES=1024*1024
 EXPECTED_FILES={
     "WeatherAPI":"weatherapi_attestation_bundle.json",
     "The Odds API":"theoddsapi_attestation_bundle.json",
+    "TheRundown":"therundown_attestation_bundle.json",
     "API-Sports":"apisports_attestation_bundle.json",
 }
 

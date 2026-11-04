@@ -18,6 +18,7 @@ MAX_FILE_BYTES=65536
 EXPECTED_FILES={
     "WeatherAPI":"weatherapi_execution_intent_attestation_verification.json",
     "The Odds API":"theoddsapi_execution_intent_attestation_verification.json",
+    "TheRundown":"therundown_execution_intent_attestation_verification.json",
     "API-Sports":"apisports_execution_intent_attestation_verification.json",
 }
 

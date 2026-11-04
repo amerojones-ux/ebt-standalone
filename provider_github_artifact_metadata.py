@@ -14,31 +14,37 @@ DIGEST=re.compile(r"^sha256:([0-9a-f]{64})$",re.I)
 RECEIPT_PREFIXES={
     "WeatherAPI":"weatherapi-probe-receipt-",
     "The Odds API":"theoddsapi-probe-receipt-",
+    "TheRundown":"therundown-probe-receipt-",
     "API-Sports":"apisports-status-receipt-",
 }
 ATTESTATION_MARKER_PREFIXES={
     "WeatherAPI":"weatherapi-attestation-verification-",
     "The Odds API":"theoddsapi-attestation-verification-",
+    "TheRundown":"therundown-attestation-verification-",
     "API-Sports":"apisports-attestation-verification-",
 }
 ATTESTATION_BUNDLE_PREFIXES={
     "WeatherAPI":"weatherapi-attestation-bundle-",
     "The Odds API":"theoddsapi-attestation-bundle-",
+    "TheRundown":"therundown-attestation-bundle-",
     "API-Sports":"apisports-attestation-bundle-",
 }
 EXECUTION_INTENT_PREFIXES={
     "WeatherAPI":"weatherapi-execution-intent-",
     "The Odds API":"theoddsapi-execution-intent-",
+    "TheRundown":"therundown-execution-intent-",
     "API-Sports":"apisports-execution-intent-",
 }
 EXECUTION_INTENT_MARKER_PREFIXES={
     "WeatherAPI":"weatherapi-execution-intent-attestation-verification-",
     "The Odds API":"theoddsapi-execution-intent-attestation-verification-",
+    "TheRundown":"therundown-execution-intent-attestation-verification-",
     "API-Sports":"apisports-execution-intent-attestation-verification-",
 }
 EXECUTION_INTENT_BUNDLE_PREFIXES={
     "WeatherAPI":"weatherapi-execution-intent-attestation-bundle-",
     "The Odds API":"theoddsapi-execution-intent-attestation-bundle-",
+    "TheRundown":"therundown-execution-intent-attestation-bundle-",
     "API-Sports":"apisports-execution-intent-attestation-bundle-",
 }
 MAX_ARTIFACT_BYTES=1024*1024

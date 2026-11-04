@@ -29,6 +29,22 @@ class ProviderLiveRequestPlanTests(unittest.TestCase):
         self.assertEqual(query,{"apiKey":["SECRET"]})
         self.assertEqual(validate_request(req,"The Odds API"),[])
 
+    def test_therundown_exact_request_is_header_only_zero_point_sample(self):
+        req=build_request("TheRundown","SECRET")
+        parsed=urllib.parse.urlsplit(req.full_url)
+        self.assertEqual(
+            req.full_url,
+            "https://therundown.io/api/v2/stats/sample",
+        )
+        self.assertEqual(parsed.query,"")
+        headers={k.lower():v for k,v in req.header_items()}
+        self.assertEqual(
+            headers,
+            {"accept":"application/json","x-therundown-key":"SECRET"},
+        )
+        self.assertEqual(validate_request(req,"TheRundown"),[])
+        self.assertNotIn("SECRET",req.full_url)
+
     def test_apisports_exact_request_has_no_query_and_one_header(self):
         req=build_request("API-Sports","SECRET")
         parsed=urllib.parse.urlsplit(req.full_url)
@@ -159,6 +175,7 @@ class ProviderLiveRequestPlanTests(unittest.TestCase):
         self.assertEqual(len(first),64)
         self.assertNotEqual(first,request_plan_sha256("The Odds API"))
         self.assertNotEqual(first,request_plan_sha256("API-Sports"))
+        self.assertNotEqual(first,request_plan_sha256("TheRundown"))
 
     def test_unsupported_provider_fails_closed(self):
         with self.assertRaises(ValueError):

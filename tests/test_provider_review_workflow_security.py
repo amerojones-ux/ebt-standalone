@@ -57,6 +57,7 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
             ".github/workflows/weatherapi-live-probe.yml",
             ".github/workflows/theoddsapi-live-probe.yml",
             ".github/workflows/apisports-status-probe.yml",
+            ".github/workflows/therundown-live-probe.yml",
         ):
             self.assertIn(workflow,text)
         self.assertIn('run.get("event") != "workflow_dispatch"',text)
@@ -88,6 +89,12 @@ class ProviderReviewWorkflowSecurityTests(unittest.TestCase):
             "apisports-execution-intent-$SOURCE_RUN_ID",
             "apisports-execution-intent-attestation-verification-$SOURCE_RUN_ID",
             "apisports-execution-intent-attestation-bundle-$SOURCE_RUN_ID",
+            "therundown-probe-receipt-$SOURCE_RUN_ID",
+            "therundown-attestation-verification-$SOURCE_RUN_ID",
+            "therundown-attestation-bundle-$SOURCE_RUN_ID",
+            "therundown-execution-intent-$SOURCE_RUN_ID",
+            "therundown-execution-intent-attestation-verification-$SOURCE_RUN_ID",
+            "therundown-execution-intent-attestation-bundle-$SOURCE_RUN_ID",
         ):
             self.assertIn(fragment,text)
         self.assertIn("artifact count mismatch",text)

@@ -11,6 +11,7 @@ on:
           - "WeatherAPI"
           - "The Odds API"
           - "API-Sports"
+          - "TheRundown"
       source_run_id:
         description: "Completed provider probe workflow run ID"
         required: true
@@ -103,6 +104,15 @@ jobs:
               echo "intent_artifact=theoddsapi-execution-intent-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               echo "intent_marker_artifact=theoddsapi-execution-intent-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               echo "intent_bundle_artifact=theoddsapi-execution-intent-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            "TheRundown")
+              echo "source_workflow=.github/workflows/therundown-live-probe.yml" >> "$GITHUB_OUTPUT"
+              echo "receipt_artifact=therundown-probe-receipt-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "marker_artifact=therundown-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "bundle_artifact=therundown-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_artifact=therundown-execution-intent-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_marker_artifact=therundown-execution-intent-attestation-verification-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
+              echo "intent_bundle_artifact=therundown-execution-intent-attestation-bundle-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
               ;;
             "API-Sports")
               echo "source_workflow=.github/workflows/apisports-status-probe.yml" >> "$GITHUB_OUTPUT"

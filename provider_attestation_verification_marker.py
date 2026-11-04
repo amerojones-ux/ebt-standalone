@@ -22,6 +22,10 @@ EXPECTED={
         "receipt_file":"theoddsapi_probe_receipt.json",
         "signer_workflow":".github/workflows/theoddsapi-live-probe.yml",
     },
+    "TheRundown":{
+        "receipt_file":"therundown_probe_receipt.json",
+        "signer_workflow":".github/workflows/therundown-live-probe.yml",
+    },
     "API-Sports":{
         "receipt_file":"apisports_status_receipt.json",
         "signer_workflow":".github/workflows/apisports-status-probe.yml",
