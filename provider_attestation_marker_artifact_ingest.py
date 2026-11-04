@@ -17,6 +17,7 @@ MAX_MARKER_BYTES=65536
 EXPECTED_FILES={
     "WeatherAPI":"weatherapi_attestation_verification.json",
     "The Odds API":"theoddsapi_attestation_verification.json",
+    "TheRundown":"therundown_attestation_verification.json",
     "API-Sports":"apisports_attestation_verification.json",
 }
 
