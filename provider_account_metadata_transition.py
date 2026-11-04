@@ -241,7 +241,7 @@ def _rapidapi(facts,registry,configs):
         "request_count":0,
         "forecast_enabled":False,
     })
-    cfg["reviewed_probe_endpoint"]=endpoint
+    cfg["probe_endpoint"]=endpoint
     return out_registry,out_configs
 
 BUILDERS={
