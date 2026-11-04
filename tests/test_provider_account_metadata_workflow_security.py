@@ -52,6 +52,12 @@ class ProviderAccountMetadataWorkflowSecurityTests(unittest.TestCase):
                 self.assertIn('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',text)
                 self.assertIn('test -z "$(git status --porcelain)"',text)
 
+    def test_claim_schema_v2_contains_submitted_facts(self):
+        for provider,text in self.text.items():
+            with self.subTest(provider=provider):
+                self.assertIn('"schema_version":2',text)
+                self.assertIn('"submitted_facts":facts',text)
+
     def test_claim_is_proposal_only_and_self_verified(self):
         for provider,text in self.text.items():
             with self.subTest(provider=provider):
