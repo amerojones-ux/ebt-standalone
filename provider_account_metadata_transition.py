@@ -273,9 +273,12 @@ def build_transition(provider,facts,*,registry=None,configs=None):
     errors=validate_registry(next_registry)
 
     contract_errors=[]
-    contract_errors.extend(validate_sportsdataio_auth(next_configs["SportsDataIO"]))
-    contract_errors.extend(validate_sportradar_plan(next_configs["Sportradar"]))
-    contract_errors.extend(validate_rapidapi_plan(next_configs["RapidAPI"]))
+    if provider=="SportsDataIO":
+        contract_errors.extend(validate_sportsdataio_auth(next_configs["SportsDataIO"]))
+    elif provider=="Sportradar":
+        contract_errors.extend(validate_sportradar_plan(next_configs["Sportradar"]))
+    elif provider=="RapidAPI":
+        contract_errors.extend(validate_rapidapi_plan(next_configs["RapidAPI"]))
 
     path_map={
         CONSISTENCY_CONFIGS[name]:cfg
