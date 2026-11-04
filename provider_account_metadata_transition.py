@@ -12,7 +12,10 @@ import urllib.parse
 from pathlib import Path
 
 from provider_account_evidence import load_registry, validate_registry
-from rapidapi_routing_contract import HOST, PRICING_TYPES, AMBIGUOUS_PRODUCT_NAMES
+from provider_account_evidence_consistency import CONFIGS as CONSISTENCY_CONFIGS, validate_consistency
+from rapidapi_routing_contract import HOST, PRICING_TYPES, AMBIGUOUS_PRODUCT_NAMES, validate_plan as validate_rapidapi_plan
+from sportradar_nfl_contract import validate_plan as validate_sportradar_plan
+from sportsdataio_access_contract import validate_auth_config as validate_sportsdataio_auth
 
 ROOT=Path(__file__).resolve().parent
 
@@ -268,6 +271,23 @@ def build_transition(provider,facts,*,registry=None,configs=None):
     except ValueError as exc:
         return _base_result(provider,[str(exc)])
     errors=validate_registry(next_registry)
+
+    contract_errors=[]
+    contract_errors.extend(validate_sportsdataio_auth(next_configs["SportsDataIO"]))
+    contract_errors.extend(validate_sportradar_plan(next_configs["Sportradar"]))
+    contract_errors.extend(validate_rapidapi_plan(next_configs["RapidAPI"]))
+
+    path_map={
+        CONSISTENCY_CONFIGS[name]:cfg
+        for name,cfg in next_configs.items()
+    }
+    consistency_errors=validate_consistency(
+        registry=next_registry,
+        config_loader=lambda path:path_map[path],
+    )
+
+    errors.extend(contract_errors)
+    errors.extend(consistency_errors)
     result=_base_result(provider,errors)
     if errors:
         return result
