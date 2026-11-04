@@ -9,11 +9,12 @@ def make_claim(provider,facts):
     transition=build_transition(provider,facts)
     assert transition["status"]=="VALID_ACCOUNT_METADATA_TRANSITION_PREVIEW",transition
     body={
-        "schema_version":1,
+        "schema_version":2,
         "claim_type":"ACCOUNT_METADATA_CLAIM",
         "provider":provider,
         "source_type":facts["source_type"],
         "source_reference":"support-ticket-123",
+        "submitted_facts":facts,
         "submitter":"github:amerojones-ux#262097315",
         "repository":"amerojones-ux/ebt-standalone",
         "workflow_run_id":"123456",
@@ -53,6 +54,27 @@ class ProviderAccountMetadataClaimTests(unittest.TestCase):
             "overage_reviewed":True,
         })
         self.assertTrue(verify_account_metadata_claim(claim))
+
+    def test_submitted_facts_are_required_and_provider_exact(self):
+        claim=make_claim("Sportradar",{
+            "source_type":"ACCOUNT_PORTAL",
+            "product_name":"NFL API",
+            "package_name":"NFL Base",
+            "access_level":"trial",
+            "quota_reviewed":True,
+        })
+        self.assertEqual(claim["schema_version"],2)
+        self.assertIn("submitted_facts",claim)
+        bad=json.loads(json.dumps(claim))
+        bad["submitted_facts"]["unexpected"]="x"
+        body={k:v for k,v in bad.items() if k!="claim_sha256"}
+        bad["claim_sha256"]=hashlib.sha256(
+            json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+        ).hexdigest()
+        self.assertFalse(verify_account_metadata_claim(bad))
+        bad=json.loads(json.dumps(claim))
+        bad.pop("submitted_facts")
+        self.assertFalse(verify_account_metadata_claim(bad))
 
     def test_claim_cannot_assert_provider_source_verification(self):
         claim=make_claim("Sportradar",{

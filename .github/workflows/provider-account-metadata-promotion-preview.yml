@@ -1,0 +1,307 @@
+name: Provider account metadata promotion preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_review_run_id:
+        description: "Completed Phase 81 account-metadata source-review workflow run ID"
+        required: true
+        type: string
+      confirm_preview:
+        description: "Authorize non-mutating metadata promotion preview"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_ACCOUNT_METADATA_PROMOTION_PREVIEW"
+        default: "NO"
+
+concurrency:
+  group: ebt-account-metadata-promotion-preview
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  preview:
+    if: >-
+      ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
+        github.ref == 'refs/heads/main' &&
+        inputs.confirm_preview == 'I_APPROVE_ACCOUNT_METADATA_PROMOTION_PREVIEW'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify immutable preview checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Fetch and validate Phase 81 source-review run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REVIEW_RUN_ID: ${{ inputs.source_review_run_id }}
+        run: |
+          set -euo pipefail
+          case "$SOURCE_REVIEW_RUN_ID" in
+            ''|*[!0-9]*)
+              echo "source_review_run_id must be numeric" >&2
+              exit 2
+              ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_REVIEW_RUN_ID" > source_review_run.json
+          python3 - <<'PY'
+          import json,os,re
+          with open("source_review_run.json",encoding="utf-8") as h:
+              run=json.load(h)
+          if run.get("id")!=int(os.environ["SOURCE_REVIEW_RUN_ID"]):
+              raise SystemExit("source review run id mismatch")
+          if run.get("event")!="workflow_dispatch":
+              raise SystemExit("source review was not workflow_dispatch")
+          if run.get("run_attempt")!=1:
+              raise SystemExit("source review was not first attempt")
+          if run.get("head_branch")!="main":
+              raise SystemExit("source review was not main")
+          if run.get("status")!="completed" or run.get("conclusion")!="success":
+              raise SystemExit("source review did not complete successfully")
+          if run.get("path")!=".github/workflows/provider-account-metadata-source-review.yml":
+              raise SystemExit("source review workflow path mismatch")
+          sha=run.get("head_sha")
+          if not isinstance(sha,str) or not re.fullmatch(r"[0-9a-fA-F]{40}",sha):
+              raise SystemExit("invalid source review commit")
+          repo=run.get("repository") or {}
+          head_repo=run.get("head_repository") or {}
+          if repo.get("full_name")!=os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("source review repository mismatch")
+          if head_repo.get("id")!=repo.get("id"):
+              raise SystemExit("source review head repository mismatch")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("source_review_commit="+sha+"\n")
+          PY
+
+      - name: Resolve exact Phase 81 source-review artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REVIEW_RUN_ID: ${{ inputs.source_review_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_REVIEW_RUN_ID/artifacts?per_page=100" > artifacts.json
+          python3 - <<'PY'
+          import json,os,re
+          run_id=os.environ["SOURCE_REVIEW_RUN_ID"]
+          pattern=re.compile(r"^provider-account-metadata-source-review-([0-9]+)-"+re.escape(run_id)+r"$")
+          with open("artifacts.json",encoding="utf-8") as h:
+              payload=json.load(h)
+          matches=[]
+          for item in payload.get("artifacts",[]):
+              if not isinstance(item,dict):
+                  continue
+              m=pattern.fullmatch(item.get("name",""))
+              if m:
+                  matches.append((item,m.group(1)))
+          if len(matches)!=1:
+              raise SystemExit("source-review artifact count mismatch")
+          item,claim_run_id=matches[0]
+          if item.get("expired") is not False:
+              raise SystemExit("source-review artifact expired")
+          size=item.get("size_in_bytes")
+          if type(size) is not int or size<=0 or size>3*1024*1024:
+              raise SystemExit("source-review artifact size invalid")
+          artifact_id=item.get("id")
+          if type(artifact_id) is not int or artifact_id<=0:
+              raise SystemExit("source-review artifact id invalid")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("artifact_id="+str(artifact_id)+"\n")
+              h.write("claim_run_id="+claim_run_id+"\n")
+          PY
+
+      - name: Download and strictly unpack Phase 81 package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > source_review.zip
+          python3 - <<'PY'
+          import io,stat,zipfile
+          raw=open("source_review.zip","rb").read()
+          if not raw or len(raw)>3*1024*1024:
+              raise SystemExit("source-review ZIP size invalid")
+          expected={
+              "account_metadata_claim.json",
+              "account_metadata_claim_attestation.json",
+              "account_metadata_source_review_decision.json",
+              "account_metadata_source_review_attestation.json",
+          }
+          try:
+              z=zipfile.ZipFile(io.BytesIO(raw),"r")
+          except zipfile.BadZipFile:
+              raise SystemExit("source-review ZIP invalid")
+          with z:
+              members=z.infolist()
+              if len(members)!=4 or {x.filename for x in members}!=expected:
+                  raise SystemExit("source-review ZIP file set mismatch")
+              for info in members:
+                  if info.is_dir() or "/" in info.filename or "\\" in info.filename:
+                      raise SystemExit("nested source-review ZIP member forbidden")
+                  if info.flag_bits & 0x1:
+                      raise SystemExit("encrypted source-review ZIP member forbidden")
+                  if stat.S_ISLNK((info.external_attr>>16)&0xFFFF):
+                      raise SystemExit("symlink source-review ZIP member forbidden")
+                  if info.file_size<1 or info.file_size>1024*1024:
+                      raise SystemExit("source-review ZIP member size invalid")
+                  data=z.read(info)
+                  if len(data)!=info.file_size:
+                      raise SystemExit("source-review ZIP member size mismatch")
+                  open(info.filename,"wb").write(data)
+          PY
+
+      - name: Verify Phase 81 approved source-review package
+        env:
+          SOURCE_REVIEW_RUN_ID: ${{ inputs.source_review_run_id }}
+          SOURCE_REVIEW_COMMIT: ${{ steps.source.outputs.source_review_commit }}
+          CLAIM_RUN_ID: ${{ steps.artifact.outputs.claim_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from provider_account_metadata_claim import verify_account_metadata_claim
+          from provider_account_metadata_source_review import verify_source_review_decision
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          with open("account_metadata_source_review_decision.json",encoding="utf-8") as h:
+              decision=json.load(h)
+          with open("account_metadata_source_review_attestation.json",encoding="utf-8") as h:
+              marker=json.load(h)
+          if not verify_account_metadata_claim(claim):
+              raise SystemExit("source claim invalid")
+          if not verify_source_review_decision(decision):
+              raise SystemExit("source review decision invalid")
+          if decision.get("decision")!="APPROVE":
+              raise SystemExit("source review decision not approved")
+          if str(claim.get("workflow_run_id"))!=os.environ["CLAIM_RUN_ID"]:
+              raise SystemExit("claim run id mismatch")
+          if decision.get("source_claim_run_id")!=os.environ["CLAIM_RUN_ID"]:
+              raise SystemExit("decision claim run mismatch")
+          if decision.get("source_claim_sha256")!=claim.get("claim_sha256"):
+              raise SystemExit("decision claim checksum mismatch")
+          if decision.get("source_claim_commit")!=claim.get("source_commit"):
+              raise SystemExit("decision claim commit mismatch")
+          if decision.get("provider")!=claim.get("provider"):
+              raise SystemExit("decision provider mismatch")
+          if decision.get("source_reference")!=claim.get("source_reference"):
+              raise SystemExit("decision source reference mismatch")
+          if decision.get("approved_transition")!=claim.get("transition"):
+              raise SystemExit("decision transition mismatch")
+          if marker.get("verification_status")!="VERIFIED":
+              raise SystemExit("source review attestation marker not verified")
+          if marker.get("review_workflow_run_id")!=os.environ["SOURCE_REVIEW_RUN_ID"]:
+              raise SystemExit("source review marker run mismatch")
+          if marker.get("source_commit","").lower()!=os.environ["SOURCE_REVIEW_COMMIT"].lower():
+              raise SystemExit("source review marker commit mismatch")
+          if marker.get("source_ref")!="refs/heads/main":
+              raise SystemExit("source review marker ref mismatch")
+          if marker.get("signer_workflow")!=".github/workflows/provider-account-metadata-source-review.yml":
+              raise SystemExit("source review marker signer mismatch")
+          PY
+          gh attestation verify account_metadata_source_review_decision.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-account-metadata-source-review.yml"             --source-ref "refs/heads/main"             --source-digest "$SOURCE_REVIEW_COMMIT"             --format json > /tmp/source-review-attestation.json
+
+      - name: Rebuild current-state metadata promotion preview
+        id: build
+        env:
+          SOURCE_REVIEW_RUN_ID: ${{ inputs.source_review_run_id }}
+          SOURCE_REVIEW_COMMIT: ${{ steps.source.outputs.source_review_commit }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from provider_account_metadata_promotion_preview import (
+              build_metadata_promotion_preview,
+              verify_metadata_promotion_preview,
+          )
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          with open("account_metadata_source_review_decision.json",encoding="utf-8") as h:
+              decision=json.load(h)
+          preview=build_metadata_promotion_preview(
+              claim,
+              decision,
+              source_review_run_id=os.environ["SOURCE_REVIEW_RUN_ID"],
+              source_review_commit=os.environ["SOURCE_REVIEW_COMMIT"],
+          )
+          if not verify_metadata_promotion_preview(preview):
+              raise SystemExit("promotion preview self-verification failed")
+          with open("account_metadata_promotion_preview.json","w",encoding="utf-8") as h:
+              json.dump(preview,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          echo "preview_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Attest metadata promotion preview
+        id: attest
+        if: steps.build.outputs.preview_verified == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: account_metadata_promotion_preview.json
+
+      - name: Verify signed promotion preview
+        id: verify
+        if: steps.attest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          set -euo pipefail
+          gh attestation verify account_metadata_promotion_preview.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-account-metadata-promotion-preview.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/promotion-preview-attestation.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          body={
+              "schema_version":1,
+              "verification_status":"VERIFIED",
+              "repository":os.environ["GITHUB_REPOSITORY"],
+              "preview_workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "preview_workflow_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_commit":os.environ["GITHUB_SHA"],
+              "source_ref":"refs/heads/main",
+              "signer_workflow":".github/workflows/provider-account-metadata-promotion-preview.yml",
+              "attestation_id":os.environ.get("ATTESTATION_ID",""),
+              "attestation_url":os.environ.get("ATTESTATION_URL",""),
+              "preview_file":"account_metadata_promotion_preview.json",
+          }
+          raw=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+          body["marker_sha256"]=hashlib.sha256(raw).hexdigest()
+          with open("account_metadata_promotion_preview_attestation.json","w",encoding="utf-8") as h:
+              json.dump(body,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          echo "preview_attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Upload sanitized promotion preview package
+        if: steps.verify.outputs.preview_attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: provider-account-metadata-promotion-preview-${{ inputs.source_review_run_id }}-${{ github.run_id }}
+          path: |
+            account_metadata_claim.json
+            account_metadata_source_review_decision.json
+            account_metadata_source_review_attestation.json
+            account_metadata_promotion_preview.json
+            account_metadata_promotion_preview_attestation.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

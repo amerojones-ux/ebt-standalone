@@ -43,11 +43,12 @@ def make_claim(provider="Sportradar",ref="portal-snapshot-1"):
     transition=build_transition(provider,facts)
     assert transition["status"]=="VALID_ACCOUNT_METADATA_TRANSITION_PREVIEW",transition
     body={
-        "schema_version":1,
+        "schema_version":2,
         "claim_type":"ACCOUNT_METADATA_CLAIM",
         "provider":provider,
         "source_type":facts["source_type"],
         "source_reference":ref,
+        "submitted_facts":facts,
         "submitter":"github:amerojones-ux#262097315",
         "repository":"amerojones-ux/ebt-standalone",
         "workflow_run_id":"12345",
