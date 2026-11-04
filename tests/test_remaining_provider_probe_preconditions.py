@@ -188,6 +188,9 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
         cfg=configs[FILES["Sportradar"]]
         cfg.update({
             "access_level":"trial",
+            "subscription_details_verified":True,
+            "product_inventory_verified":True,
+            "access_level_verified":True,
             "product_name":"NFL Base",
             "product_verified":True,
             "quota_reviewed":True,
