@@ -14,17 +14,12 @@ from rapidapi_routing_contract import PRICING_TYPES
 ROOT=Path(__file__).resolve().parent
 
 FILES={
-    "TheRundown":"config/therundown_access.json",
     "SportsDataIO":"config/sportsdataio_access.json",
     "Sportradar":"config/sportradar_nfl_auth.json",
     "RapidAPI":"config/rapidapi_routing.json",
 }
 
 PLANNED_AUTHORIZATIONS={
-    "TheRundown":{
-        "review":"I_CONFIRM_THERUNDOWN_PLAN_DATAPOINT_QUOTA_AND_OVERAGE_REVIEWED",
-        "request":"I_APPROVE_ONE_THERUNDOWN_AUTHENTICATED_SNAPSHOT_REQUEST",
-    },
     "SportsDataIO":{
         "review":"I_CONFIRM_SPORTSDATAIO_ACCESS_TIER_FEED_AND_QUOTA_REVIEWED",
         "request":"I_APPROVE_ONE_SPORTSDATAIO_AUTHENTICATED_REQUEST",
@@ -210,7 +205,6 @@ def assess_rapidapi(cfg):
     return _result("RapidAPI",safety,blockers)
 
 ASSESSORS={
-    "TheRundown":assess_therundown,
     "SportsDataIO":assess_sportsdataio,
     "Sportradar":assess_sportradar,
     "RapidAPI":assess_rapidapi,
