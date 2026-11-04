@@ -78,10 +78,19 @@ def claim_and_decision(provider="Sportradar"):
     )
     return body,decision
 
+def build_preview(claim,decision,**kwargs):
+    return build_metadata_promotion_preview(
+        claim,
+        decision,
+        source_review_run_id="777",
+        source_review_commit="b"*40,
+        **kwargs,
+    )
+
 class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
     def test_valid_preview_rebuilds_current_state(self):
         claim,decision=claim_and_decision()
-        preview=build_metadata_promotion_preview(claim,decision)
+        preview=build_preview(claim,decision)
         self.assertTrue(verify_metadata_promotion_preview(preview))
         self.assertEqual(preview["provider"],"Sportradar")
         self.assertFalse(preview["metadata_write_permitted"])
@@ -93,7 +102,7 @@ class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
         for provider in ("SportsDataIO","Sportradar","RapidAPI"):
             with self.subTest(provider=provider):
                 claim,decision=claim_and_decision(provider)
-                preview=build_metadata_promotion_preview(claim,decision)
+                preview=build_preview(claim,decision)
                 self.assertTrue(verify_metadata_promotion_preview(preview))
                 self.assertEqual(preview["provider"],provider)
 
@@ -107,7 +116,7 @@ class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
             reviewed_at="2026-11-04T03:30:00+00:00",
         )
         with self.assertRaisesRegex(ValueError,"must be APPROVE"):
-            build_metadata_promotion_preview(claim,decision)
+            build_preview(claim,decision)
 
     def test_account_registry_drift_is_rejected(self):
         claim,decision=claim_and_decision()
@@ -115,7 +124,7 @@ class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
         target=next(p for p in registry["providers"] if p["name"]=="Sportradar")
         target["quota_verified"]=True
         with self.assertRaisesRegex(ValueError,"drifted"):
-            build_metadata_promotion_preview(
+            build_preview(
                 claim,decision,registry=registry,configs=load_configs()
             )
 
@@ -124,7 +133,7 @@ class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
         configs=copy.deepcopy(load_configs())
         configs["RapidAPI"]["plan_name"]="Changed"
         with self.assertRaisesRegex(ValueError,"drifted"):
-            build_metadata_promotion_preview(
+            build_preview(
                 claim,decision,registry=load_registry(),configs=configs
             )
 
@@ -133,11 +142,11 @@ class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
         bad=dict(decision)
         bad["source_claim_sha256"]="0"*64
         with self.assertRaisesRegex(ValueError,"source review decision invalid"):
-            build_metadata_promotion_preview(claim,bad)
+            build_preview(claim,bad)
 
     def test_preview_checksum_and_safety_flags_bind(self):
         claim,decision=claim_and_decision()
-        preview=build_metadata_promotion_preview(claim,decision)
+        preview=build_preview(claim,decision)
         bad=dict(preview)
         bad["preview_sha256"]="0"*64
         self.assertFalse(verify_metadata_promotion_preview(bad))
