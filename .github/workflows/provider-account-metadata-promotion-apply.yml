@@ -1,0 +1,356 @@
+name: Provider account metadata controlled promotion apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      promotion_preview_run_id:
+        description: "Completed signed account-metadata promotion preview workflow run ID"
+        required: true
+        type: string
+      confirm_apply:
+        description: "Approve controlled account-metadata promotion branch preparation"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_ACCOUNT_METADATA_PROMOTION_APPLY"
+        default: "NO"
+
+concurrency:
+  group: ebt-account-metadata-promotion-apply
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  apply:
+    if: >-
+      ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
+        github.ref == 'refs/heads/main' &&
+        inputs.confirm_apply == 'I_APPROVE_ACCOUNT_METADATA_PROMOTION_APPLY'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify immutable apply source checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Fetch and validate Phase 82 promotion preview run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+        run: |
+          set -euo pipefail
+          case "$PREVIEW_RUN_ID" in
+            ''|*[!0-9]*)
+              echo "promotion_preview_run_id must be numeric" >&2
+              exit 2
+              ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIEW_RUN_ID" > preview_run.json
+          python3 - <<'PY'
+          import json,os,re
+          with open("preview_run.json",encoding="utf-8") as h:
+              run=json.load(h)
+          if run.get("id")!=int(os.environ["PREVIEW_RUN_ID"]):
+              raise SystemExit("promotion preview run id mismatch")
+          if run.get("event")!="workflow_dispatch":
+              raise SystemExit("promotion preview run was not workflow_dispatch")
+          if run.get("run_attempt")!=1:
+              raise SystemExit("promotion preview run was not first attempt")
+          if run.get("head_branch")!="main":
+              raise SystemExit("promotion preview run was not main")
+          if run.get("status")!="completed" or run.get("conclusion")!="success":
+              raise SystemExit("promotion preview run did not complete successfully")
+          if run.get("path")!=".github/workflows/provider-account-metadata-promotion-preview.yml":
+              raise SystemExit("promotion preview workflow path mismatch")
+          sha=run.get("head_sha")
+          if not isinstance(sha,str) or not re.fullmatch(r"[0-9a-fA-F]{40}",sha):
+              raise SystemExit("invalid promotion preview commit")
+          repo=run.get("repository") or {}
+          head_repo=run.get("head_repository") or {}
+          if repo.get("full_name")!=os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("promotion preview repository mismatch")
+          if head_repo.get("id")!=repo.get("id"):
+              raise SystemExit("promotion preview head repository mismatch")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("preview_commit="+sha+"\n")
+          PY
+
+      - name: Resolve exact signed Phase 82 preview artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PREVIEW_RUN_ID/artifacts?per_page=100" > artifacts.json
+          python3 - <<'PY'
+          import json,os,re
+          run_id=os.environ["PREVIEW_RUN_ID"]
+          pattern=re.compile(
+              r"^provider-account-metadata-promotion-preview-([0-9]+)-"
+              +re.escape(run_id)+r"$"
+          )
+          with open("artifacts.json",encoding="utf-8") as h:
+              payload=json.load(h)
+          matches=[]
+          for item in payload.get("artifacts",[]):
+              if not isinstance(item,dict):
+                  continue
+              m=pattern.fullmatch(item.get("name",""))
+              if m:
+                  matches.append((item,m.group(1)))
+          if len(matches)!=1:
+              raise SystemExit("promotion preview artifact count mismatch")
+          item,source_review_run_id=matches[0]
+          if item.get("expired") is not False:
+              raise SystemExit("promotion preview artifact expired")
+          size=item.get("size_in_bytes")
+          if type(size) is not int or size<=0 or size>4*1024*1024:
+              raise SystemExit("promotion preview artifact size invalid")
+          artifact_id=item.get("id")
+          if type(artifact_id) is not int or artifact_id<=0:
+              raise SystemExit("promotion preview artifact id invalid")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("artifact_id="+str(artifact_id)+"\n")
+              h.write("source_review_run_id="+source_review_run_id+"\n")
+          PY
+
+      - name: Download and strictly unpack signed Phase 82 package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > preview_package.zip
+          python3 - <<'PY'
+          import io,stat,zipfile
+          raw=open("preview_package.zip","rb").read()
+          if not raw or len(raw)>4*1024*1024:
+              raise SystemExit("promotion preview ZIP size invalid")
+          expected={
+              "account_metadata_claim.json",
+              "account_metadata_source_review_decision.json",
+              "account_metadata_source_review_attestation.json",
+              "account_metadata_promotion_preview.json",
+              "account_metadata_promotion_preview_attestation.json",
+          }
+          try:
+              z=zipfile.ZipFile(io.BytesIO(raw),"r")
+          except zipfile.BadZipFile:
+              raise SystemExit("promotion preview ZIP invalid")
+          with z:
+              members=z.infolist()
+              if len(members)!=5 or {x.filename for x in members}!=expected:
+                  raise SystemExit("promotion preview ZIP file set mismatch")
+              for info in members:
+                  if info.is_dir() or "/" in info.filename or "\\" in info.filename:
+                      raise SystemExit("nested promotion preview ZIP member forbidden")
+                  if info.flag_bits & 0x1:
+                      raise SystemExit("encrypted promotion preview ZIP member forbidden")
+                  if stat.S_ISLNK((info.external_attr>>16)&0xFFFF):
+                      raise SystemExit("symlink promotion preview ZIP member forbidden")
+                  if info.file_size<1 or info.file_size>1024*1024:
+                      raise SystemExit("promotion preview ZIP member size invalid")
+                  data=z.read(info)
+                  if len(data)!=info.file_size:
+                      raise SystemExit("promotion preview ZIP member size mismatch")
+                  open(info.filename,"wb").write(data)
+          PY
+
+      - name: Verify signed Phase 82 preview package
+        env:
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+          PREVIEW_COMMIT: ${{ steps.source.outputs.preview_commit }}
+          SOURCE_REVIEW_RUN_ID: ${{ steps.artifact.outputs.source_review_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from provider_account_metadata_claim import verify_account_metadata_claim
+          from provider_account_metadata_source_review import verify_source_review_decision
+          from provider_account_metadata_promotion_preview import verify_metadata_promotion_preview
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          with open("account_metadata_source_review_decision.json",encoding="utf-8") as h:
+              decision=json.load(h)
+          with open("account_metadata_promotion_preview.json",encoding="utf-8") as h:
+              preview=json.load(h)
+          with open("account_metadata_promotion_preview_attestation.json",encoding="utf-8") as h:
+              marker=json.load(h)
+          if not verify_account_metadata_claim(claim):
+              raise SystemExit("claim invalid")
+          if not verify_source_review_decision(decision) or decision.get("decision")!="APPROVE":
+              raise SystemExit("source review decision invalid/not approved")
+          if not verify_metadata_promotion_preview(preview):
+              raise SystemExit("promotion preview invalid")
+          if preview.get("source_claim_run_id")!=str(claim.get("workflow_run_id")):
+              raise SystemExit("preview claim run mismatch")
+          if preview.get("source_claim_sha256")!=claim.get("claim_sha256"):
+              raise SystemExit("preview claim checksum mismatch")
+          if preview.get("source_review_run_id")!=os.environ["SOURCE_REVIEW_RUN_ID"]:
+              raise SystemExit("preview source-review run mismatch")
+          if preview.get("source_review_decision_sha256")!=decision.get("decision_sha256"):
+              raise SystemExit("preview review-decision checksum mismatch")
+          if marker.get("verification_status")!="VERIFIED":
+              raise SystemExit("preview attestation marker not verified")
+          if marker.get("preview_workflow_run_id")!=os.environ["PREVIEW_RUN_ID"]:
+              raise SystemExit("preview marker run mismatch")
+          if marker.get("source_commit","").lower()!=os.environ["PREVIEW_COMMIT"].lower():
+              raise SystemExit("preview marker commit mismatch")
+          if marker.get("source_ref")!="refs/heads/main":
+              raise SystemExit("preview marker ref mismatch")
+          if marker.get("signer_workflow")!=".github/workflows/provider-account-metadata-promotion-preview.yml":
+              raise SystemExit("preview marker signer mismatch")
+          PY
+          gh attestation verify account_metadata_promotion_preview.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-account-metadata-promotion-preview.yml"             --source-ref "refs/heads/main"             --source-digest "$PREVIEW_COMMIT"             --format json > /tmp/promotion-preview-attestation.json
+
+      - name: Rebuild current state and create exact apply manifest/files
+        id: build
+        env:
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+          PREVIEW_COMMIT: ${{ steps.source.outputs.preview_commit }}
+        run: |
+          set -euo pipefail
+          mkdir -p generated
+          python3 - <<'PY'
+          import hashlib,json,os
+          from provider_account_metadata_promotion_apply import (
+              build_metadata_promotion_apply,
+              verify_metadata_promotion_apply,
+          )
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          with open("account_metadata_source_review_decision.json",encoding="utf-8") as h:
+              decision=json.load(h)
+          with open("account_metadata_promotion_preview.json",encoding="utf-8") as h:
+              preview=json.load(h)
+          manifest=build_metadata_promotion_apply(
+              claim,
+              decision,
+              preview,
+              promotion_preview_run_id=os.environ["PREVIEW_RUN_ID"],
+              promotion_preview_commit=os.environ["PREVIEW_COMMIT"],
+          )
+          if not verify_metadata_promotion_apply(manifest):
+              raise SystemExit("metadata apply manifest self-verification failed")
+          registry_bytes=(json.dumps(
+              manifest["candidate_registry"],indent=2,sort_keys=True
+          )+"\n").encode()
+          provider_bytes=(json.dumps(
+              manifest["candidate_provider_config"],indent=2,sort_keys=True
+          )+"\n").encode()
+          if hashlib.sha256(registry_bytes).hexdigest()!=manifest["account_evidence_file_sha256"]:
+              raise SystemExit("account evidence file checksum mismatch")
+          if hashlib.sha256(provider_bytes).hexdigest()!=manifest["provider_config_file_sha256"]:
+              raise SystemExit("provider config file checksum mismatch")
+          open("generated/provider_account_evidence.json","wb").write(registry_bytes)
+          open("generated/provider_config.json","wb").write(provider_bytes)
+          with open("account_metadata_promotion_apply_manifest.json","w",encoding="utf-8") as h:
+              json.dump(manifest,h,indent=2,sort_keys=True);h.write("\n")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("provider="+manifest["provider"]+"\n")
+              h.write("provider_path="+manifest["target_provider_config_path"]+"\n")
+              h.write("apply_sha256="+manifest["apply_sha256"]+"\n")
+          PY
+
+      - name: Attest exact metadata apply manifest
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: account_metadata_promotion_apply_manifest.json
+
+      - name: Verify metadata apply manifest attestation
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          test -n "$BUNDLE_PATH"
+          test -f "$BUNDLE_PATH"
+          gh attestation verify account_metadata_promotion_apply_manifest.json             --bundle "$BUNDLE_PATH"             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-account-metadata-promotion-apply.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/metadata-apply-attestation-local.json
+          gh attestation verify account_metadata_promotion_apply_manifest.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-account-metadata-promotion-apply.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/metadata-apply-attestation-api.json
+          echo "apply_attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Create isolated metadata promotion branch
+        id: branch
+        if: steps.verify.outputs.apply_attestation_verified == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROVIDER: ${{ steps.build.outputs.provider }}
+          PROVIDER_PATH: ${{ steps.build.outputs.provider_path }}
+          PREVIEW_RUN_ID: ${{ inputs.promotion_preview_run_id }}
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          test "$current_main" = "$GITHUB_SHA"
+
+          slug="$(printf '%s' "$PROVIDER" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//')"
+          branch="promotion/$slug-account-metadata-$PREVIEW_RUN_ID-$GITHUB_RUN_ID"
+
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs"             -f ref="refs/heads/$branch"             -f sha="$GITHUB_SHA" >/dev/null
+
+          registry_sha="$(git rev-parse HEAD:config/provider_account_evidence.json)"
+          provider_sha="$(git rev-parse "HEAD:$PROVIDER_PATH")"
+          registry_b64="$(base64 -w0 generated/provider_account_evidence.json)"
+          provider_b64="$(base64 -w0 generated/provider_config.json)"
+
+          registry_response="$(mktemp)"
+          provider_response="$(mktemp)"
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/config/provider_account_evidence.json"             -f message="promote $PROVIDER verified account metadata"             -f content="$registry_b64"             -f branch="$branch"             -f sha="$registry_sha" > "$registry_response"
+
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/$PROVIDER_PATH"             -f message="apply $PROVIDER verified account route metadata"             -f content="$provider_b64"             -f branch="$branch"             -f sha="$provider_sha" > "$provider_response"
+
+          expected_registry_blob="$(git hash-object generated/provider_account_evidence.json)"
+          expected_provider_blob="$(git hash-object generated/provider_config.json)"
+          actual_registry_blob="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["content"]["sha"])' "$registry_response")"
+          actual_provider_blob="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["content"]["sha"])' "$provider_response")"
+          test "$actual_registry_blob" = "$expected_registry_blob"
+          test "$actual_provider_blob" = "$expected_provider_blob"
+
+          printf 'promotion_branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Account metadata promotion branch prepared"
+            echo
+            echo "Provider: $PROVIDER"
+            printf 'Branch: `%s`\n' "$branch"
+            echo "Base commit: `$GITHUB_SHA`"
+            echo "Files changed:"
+            echo "- config/provider_account_evidence.json"
+            echo "- $PROVIDER_PATH"
+            echo
+            echo "No provider request, forecast activation, or model-evidence activation occurred."
+            echo "The workflow intentionally does not open or merge a pull request."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Persist sanitized apply evidence
+        if: always() && steps.verify.outputs.apply_attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: provider-account-metadata-promotion-apply-${{ inputs.promotion_preview_run_id }}-${{ github.run_id }}
+          path: |
+            account_metadata_promotion_apply_manifest.json
+            generated/provider_account_evidence.json
+            generated/provider_config.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
