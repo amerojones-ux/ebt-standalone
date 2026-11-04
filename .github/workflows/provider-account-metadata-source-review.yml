@@ -1,0 +1,346 @@
+name: Provider account metadata source review
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Provider whose attested account-metadata claim is being reviewed"
+        required: true
+        type: choice
+        options:
+          - "SportsDataIO"
+          - "Sportradar"
+          - "RapidAPI"
+      claim_run_id:
+        description: "Completed provider account-metadata claim workflow run ID"
+        required: true
+        type: string
+      decision:
+        description: "Source verification decision"
+        required: true
+        type: choice
+        options:
+          - "HOLD"
+          - "REJECT"
+          - "APPROVE"
+        default: "HOLD"
+      source_reference:
+        description: "Exact nonsecret source reference from the signed claim"
+        required: true
+        type: string
+      confirm_approval:
+        description: "Required only for APPROVE"
+        required: true
+        type: choice
+        options:
+          - "NO"
+          - "I_APPROVE_ACCOUNT_METADATA_SOURCE_VERIFICATION"
+        default: "NO"
+
+concurrency:
+  group: ebt-account-metadata-source-review
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  review:
+    if: >-
+      ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
+        github.ref == 'refs/heads/main' &&
+        inputs.decision != 'HOLD' &&
+        (
+          inputs.decision == 'REJECT' ||
+          inputs.confirm_approval == 'I_APPROVE_ACCOUNT_METADATA_SOURCE_VERIFICATION'
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify immutable review checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Resolve immutable provider claim contract
+        id: contract
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          CLAIM_RUN_ID: ${{ inputs.claim_run_id }}
+        run: |
+          set -euo pipefail
+          case "$CLAIM_RUN_ID" in
+            ''|*[!0-9]*)
+              echo "claim_run_id must be numeric" >&2
+              exit 2
+              ;;
+          esac
+          case "$PROVIDER" in
+            "SportsDataIO")
+              echo "source_workflow=.github/workflows/sportsdataio-account-metadata-review.yml" >> "$GITHUB_OUTPUT"
+              echo "artifact_name=sportsdataio-account-metadata-claim-$CLAIM_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            "Sportradar")
+              echo "source_workflow=.github/workflows/sportradar-account-metadata-review.yml" >> "$GITHUB_OUTPUT"
+              echo "artifact_name=sportradar-account-metadata-claim-$CLAIM_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            "RapidAPI")
+              echo "source_workflow=.github/workflows/rapidapi-account-metadata-review.yml" >> "$GITHUB_OUTPUT"
+              echo "artifact_name=rapidapi-account-metadata-claim-$CLAIM_RUN_ID" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "unsupported provider" >&2
+              exit 2
+              ;;
+          esac
+
+      - name: Fetch and validate source claim run metadata
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAIM_RUN_ID: ${{ inputs.claim_run_id }}
+          SOURCE_WORKFLOW: ${{ steps.contract.outputs.source_workflow }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIM_RUN_ID" > source_run.json
+          python3 - <<'PY'
+          import json,os,re
+          with open("source_run.json",encoding="utf-8") as h:
+              run=json.load(h)
+          expected_id=int(os.environ["CLAIM_RUN_ID"])
+          expected_workflow=os.environ["SOURCE_WORKFLOW"]
+          checks=[
+              (run.get("id")==expected_id,"source run id mismatch"),
+              (run.get("event")=="workflow_dispatch","source run was not workflow_dispatch"),
+              (run.get("run_attempt")==1,"source run was not first attempt"),
+              (run.get("head_branch")=="main","source run was not main"),
+              (run.get("status")=="completed","source run not completed"),
+              (run.get("conclusion")=="success","source run did not conclude success"),
+              (run.get("path")==expected_workflow,"source workflow path mismatch"),
+          ]
+          for ok,msg in checks:
+              if not ok: raise SystemExit(msg)
+          sha=run.get("head_sha")
+          if not isinstance(sha,str) or not re.fullmatch(r"[0-9a-fA-F]{40}",sha):
+              raise SystemExit("invalid source commit")
+          repo=run.get("repository") or {}
+          head_repo=run.get("head_repository") or {}
+          if repo.get("full_name")!=os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("source repository mismatch")
+          if head_repo.get("id")!=repo.get("id"):
+              raise SystemExit("source head repository mismatch")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("source_commit="+sha+"\n")
+          PY
+
+      - name: Resolve exact signed claim artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAIM_RUN_ID: ${{ inputs.claim_run_id }}
+          ARTIFACT_NAME: ${{ steps.contract.outputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIM_RUN_ID/artifacts?per_page=100" > artifacts.json
+          python3 - <<'PY'
+          import json,os
+          with open("artifacts.json",encoding="utf-8") as h:
+              payload=json.load(h)
+          matches=[
+              x for x in payload.get("artifacts",[])
+              if isinstance(x,dict) and x.get("name")==os.environ["ARTIFACT_NAME"]
+          ]
+          if len(matches)!=1:
+              raise SystemExit("claim artifact count mismatch")
+          item=matches[0]
+          if item.get("expired") is not False:
+              raise SystemExit("claim artifact expired")
+          size=item.get("size_in_bytes")
+          if type(size) is not int or size<=0 or size>2*1024*1024:
+              raise SystemExit("claim artifact size invalid")
+          artifact_id=item.get("id")
+          if type(artifact_id) is not int or artifact_id<=0:
+              raise SystemExit("claim artifact id invalid")
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as h:
+              h.write("artifact_id="+str(artifact_id)+"\n")
+          PY
+
+      - name: Download and strictly unpack signed claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > claim.zip
+          python3 - <<'PY'
+          import io,json,os,stat,zipfile
+          raw=open("claim.zip","rb").read()
+          if not raw or len(raw)>2*1024*1024:
+              raise SystemExit("claim ZIP size invalid")
+          expected={
+              "account_metadata_claim.json",
+              "account_metadata_claim_attestation.json",
+          }
+          try:
+              z=zipfile.ZipFile(io.BytesIO(raw),"r")
+          except zipfile.BadZipFile:
+              raise SystemExit("claim ZIP invalid")
+          with z:
+              members=z.infolist()
+              if len(members)!=2 or {x.filename for x in members}!=expected:
+                  raise SystemExit("claim ZIP file set mismatch")
+              for info in members:
+                  if info.is_dir() or "/" in info.filename or "\\" in info.filename:
+                      raise SystemExit("nested claim ZIP member forbidden")
+                  if info.flag_bits & 0x1:
+                      raise SystemExit("encrypted claim ZIP member forbidden")
+                  mode=(info.external_attr>>16)&0xFFFF
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit("symlink claim ZIP member forbidden")
+                  if info.file_size<1 or info.file_size>1024*1024:
+                      raise SystemExit("claim ZIP member size invalid")
+                  data=z.read(info)
+                  if len(data)!=info.file_size:
+                      raise SystemExit("claim ZIP member size mismatch")
+                  open(info.filename,"wb").write(data)
+          PY
+
+      - name: Verify original signed claim and source binding
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          CLAIM_RUN_ID: ${{ inputs.claim_run_id }}
+          SOURCE_REFERENCE: ${{ inputs.source_reference }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
+          SOURCE_WORKFLOW: ${{ steps.contract.outputs.source_workflow }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from provider_account_metadata_claim import verify_account_metadata_claim
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          if not verify_account_metadata_claim(claim):
+              raise SystemExit("source claim invalid")
+          if claim.get("provider")!=os.environ["PROVIDER"]:
+              raise SystemExit("claim provider mismatch")
+          if str(claim.get("workflow_run_id"))!=os.environ["CLAIM_RUN_ID"]:
+              raise SystemExit("claim run binding mismatch")
+          if claim.get("source_commit","").lower()!=os.environ["SOURCE_COMMIT"].lower():
+              raise SystemExit("claim source commit mismatch")
+          if claim.get("source_reference")!=os.environ["SOURCE_REFERENCE"]:
+              raise SystemExit("claim source reference mismatch")
+          with open("account_metadata_claim_attestation.json",encoding="utf-8") as h:
+              marker=json.load(h)
+          if marker.get("verification_status")!="VERIFIED":
+              raise SystemExit("claim attestation marker not verified")
+          if marker.get("workflow_run_id")!=os.environ["CLAIM_RUN_ID"]:
+              raise SystemExit("claim marker run mismatch")
+          if marker.get("source_commit","").lower()!=os.environ["SOURCE_COMMIT"].lower():
+              raise SystemExit("claim marker commit mismatch")
+          if marker.get("source_ref")!="refs/heads/main":
+              raise SystemExit("claim marker ref mismatch")
+          if marker.get("signer_workflow")!=os.environ["SOURCE_WORKFLOW"]:
+              raise SystemExit("claim marker signer mismatch")
+          PY
+          gh attestation verify account_metadata_claim.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/$SOURCE_WORKFLOW"             --source-ref "refs/heads/main"             --source-digest "$SOURCE_COMMIT"             --format json > /tmp/source-claim-attestation.json
+
+      - name: Emit GitHub-actor-bound source review decision
+        id: decision
+        env:
+          DECISION: ${{ inputs.decision }}
+          SOURCE_REFERENCE: ${{ inputs.source_reference }}
+          REVIEWER_ACTOR: ${{ github.actor }}
+          REVIEWER_ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          from provider_account_metadata_source_review import (
+              build_source_review_decision,
+              verify_source_review_decision,
+          )
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          reviewer="github:"+os.environ["REVIEWER_ACTOR"]+"#"+os.environ["REVIEWER_ACTOR_ID"]
+          decision=build_source_review_decision(
+              claim,
+              decision=os.environ["DECISION"],
+              reviewer=reviewer,
+              source_reference=os.environ["SOURCE_REFERENCE"],
+          )
+          if not verify_source_review_decision(decision):
+              raise SystemExit("source review decision self-verification failed")
+          with open("account_metadata_source_review_decision.json","w",encoding="utf-8") as h:
+              json.dump(decision,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          echo "decision_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Attest source review decision
+        id: attest
+        if: steps.decision.outputs.decision_verified == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: account_metadata_source_review_decision.json
+
+      - name: Verify signed source review decision
+        id: verify
+        if: steps.attest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+          REVIEWER_ACTOR: ${{ github.actor }}
+          REVIEWER_ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          gh attestation verify account_metadata_source_review_decision.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-account-metadata-source-review.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/source-review-attestation.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          body={
+              "schema_version":1,
+              "verification_status":"VERIFIED",
+              "repository":os.environ["GITHUB_REPOSITORY"],
+              "review_workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "review_workflow_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_commit":os.environ["GITHUB_SHA"],
+              "source_ref":"refs/heads/main",
+              "signer_workflow":".github/workflows/provider-account-metadata-source-review.yml",
+              "reviewer":"github:"+os.environ["REVIEWER_ACTOR"]+"#"+os.environ["REVIEWER_ACTOR_ID"],
+              "attestation_id":os.environ.get("ATTESTATION_ID",""),
+              "attestation_url":os.environ.get("ATTESTATION_URL",""),
+              "decision_file":"account_metadata_source_review_decision.json",
+          }
+          raw=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+          body["marker_sha256"]=hashlib.sha256(raw).hexdigest()
+          with open("account_metadata_source_review_attestation.json","w",encoding="utf-8") as h:
+              json.dump(body,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          echo "review_attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Upload sanitized source review package
+        if: steps.verify.outputs.review_attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: provider-account-metadata-source-review-${{ inputs.claim_run_id }}-${{ github.run_id }}
+          path: |
+            account_metadata_claim.json
+            account_metadata_claim_attestation.json
+            account_metadata_source_review_decision.json
+            account_metadata_source_review_attestation.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
