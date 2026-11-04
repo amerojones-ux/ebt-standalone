@@ -14,5 +14,9 @@
   "network_enabled": false,
   "quota_impact_approved": false,
   "request_count": 0,
-  "forecast_enabled": false
+  "forecast_enabled": false,
+  "account_registration_confirmed": true,
+  "subscription_details_verified": false,
+  "access_level_verified": false,
+  "product_inventory_verified": false
 }
