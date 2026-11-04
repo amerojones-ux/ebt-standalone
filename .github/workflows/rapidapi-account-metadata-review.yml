@@ -144,6 +144,14 @@ jobs:
           with open("account_metadata_claim.json","w",encoding="utf-8") as h:
               json.dump(claim,h,indent=2,sort_keys=True);h.write("\n")
           PY
+          python3 - <<'PY'
+          import json
+          from provider_account_metadata_claim import verify_account_metadata_claim
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          if not verify_account_metadata_claim(claim):
+              raise SystemExit("generated account metadata claim failed self-verification")
+          PY
           echo "claim_built=1" >> "$GITHUB_OUTPUT"
       - name: Attest account metadata claim
         id: attest
