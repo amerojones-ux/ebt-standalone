@@ -288,7 +288,7 @@ jobs:
           retention-days: 7
           compression-level: 0
 
-      - name: Execute one sanitized TheRundown status request and verify receipt
+      - name: Execute one sanitized TheRundown fixed-sample request and verify receipt
         id: probe
         if: >-
           ${{
@@ -318,7 +318,7 @@ jobs:
             verify_exit=$?
             if [ "$verify_exit" -eq 0 ]; then
               receipt_ok=1
-              echo "### Sanitized TheRundown status receipt" >> "$GITHUB_STEP_SUMMARY"
+              echo "### Sanitized TheRundown fixed-sample receipt" >> "$GITHUB_STEP_SUMMARY"
               echo "_Integrity model: SHA-256 checksum only; not a cryptographic signature._" >> "$GITHUB_STEP_SUMMARY"
               echo '~~~json' >> "$GITHUB_STEP_SUMMARY"
               cat therundown_probe_receipt.json >> "$GITHUB_STEP_SUMMARY"
