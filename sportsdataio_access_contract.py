@@ -79,10 +79,41 @@ def validate_auth_config(config):
         errors.append("network must remain disabled")
     if config.get("forecast_enabled") is not False:
         errors.append("forecast must remain disabled")
+    method=_normalize_method(config.get("declared_access_method"))
+    if method=="FREE_TRIAL":
+        if config.get("model_evidence_allowed") is not False:
+            errors.append("Free Trial model evidence must remain disabled")
+        if (
+            config.get("official_scope_status")=="CONFLICTING"
+            and config.get("trial_scope_reconciled") is True
+        ):
+            errors.append("conflicting scope cannot be marked reconciled")
     return errors
 
 def _normalize_method(method):
     return method.strip().upper() if isinstance(method, str) else "UNKNOWN"
+
+def free_trial_probe_blockers(config):
+    """Return unresolved account/research blockers for Free Trial probing.
+
+    Free Trial data is integration-only and can never become model evidence.
+    A live auth probe may be implemented only after current trial scope is
+    reconciled and an exact subscribed product/feed/endpoint is selected.
+    """
+    if not isinstance(config,dict):
+        return ["config must be object"]
+    if _normalize_method(config.get("declared_access_method"))!="FREE_TRIAL":
+        return []
+    blockers=[]
+    if config.get("account_access_confirmed") is not True:
+        blockers.append("Free Trial account access not confirmed")
+    if config.get("scrambled_data_acknowledged") is not True:
+        blockers.append("Free Trial scrambled-data limitation not acknowledged")
+    if config.get("official_scope_status")!="RECONCILED":
+        blockers.append("official Free Trial scope conflict unresolved")
+    if config.get("trial_scope_reconciled") is not True:
+        blockers.append("Free Trial scope not reconciled")
+    return blockers
 
 def can_promote_to_model_evidence(method, entitlement_verified=False, feed_verified=False, freshness_verified=False):
     """Only deep Leagues API production data can become generic model evidence."""
