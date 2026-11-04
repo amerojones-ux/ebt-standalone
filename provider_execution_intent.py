@@ -28,6 +28,11 @@ CONTRACTS={
         "review_authorization":"I_CONFIRM_THEODDSAPI_ACCOUNT_AND_ZERO_CREDIT_ENDPOINT_REVIEWED",
         "request_authorization":"I_APPROVE_ONE_THEODDSAPI_SPORTS_REQUEST",
     },
+    "TheRundown":{
+        "workflow":".github/workflows/therundown-live-probe.yml",
+        "review_authorization":"I_CONFIRM_THERUNDOWN_PLAN_DATAPOINT_QUOTA_AND_OVERAGE_REVIEWED",
+        "request_authorization":"I_APPROVE_ONE_THERUNDOWN_AUTHENTICATED_SNAPSHOT_REQUEST",
+    },
     "API-Sports":{
         "workflow":".github/workflows/apisports-status-probe.yml",
         "review_authorization":"I_CONFIRM_APISPORTS_STATUS_PRIVACY_AND_RATE_LIMIT_REVIEWED",
