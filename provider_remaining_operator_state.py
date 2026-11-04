@@ -245,6 +245,8 @@ def assess_remaining_provider_state(
             local_errors.append("provider config forecast_enabled unexpectedly true")
 
         missing=MISSING_BUILDERS[name](a,cfg)
+        if r.get("live_auth_verified") is True and missing:
+            local_errors.append("live_auth_verified without complete account metadata")
         probe_present=bool(path_exists(PROBE_WORKFLOWS[name]))
         metadata_workflow_present=bool(path_exists(METADATA_WORKFLOWS[name]))
 
@@ -284,9 +286,7 @@ def assess_remaining_provider_state(
             "probe_workflow":PROBE_WORKFLOWS[name],
             "missing_metadata":missing,
             "probe_workflow_present":probe_present,
-            "blocked_actions":list(BLOCKED_ACTIONS) if r.get("live_auth_verified") is not True else [
-                "forecast_activation","model_evidence_activation","network_autorun"
-            ],
+            "blocked_actions":list(BLOCKED_ACTIONS),
         })
 
     if errors or any(p["status"]=="INVALID_HOLD" for p in providers):
