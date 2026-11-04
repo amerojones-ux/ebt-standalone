@@ -14,5 +14,8 @@
   "endpoint_reviewed": false,
   "network_enabled": false,
   "request_count": 0,
-  "forecast_enabled": false
+  "forecast_enabled": false,
+  "account_signin_confirmed": true,
+  "subscription_inventory_verified": false,
+  "route_binding_verified": false
 }
