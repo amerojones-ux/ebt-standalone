@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "providers": [
+    {
+      "name": "SportsDataIO",
+      "account_exists": true,
+      "account_tier": "FREE_TRIAL",
+      "account_tier_verified": true,
+      "account_product_hint": "NFL",
+      "product_hint_entitlement_proof": false,
+      "provider_docs_scope_status": "CONFLICTING",
+      "exact_product_verified": false,
+      "exact_feed_verified": false,
+      "quota_verified": false,
+      "overage_verified": false,
+      "live_request_permitted": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "Sportradar",
+      "account_exists": true,
+      "account_tier": "UNKNOWN",
+      "account_tier_verified": false,
+      "account_product_hint": "",
+      "product_hint_entitlement_proof": false,
+      "provider_docs_scope_status": "FOUND",
+      "exact_product_verified": false,
+      "access_level_verified": false,
+      "quota_verified": false,
+      "live_request_permitted": false,
+      "model_evidence_allowed": false
+    },
+    {
+      "name": "RapidAPI",
+      "account_exists": true,
+      "account_tier": "UNKNOWN",
+      "account_tier_verified": false,
+      "account_product_hint": "",
+      "product_hint_entitlement_proof": false,
+      "provider_docs_scope_status": "FOUND",
+      "subscription_inventory_verified": false,
+      "exact_product_verified": false,
+      "exact_host_verified": false,
+      "exact_plan_verified": false,
+      "billing_object_verified": false,
+      "quota_verified": false,
+      "overage_verified": false,
+      "exact_endpoint_verified": false,
+      "live_request_permitted": false,
+      "model_evidence_allowed": false
+    }
+  ]
+}
