@@ -8,6 +8,7 @@
   "pricing_type": "UNKNOWN",
   "plan_name": "",
   "billing_object": "",
+  "probe_endpoint": "",
   "subscription_verified": false,
   "quota_reviewed": false,
   "overage_reviewed": false,
