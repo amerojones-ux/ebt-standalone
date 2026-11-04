@@ -14,6 +14,7 @@ PLAN = {
     "pricing_type":"FREEMIUM",
     "plan_name":"BASIC",
     "billing_object":"Requests",
+    "probe_endpoint":"https://example-sports.p.rapidapi.com/v1/status",
     "subscription_verified":True,
     "quota_reviewed":True,
     "overage_reviewed":True,
@@ -55,6 +56,21 @@ class RapidApiRoutingContractTests(unittest.TestCase):
     def test_bad_host_holds(self):
         p=dict(PLAN,rapidapi_host="https://example-sports.p.rapidapi.com/path")
         self.assertTrue(validate_plan(p))
+
+    def test_reviewed_endpoint_must_match_host(self):
+        p=dict(PLAN,probe_endpoint="https://wrong.p.rapidapi.com/v1/status")
+        errors=validate_plan(p)
+        self.assertIn("endpoint host mismatch",errors)
+
+    def test_reviewed_endpoint_forbids_query_credentials(self):
+        p=dict(PLAN,probe_endpoint="https://example-sports.p.rapidapi.com/v1/status?key=x")
+        errors=validate_plan(p)
+        self.assertIn("endpoint query forbidden",errors)
+
+    def test_endpoint_cannot_be_populated_before_review(self):
+        p=dict(PLAN,endpoint_reviewed=False)
+        errors=validate_plan(p)
+        self.assertIn("endpoint cannot be populated before review",errors)
 
     def test_unknown_pricing_holds(self):
         p=dict(PLAN,pricing_type="UNKNOWN")
