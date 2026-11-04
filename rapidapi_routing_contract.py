@@ -20,6 +20,13 @@ def validate_plan(plan):
     if plan.get("host_header") != "X-RapidAPI-Host":
         errors.append("host header mismatch")
 
+    if plan.get("account_signin_confirmed") is not True:
+        errors.append("account sign-in not confirmed")
+    if plan.get("subscription_inventory_verified") is not True:
+        errors.append("subscription inventory must be verified")
+    if plan.get("route_binding_verified") is not True:
+        errors.append("product-to-host route binding must be verified")
+
     product = plan.get("api_product")
     if not isinstance(product, str) or product.strip().casefold() in AMBIGUOUS_PRODUCT_NAMES:
         errors.append("exact API product required")
