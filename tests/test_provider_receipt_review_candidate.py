@@ -3,6 +3,7 @@ import unittest
 from apisports_status_receipt import build_receipt as build_apisports
 from theoddsapi_probe_receipt import build_receipt as build_odds
 from weatherapi_probe_receipt import build_receipt as build_weather
+from therundown_probe_receipt import build_receipt as build_therundown
 from provider_receipt_review_candidate import build_review_candidate, bind_attestation_verification
 from provider_live_request_plan import request_plan_sha256
 
@@ -32,6 +33,7 @@ EXECUTION_KWARGS={
 _raw_build_weather=build_weather
 _raw_build_odds=build_odds
 _raw_build_apisports=build_apisports
+_raw_build_therundown=build_therundown
 
 def build_weather(*args,**kwargs):
     kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
@@ -44,6 +46,10 @@ def build_odds(*args,**kwargs):
 def build_apisports(*args,**kwargs):
     kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
     return _raw_build_apisports(*args,**kwargs)
+
+def build_therundown(*args,**kwargs):
+    kwargs.setdefault("execution_intent_sha256",INTENT_SHA)
+    return _raw_build_therundown(*args,**kwargs)
 
 class ProviderReceiptReviewCandidateTests(unittest.TestCase):
     def test_weather_pass_becomes_review_only_candidate(self):
@@ -180,6 +186,22 @@ class ProviderReceiptReviewCandidateTests(unittest.TestCase):
             "2026-11-02T20:00:00+00:00",COMMIT,RUN
         )
         self.assertEqual(build_review_candidate(r,artifact_sha256=ARTIFACT,expected_run_id=RUN,expected_commit=COMMIT)["provider"],"The Odds API")
+
+    def test_therundown_pass_becomes_review_only_candidate(self):
+        r=build_therundown(
+            {
+                "status":"PASS",
+                "category":"authenticated_zero_datapoint_sample_json",
+            },
+            "2026-11-04T01:00:00+00:00",COMMIT,RUN
+        )
+        self.assertEqual(
+            build_review_candidate(
+                r,artifact_sha256=ARTIFACT,
+                expected_run_id=RUN,expected_commit=COMMIT
+            )["provider"],
+            "TheRundown",
+        )
 
     def test_apisports_pass_becomes_review_only_candidate(self):
         r=build_apisports(
