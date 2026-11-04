@@ -24,6 +24,19 @@ def validate_plan(plan):
         errors.append("format must be json")
     if plan.get("access_level") not in ALLOWED_ACCESS_LEVELS:
         errors.append("invalid access level")
+    if plan.get("account_registration_confirmed") is not True:
+        errors.append("account registration not confirmed")
+    if plan.get("subscription_details_verified") is not False:
+        if plan.get("subscription_details_verified") is not True:
+            errors.append("subscription details verification must be boolean")
+    if plan.get("access_level_verified") is True and plan.get("access_level")=="UNKNOWN":
+        errors.append("verified access level cannot be UNKNOWN")
+    if plan.get("product_verified") is True and plan.get("subscription_details_verified") is not True:
+        errors.append("product cannot be verified without subscription details")
+    if plan.get("quota_reviewed") is True and plan.get("subscription_details_verified") is not True:
+        errors.append("quota cannot be reviewed without subscription details")
+    if plan.get("product_inventory_verified") is True and plan.get("subscription_details_verified") is not True:
+        errors.append("product inventory cannot be verified without subscription details")
     if plan.get("network_enabled") is not False:
         errors.append("network must remain disabled")
     if plan.get("quota_impact_approved") is not False:

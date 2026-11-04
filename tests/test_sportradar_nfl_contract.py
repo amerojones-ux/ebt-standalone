@@ -10,6 +10,10 @@ PLAN = {
     "language":"en",
     "format":"json",
     "access_level":"UNKNOWN",
+    "account_registration_confirmed":True,
+    "subscription_details_verified":False,
+    "access_level_verified":False,
+    "product_inventory_verified":False,
     "network_enabled":False,
     "quota_impact_approved":False,
     "request_count":0,
@@ -41,6 +45,24 @@ def hierarchy():
 class SportradarNflContractTests(unittest.TestCase):
     def test_safe_plan(self):
         self.assertEqual(validate_plan(PLAN), [])
+
+    def test_account_registration_does_not_imply_subscription_or_access(self):
+        self.assertFalse(PLAN["subscription_details_verified"])
+        self.assertFalse(PLAN["access_level_verified"])
+        self.assertEqual(PLAN["access_level"],"UNKNOWN")
+        self.assertEqual(validate_plan(PLAN),[])
+
+    def test_verified_product_requires_subscription_details(self):
+        p=dict(PLAN,product_verified=True)
+        self.assertTrue(validate_plan(p))
+
+    def test_verified_quota_requires_subscription_details(self):
+        p=dict(PLAN,quota_reviewed=True)
+        self.assertTrue(validate_plan(p))
+
+    def test_verified_access_level_cannot_remain_unknown(self):
+        p=dict(PLAN,access_level_verified=True)
+        self.assertTrue(validate_plan(p))
 
     def test_wrong_header_holds(self):
         p=dict(PLAN,auth_header="Authorization")

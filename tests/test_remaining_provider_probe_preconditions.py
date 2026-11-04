@@ -99,10 +99,41 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
             result["blockers"],
         )
 
+    def test_committed_sportradar_account_exists_but_subscription_stays_blocked(self):
+        cfg=load_configs()[FILES["Sportradar"]]
+        self.assertTrue(cfg["account_registration_confirmed"])
+        result=assess_sportradar(cfg)
+        self.assertEqual(result["status"],"BLOCKED_PRECONDITION")
+        self.assertIn(
+            "Sportradar product subscription details not verified",
+            result["blockers"],
+        )
+        self.assertIn(
+            "Sportradar access level not verified from account",
+            result["blockers"],
+        )
+
+    def test_committed_rapidapi_signin_exists_but_route_stays_blocked(self):
+        cfg=load_configs()[FILES["RapidAPI"]]
+        self.assertTrue(cfg["account_signin_confirmed"])
+        result=assess_rapidapi(cfg)
+        self.assertEqual(result["status"],"BLOCKED_PRECONDITION")
+        self.assertIn(
+            "RapidAPI subscription inventory not verified",
+            result["blockers"],
+        )
+        self.assertIn(
+            "RapidAPI product-to-host route binding not verified",
+            result["blockers"],
+        )
+
     def test_sportradar_trial_route_requires_implementation(self):
         cfg=load_configs()[FILES["Sportradar"]]
         cfg.update({
             "access_level":"trial",
+            "subscription_details_verified":True,
+            "product_inventory_verified":True,
+            "access_level_verified":True,
             "product_name":"NFL Base",
             "product_verified":True,
             "quota_reviewed":True,
@@ -130,6 +161,8 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
     def test_rapidapi_complete_route_requires_implementation(self):
         cfg=load_configs()[FILES["RapidAPI"]]
         cfg.update({
+            "subscription_inventory_verified":True,
+            "route_binding_verified":True,
             "api_product":"Example Sports Provider",
             "rapidapi_host":"example-sports.p.rapidapi.com",
             "pricing_type":"FREE",
@@ -155,6 +188,9 @@ class RemainingProviderProbePreconditionTests(unittest.TestCase):
         cfg=configs[FILES["Sportradar"]]
         cfg.update({
             "access_level":"trial",
+            "subscription_details_verified":True,
+            "product_inventory_verified":True,
+            "access_level_verified":True,
             "product_name":"NFL Base",
             "product_verified":True,
             "quota_reviewed":True,
