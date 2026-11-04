@@ -100,6 +100,11 @@ class PromotionApplyWorkflowSecurityTests(unittest.TestCase):
         self.assertNotIn("forecast_enabled: true",text)
         self.assertNotIn("network_autorun_enabled: true",text)
 
+    def test_promotion_branch_summary_avoids_shell_command_substitution(self):
+        text=self.text
+        self.assertNotIn('echo "Branch: `$branch`"',text)
+        self.assertIn("printf 'Branch: `%s`\\n' \"$branch\"",text)
+
     def test_apply_evidence_is_short_lived_and_sanitized(self):
         text=self.text
         self.assertIn("actions/upload-artifact@"+UPLOAD_SHA,text)
