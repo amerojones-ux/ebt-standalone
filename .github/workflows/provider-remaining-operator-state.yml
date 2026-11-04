@@ -1,0 +1,108 @@
+name: Remaining provider operator state
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ebt-remaining-provider-operator-state
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  status:
+    if: >-
+      ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
+        github.ref == 'refs/heads/main'
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify immutable status checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Build deterministic operator state
+        id: build
+        run: |
+          set -euo pipefail
+          python3 provider_remaining_operator_state_cli.py             --output remaining_provider_operator_state.json
+          python3 - <<'PY'
+          import json
+          with open("remaining_provider_operator_state.json",encoding="utf-8") as h:
+              state=json.load(h)
+          if state.get("status")=="INVALID_HOLD":
+              raise SystemExit("remaining-provider operator state invalid")
+          if state.get("forecast_enabled") is not False:
+              raise SystemExit("forecast unexpectedly enabled")
+          if state.get("network_autorun_enabled") is not False:
+              raise SystemExit("network autorun unexpectedly enabled")
+          for row in state.get("providers",[]):
+              if "provider_network_request" not in row.get("blocked_actions",[]):
+                  raise SystemExit("provider request unexpectedly unblocked")
+          PY
+          echo "state_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Attest operator state
+        id: attest
+        if: steps.build.outputs.state_verified == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: remaining_provider_operator_state.json
+
+      - name: Verify operator-state attestation
+        id: verify
+        if: steps.attest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          set -euo pipefail
+          gh attestation verify remaining_provider_operator_state.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/provider-remaining-operator-state.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/operator-state-attestation.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          body={
+              "schema_version":1,
+              "verification_status":"VERIFIED",
+              "repository":os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_commit":os.environ["GITHUB_SHA"],
+              "source_ref":"refs/heads/main",
+              "signer_workflow":".github/workflows/provider-remaining-operator-state.yml",
+              "attestation_id":os.environ.get("ATTESTATION_ID",""),
+              "attestation_url":os.environ.get("ATTESTATION_URL",""),
+              "status_file":"remaining_provider_operator_state.json",
+          }
+          raw=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+          body["marker_sha256"]=hashlib.sha256(raw).hexdigest()
+          with open("remaining_provider_operator_state_attestation.json","w",encoding="utf-8") as h:
+              json.dump(body,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          echo "attestation_verified=1" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed operator-state package
+        if: steps.verify.outputs.attestation_verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: remaining-provider-operator-state-${{ github.run_id }}
+          path: |
+            remaining_provider_operator_state.json
+            remaining_provider_operator_state_attestation.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
