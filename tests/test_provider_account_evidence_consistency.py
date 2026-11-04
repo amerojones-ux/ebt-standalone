@@ -89,6 +89,7 @@ class ProviderAccountEvidenceConsistencyTests(unittest.TestCase):
             "rapidapi_host":"example.p.rapidapi.com",
             "plan_name":"Basic",
             "billing_object":"request",
+            "probe_endpoint":"https://example.p.rapidapi.com/v1/status",
             "quota_reviewed":True,
             "overage_reviewed":True,
             "endpoint_reviewed":True,
