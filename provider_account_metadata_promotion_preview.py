@@ -10,7 +10,8 @@ from provider_account_evidence import load_registry
 
 BODY_FIELDS={
     "schema_version","preview_type","preview_status","provider",
-    "source_claim_run_id","source_claim_sha256","source_review_decision_sha256",
+    "source_claim_run_id","source_claim_sha256","source_review_run_id",
+    "source_review_commit","source_review_decision_sha256",
     "source_reference","source_type","current_state_sha256",
     "rebuilt_transition_sha256","candidate_registry","candidate_configs",
     "metadata_write_permitted","network_request_permitted",
@@ -27,7 +28,10 @@ def _sha(value):
 def _state_payload(registry,configs):
     return {"registry":registry,"configs":configs}
 
-def build_metadata_promotion_preview(claim,decision,*,registry=None,configs=None):
+def build_metadata_promotion_preview(
+    claim,decision,*,source_review_run_id,source_review_commit,
+    registry=None,configs=None
+):
     if not verify_account_metadata_claim(claim):
         raise ValueError("account metadata claim invalid")
     if not verify_source_review_decision(decision):
@@ -50,6 +54,11 @@ def build_metadata_promotion_preview(claim,decision,*,registry=None,configs=None
         raise ValueError("claim not source verified")
     if decision.get("approved_transition")!=claim.get("transition"):
         raise ValueError("approved transition differs from signed claim")
+
+    if not isinstance(source_review_run_id,str) or not source_review_run_id.isdigit():
+        raise ValueError("source review run id invalid")
+    if not isinstance(source_review_commit,str) or len(source_review_commit)!=40:
+        raise ValueError("source review commit invalid")
 
     if registry is None:
         registry=load_registry()
@@ -76,6 +85,8 @@ def build_metadata_promotion_preview(claim,decision,*,registry=None,configs=None
         "provider":claim["provider"],
         "source_claim_run_id":str(claim["workflow_run_id"]),
         "source_claim_sha256":claim["claim_sha256"],
+        "source_review_run_id":source_review_run_id,
+        "source_review_commit":source_review_commit.lower(),
         "source_review_decision_sha256":decision["decision_sha256"],
         "source_reference":claim["source_reference"],
         "source_type":claim["source_type"],
@@ -111,6 +122,11 @@ def verify_metadata_promotion_preview(value):
         if not isinstance(val,str) or len(val)!=64:
             return False
     if not isinstance(value.get("source_claim_run_id"),str) or not value["source_claim_run_id"].isdigit():
+        return False
+    if not isinstance(value.get("source_review_run_id"),str) or not value["source_review_run_id"].isdigit():
+        return False
+    src_commit=value.get("source_review_commit")
+    if not isinstance(src_commit,str) or len(src_commit)!=40:
         return False
     if not isinstance(value.get("source_reference"),str) or not value["source_reference"]:
         return False
