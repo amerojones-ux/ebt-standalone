@@ -1,0 +1,199 @@
+name: RapidAPI account metadata claim review
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_type:
+        description: "Where the nonsecret metadata was observed"
+        required: true
+        type: choice
+        options: ["ACCOUNT_PORTAL","PROVIDER_SUPPORT"]
+      source_reference:
+        description: "Nonsecret support ticket/page/snapshot reference; never enter credentials"
+        required: true
+        type: string
+      product_name:
+        description: "Exact subscribed API product name"
+        required: true
+        type: string
+      host:
+        description: "Exact X-RapidAPI-Host"
+        required: true
+        type: string
+      pricing_type:
+        description: "Exact pricing type"
+        required: true
+        type: choice
+        options: ["FREE","PAY_PER_USE","FREEMIUM","PAID"]
+      plan_name:
+        description: "Exact plan name"
+        required: true
+        type: string
+      billing_object:
+        description: "Exact billing object/unit"
+        required: true
+        type: string
+      endpoint:
+        description: "Exact HTTPS endpoint matching host; no query string"
+        required: true
+        type: string
+      confirm_review:
+        description: "Confirm product/host/plan/quota/overage review"
+        required: true
+        type: choice
+        options: ["NO","I_CONFIRM_RAPIDAPI_PRODUCT_HOST_PLAN_QUOTA_AND_OVERAGE_REVIEWED"]
+        default: "NO"
+      confirm_claim:
+        description: "Authorize creation of an attested non-mutating metadata claim"
+        required: true
+        type: choice
+        options: ["NO","I_APPROVE_RAPIDAPI_ACCOUNT_METADATA_CLAIM"]
+        default: "NO"
+
+concurrency:
+  group: ebt-account-metadata-review
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  review:
+    if: >-
+      ${{
+        github.run_attempt == 1 &&
+        github.ref_protected == true &&
+        github.ref == 'refs/heads/main'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify immutable review source checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Build sanitized non-mutating transition claim
+        id: build
+        env:
+          SOURCE_TYPE: ${{ inputs.source_type }}
+          SOURCE_REFERENCE: ${{ inputs.source_reference }}
+          PRODUCT_NAME: ${{ inputs.product_name }}
+          RAPIDAPI_HOST: ${{ inputs.host }}
+          PRICING_TYPE: ${{ inputs.pricing_type }}
+          PLAN_NAME: ${{ inputs.plan_name }}
+          BILLING_OBJECT: ${{ inputs.billing_object }}
+          ENDPOINT: ${{ inputs.endpoint }}
+          CONFIRM_REVIEW: ${{ inputs.confirm_review }}
+          CONFIRM_CLAIM: ${{ inputs.confirm_claim }}
+          ACTOR: ${{ github.actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_REVIEW" = "I_CONFIRM_RAPIDAPI_PRODUCT_HOST_PLAN_QUOTA_AND_OVERAGE_REVIEWED"
+          test "$CONFIRM_CLAIM" = "I_APPROVE_RAPIDAPI_ACCOUNT_METADATA_CLAIM"
+          python3 - <<'PY'
+          import hashlib,json,os,re
+          from provider_account_metadata_transition import build_transition
+          ref=os.environ["SOURCE_REFERENCE"].strip()
+          if not re.fullmatch(r"[A-Za-z0-9 ._/#()-]{1,160}",ref) or re.search(r"(?i)(api[_ -]?key|token|password|secret|bearer|authorization)",ref):
+              raise SystemExit("unsafe source_reference")
+          facts={
+              "source_type":os.environ["SOURCE_TYPE"],
+              "product_name":os.environ["PRODUCT_NAME"],
+              "host":os.environ["RAPIDAPI_HOST"],
+              "pricing_type":os.environ["PRICING_TYPE"],
+              "plan_name":os.environ["PLAN_NAME"],
+              "billing_object":os.environ["BILLING_OBJECT"],
+              "endpoint":os.environ["ENDPOINT"],
+              "quota_reviewed":True,
+              "overage_reviewed":True,
+          }
+          transition=build_transition("RapidAPI",facts)
+          if transition.get("status")!="VALID_ACCOUNT_METADATA_TRANSITION_PREVIEW":
+              raise SystemExit("transition preview HOLD: "+json.dumps(transition.get("errors",[])))
+          if any(transition.get(k) is not False for k in (
+              "write_permitted","network_request_permitted",
+              "forecast_activation_permitted","model_evidence_allowed"
+          )):
+              raise SystemExit("transition safety flags invalid")
+          claim={
+              "schema_version":1,"claim_type":"ACCOUNT_METADATA_CLAIM",
+              "provider":"RapidAPI","source_type":facts["source_type"],
+              "source_reference":ref,
+              "submitter":"github:"+os.environ["ACTOR"]+"#"+os.environ["ACTOR_ID"],
+              "repository":os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_commit":os.environ["GITHUB_SHA"],
+              "transition":transition,
+              "claim_verified_against_provider_source":False,
+              "write_permitted":False,"network_request_permitted":False,
+              "forecast_activation_permitted":False,
+          }
+          raw=json.dumps(claim,sort_keys=True,separators=(",",":")).encode()
+          claim["claim_sha256"]=hashlib.sha256(raw).hexdigest()
+          with open("account_metadata_claim.json","w",encoding="utf-8") as h:
+              json.dump(claim,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          python3 - <<'PY'
+          import json
+          from provider_account_metadata_claim import verify_account_metadata_claim
+          with open("account_metadata_claim.json",encoding="utf-8") as h:
+              claim=json.load(h)
+          if not verify_account_metadata_claim(claim):
+              raise SystemExit("generated account metadata claim failed self-verification")
+          PY
+          echo "claim_built=1" >> "$GITHUB_OUTPUT"
+      - name: Attest account metadata claim
+        id: attest
+        if: steps.build.outputs.claim_built == '1'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: account_metadata_claim.json
+      - name: Verify claim attestation
+        id: verify
+        if: steps.attest.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTESTATION_ID: ${{ steps.attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          set -euo pipefail
+          gh attestation verify account_metadata_claim.json             --repo "$GITHUB_REPOSITORY"             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/rapidapi-account-metadata-review.yml"             --source-ref "refs/heads/main"             --source-digest "$GITHUB_SHA"             --format json > /tmp/attestation.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          body={"schema_version":1,"verification_status":"VERIFIED",
+              "repository":os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id":os.environ["GITHUB_RUN_ID"],
+              "workflow_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "source_commit":os.environ["GITHUB_SHA"],"source_ref":"refs/heads/main",
+              "signer_workflow":".github/workflows/rapidapi-account-metadata-review.yml",
+              "attestation_id":os.environ.get("ATTESTATION_ID",""),
+              "attestation_url":os.environ.get("ATTESTATION_URL",""),
+              "subject_file":"account_metadata_claim.json"}
+          raw=json.dumps(body,sort_keys=True,separators=(",",":")).encode()
+          body["marker_sha256"]=hashlib.sha256(raw).hexdigest()
+          with open("account_metadata_claim_attestation.json","w",encoding="utf-8") as h:
+              json.dump(body,h,indent=2,sort_keys=True);h.write("\n")
+          PY
+          echo "verified=1" >> "$GITHUB_OUTPUT"
+      - name: Upload sanitized signed claim package
+        if: steps.verify.outputs.verified == '1'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rapidapi-account-metadata-claim-${{ github.run_id }}
+          path: |
+            account_metadata_claim.json
+            account_metadata_claim_attestation.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
