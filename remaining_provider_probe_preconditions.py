@@ -56,31 +56,6 @@ def _result(provider,safety_errors,blockers):
         "forecast_activation_permitted":False,
     }
 
-def assess_therundown(cfg):
-    safety=[]
-    blockers=[]
-    expected={
-        "provider":"TheRundown",
-        "secret_name":"EBT_THERUNDOWN_API_KEY",
-        "auth_header":"X-TheRundown-Key",
-        "base_url":"https://therundown.io/api/v2",
-        "network_enabled":False,
-        "authenticated_request_count":0,
-        "forecast_enabled":False,
-    }
-    for key,value in expected.items():
-        if cfg.get(key)!=value:
-            safety.append(key+" safety mismatch")
-    if cfg.get("plan_name") in (None,"","UNKNOWN"):
-        blockers.append("exact account plan not reviewed")
-    if cfg.get("data_delay_verified") is not True:
-        blockers.append("account data delay not verified")
-    if cfg.get("datapoint_quota_reviewed") is not True:
-        blockers.append("data-point quota not reviewed")
-    if cfg.get("overage_behavior_reviewed") is not True:
-        blockers.append("overage behavior not reviewed")
-    return _result("TheRundown",safety,blockers)
-
 def _sportsdata_endpoint_ok(value):
     if not isinstance(value,str) or not value:
         return False
