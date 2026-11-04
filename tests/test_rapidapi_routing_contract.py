@@ -6,6 +6,9 @@ PLAN = {
     "secret_name":"EBT_RAPIDAPI_API_KEY",
     "key_header":"X-RapidAPI-Key",
     "host_header":"X-RapidAPI-Host",
+    "account_signin_confirmed":True,
+    "subscription_inventory_verified":True,
+    "route_binding_verified":True,
     "api_product":"Example Sports Provider",
     "rapidapi_host":"example-sports.p.rapidapi.com",
     "pricing_type":"FREEMIUM",
@@ -25,6 +28,21 @@ class RapidApiRoutingContractTests(unittest.TestCase):
         self.assertEqual(validate_plan(PLAN), [])
         self.assertTrue(can_prepare_live_probe(PLAN))
         self.assertFalse(can_execute_request(PLAN))
+
+    def test_signin_alone_does_not_prepare_route(self):
+        p=dict(
+            PLAN,
+            subscription_inventory_verified=False,
+            route_binding_verified=False,
+        )
+        self.assertFalse(can_prepare_live_probe(p))
+        errors=validate_plan(p)
+        self.assertIn("subscription inventory must be verified",errors)
+        self.assertIn("product-to-host route binding must be verified",errors)
+
+    def test_missing_account_signin_confirmation_holds(self):
+        p=dict(PLAN,account_signin_confirmed=False)
+        self.assertTrue(validate_plan(p))
 
     def test_literal_all_is_ambiguous(self):
         p=dict(PLAN,api_product="all")
