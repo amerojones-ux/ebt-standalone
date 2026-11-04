@@ -36,6 +36,7 @@ def github_record(subject="API-Sports",claim="live_auth_verified"):
         "API-Sports":".github/workflows/apisports-status-probe.yml",
         "WeatherAPI":".github/workflows/weatherapi-live-probe.yml",
         "The Odds API":".github/workflows/theoddsapi-live-probe.yml",
+        "TheRundown":".github/workflows/therundown-live-probe.yml",
     }.get(subject,".github/workflows/unsupported.yml")
     return {
         "status":"VERIFIED",
@@ -129,6 +130,27 @@ class ProviderReadinessEvidenceGateTests(unittest.TestCase):
         for entry in l["providers"]:
             if entry["name"]=="API-Sports":
                 entry["evidence"]["live_auth_verified"]=github_record()
+        self.assertEqual(evidence_supports_readiness(r,l,trusted_now=NOW),[])
+
+    def test_matching_therundown_live_auth_evidence_is_valid_but_not_model_evidence(self):
+        record=github_record(subject="TheRundown")
+        self.assertEqual(
+            validate_record(
+                record,subject="TheRundown",
+                claim="live_auth_verified",trusted_now=NOW
+            ),
+            [],
+        )
+        r=readiness()
+        l=ledger()
+        for entry in r["providers"]:
+            if entry["name"]=="TheRundown":
+                entry["live_auth_verified"]=True
+                self.assertFalse(entry["model_evidence_allowed"])
+        for entry in l["providers"]:
+            if entry["name"]=="TheRundown":
+                entry["evidence"]["live_auth_verified"]=record
+                self.assertIsNone(entry["evidence"]["model_evidence_allowed"])
         self.assertEqual(evidence_supports_readiness(r,l,trusted_now=NOW),[])
 
     def test_live_auth_requires_github_actions_receipt(self):
