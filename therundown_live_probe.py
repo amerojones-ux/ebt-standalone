@@ -64,6 +64,18 @@ def _classify_http_error(exc):
         return _safe_result("HOLD","rate_limited",429)
     return _safe_result("HOLD","http_status",int(exc.code))
 
+def _content_length(headers):
+    raw=headers.get("content-length")
+    if raw is None or not str(raw).strip():
+        return None
+    try:
+        value=int(str(raw).strip())
+    except ValueError:
+        raise ValueError("invalid content length")
+    if value<0:
+        raise ValueError("invalid content length")
+    return value
+
 def _datapoint_charge(headers):
     raw=headers.get("x-datapoints")
     if raw is None or not str(raw).strip():
@@ -116,9 +128,16 @@ def probe(confirm,account_review,opener=None):
         if charge not in (None,0):
             return _safe_result("HOLD","unexpected_datapoint_charge",charge)
 
+        try:
+            declared_length=_content_length(headers)
+        except ValueError:
+            return _safe_result("HOLD","response_too_large",MAX_BODY+1)
+        if declared_length is not None and declared_length>MAX_BODY:
+            return _safe_result("HOLD","response_too_large",declared_length)
+
         raw=response.read(MAX_BODY+1)
         if len(raw)>MAX_BODY:
-            return _safe_result("HOLD","response_too_large")
+            return _safe_result("HOLD","response_too_large",len(raw))
         try:
             payload=json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError,json.JSONDecodeError):
