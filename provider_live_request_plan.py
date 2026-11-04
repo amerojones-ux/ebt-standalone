@@ -45,6 +45,23 @@ PLANS={
         "retries":0,
         "max_body_bytes":262144,
     },
+    "TheRundown":{
+        "scheme":"https",
+        "host":"therundown.io",
+        "path":"/api/v2/stats/sample",
+        "method":"GET",
+        "credential_query_key":None,
+        "fixed_query":{},
+        "credential_header":"X-TheRundown-Key",
+        "fixed_headers":{
+            "accept":"application/json",
+        },
+        "timeout_seconds":10,
+        "max_requests":1,
+        "allow_redirects":False,
+        "retries":0,
+        "max_body_bytes":524288,
+    },
     "API-Sports":{
         "scheme":"https",
         "host":"v1.american-football.api-sports.io",
