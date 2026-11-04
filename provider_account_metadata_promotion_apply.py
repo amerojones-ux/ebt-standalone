@@ -28,6 +28,7 @@ BODY_FIELDS={
     "source_review_run_id","source_claim_run_id","current_state_sha256",
     "target_account_evidence_path","target_provider_config_path",
     "candidate_registry","candidate_provider_config",
+    "account_evidence_file_sha256","provider_config_file_sha256",
     "isolated_branch_write_permitted","main_write_permitted",
     "provider_network_request_permitted","forecast_activation_permitted",
     "model_evidence_allowed",
@@ -39,6 +40,9 @@ def _canonical(value):
 
 def _sha(value):
     return hashlib.sha256(_canonical(value)).hexdigest()
+
+def _file_bytes(value):
+    return (json.dumps(value,indent=2,sort_keys=True)+"\n").encode("utf-8")
 
 def _provider_entry(registry,name):
     for entry in registry.get("providers",[]):
@@ -138,6 +142,8 @@ def build_metadata_promotion_apply(
         "target_provider_config_path":PROVIDER_CONFIG_PATHS[provider],
         "candidate_registry":candidate_registry,
         "candidate_provider_config":target_cfg,
+        "account_evidence_file_sha256":hashlib.sha256(_file_bytes(candidate_registry)).hexdigest(),
+        "provider_config_file_sha256":hashlib.sha256(_file_bytes(target_cfg)).hexdigest(),
         "isolated_branch_write_permitted":True,
         "main_write_permitted":False,
         "provider_network_request_permitted":False,
@@ -166,7 +172,10 @@ def verify_metadata_promotion_apply(value):
             return False
     if not isinstance(value.get("promotion_preview_commit"),str) or len(value["promotion_preview_commit"])!=40:
         return False
-    for key in ("promotion_preview_sha256","current_state_sha256","apply_sha256"):
+    for key in (
+        "promotion_preview_sha256","current_state_sha256",
+        "account_evidence_file_sha256","provider_config_file_sha256","apply_sha256",
+    ):
         val=value.get(key)
         if not isinstance(val,str) or len(val)!=64:
             return False
