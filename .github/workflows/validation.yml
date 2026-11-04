@@ -45,6 +45,12 @@ jobs:
       - name: Assert remaining provider probes stay fail-closed
         run: python remaining_provider_probe_preconditions_cli.py
 
+      - name: Assert unresolved provider account evidence stays redacted and fail-closed
+        run: python provider_account_evidence_cli.py
+
+      - name: Assert provider account evidence matches operational configs
+        run: python provider_account_evidence_consistency_cli.py
+
       - name: Check command-line entry point
         run: python ebt_cli.py --help
 
