@@ -124,6 +124,14 @@ def assess_sportradar(cfg):
     for key,value in expected.items():
         if cfg.get(key)!=value:
             safety.append(key+" safety mismatch")
+    if cfg.get("account_registration_confirmed") is not True:
+        blockers.append("Sportradar account registration not confirmed")
+    if cfg.get("subscription_details_verified") is not True:
+        blockers.append("Sportradar product subscription details not verified")
+    if cfg.get("product_inventory_verified") is not True:
+        blockers.append("Sportradar subscribed product inventory not verified")
+    if cfg.get("access_level_verified") is not True:
+        blockers.append("Sportradar access level not verified from account")
     access=cfg.get("access_level")
     if access not in {"trial","production"}:
         blockers.append("NFL access level must be explicitly trial or production")
@@ -150,6 +158,13 @@ def assess_rapidapi(cfg):
     for key,value in expected.items():
         if cfg.get(key)!=value:
             safety.append(key+" safety mismatch")
+
+    if cfg.get("account_signin_confirmed") is not True:
+        blockers.append("RapidAPI account sign-in not confirmed")
+    if cfg.get("subscription_inventory_verified") is not True:
+        blockers.append("RapidAPI subscription inventory not verified")
+    if cfg.get("route_binding_verified") is not True:
+        blockers.append("RapidAPI product-to-host route binding not verified")
 
     product=cfg.get("api_product")
     if not isinstance(product,str) or not product.strip():
