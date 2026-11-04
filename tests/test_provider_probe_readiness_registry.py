@@ -21,7 +21,7 @@ class ProviderProbeReadinessRegistryTests(unittest.TestCase):
     def test_committed_registry_is_prepared_default_deny(self):
         result=assess_all()
         self.assertEqual(result["status"],"PREPARED_DEFAULT_DENY")
-        self.assertEqual(result["probe_count"],3)
+        self.assertEqual(result["probe_count"],4)
         for probe in result["probes"]:
             self.assertEqual(probe["status"],"PREPARED_DEFAULT_DENY")
             self.assertTrue(probe["manual_dispatch_required"])
