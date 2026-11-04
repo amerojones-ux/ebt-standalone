@@ -296,13 +296,21 @@ def assess_remaining_provider_state(
     else:
         status="SAFE_HOLD"
 
+    readiness_rows=[
+        row for row in readiness.get("providers",[]) if isinstance(row,dict)
+    ]
+    overall_live_auth=sum(
+        1 for row in readiness_rows if row.get("live_auth_verified") is True
+    )
     return {
         "schema_version":1,
         "status":status,
         "forecast_enabled":False,
         "network_autorun_enabled":False,
-        "provider_count":len(providers),
-        "live_auth_verified_count":sum(
+        "overall_provider_count":len(readiness_rows),
+        "overall_live_auth_verified_count":overall_live_auth,
+        "remaining_provider_count":len(providers),
+        "remaining_live_auth_verified_count":sum(
             1 for p in providers if p["status"]=="LIVE_AUTH_VERIFIED"
         ),
         "errors":errors,
