@@ -88,7 +88,7 @@ jobs:
           import hashlib,json,os,re
           from provider_account_metadata_transition import build_transition
           ref=os.environ["SOURCE_REFERENCE"].strip()
-          if not ref or len(ref)>200 or re.search(r"(?i)(api[_ -]?key|token|password|secret|bearer|authorization)",ref):
+          if not re.fullmatch(r"[A-Za-z0-9 ._/#()-]{1,160}",ref) or re.search(r"(?i)(api[_ -]?key|token|password|secret|bearer|authorization)",ref):
               raise SystemExit("unsafe source_reference")
           facts={
               "source_type":os.environ["SOURCE_TYPE"],
