@@ -35,6 +35,13 @@ class WalkForwardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             v.calculate_calibration_metrics([1.2], [1])
 
+    def test_overlapping_test_windows_rejected(self):
+        v = WalkForwardValidator(train_days=30, test_days=7)
+        with self.assertRaises(ValueError):
+            v.split_chronological_windows(
+                datetime(2026, 1, 1, tzinfo=timezone.utc),
+                datetime(2026, 4, 1, tzinfo=timezone.utc), 3)
+
     def test_naive_time_rejected(self):
         v = WalkForwardValidator()
         with self.assertRaises(ValueError):
