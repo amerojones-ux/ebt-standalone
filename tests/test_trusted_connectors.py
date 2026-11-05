@@ -24,6 +24,7 @@ def raw(finalized=True, conflict=False):
         'event_id': 'GAME-1', 'player_id': 'PLAYER-1', 'team_id': 'TEAM-1',
         'stat': 'made_fg', 'event_time': T0.isoformat(),
         'outcome_available_at': (T0 + timedelta(hours=3)).isoformat(),
+        'retrieved_at': (T0 + timedelta(hours=4)).isoformat(),
         'finalized': finalized, 'source_conflict': conflict,
         'source_record_id': 'BOX-1', 'minutes': 34.0,
         'opportunity_count': 12, 'outcome_value': 5,
@@ -51,6 +52,26 @@ class TrustedConnectorTests(unittest.TestCase):
         self.assertEqual(obs.provenance_sha256, canonical_payload_sha256(raw()))
         validator = IngestionValidator(T0 + timedelta(days=1), trusted_source_policy=p)
         self.assertTrue(validator.validate_observation(obs))
+
+    def test_historical_backfill_retrieval_after_model_cutoff_is_allowed(self):
+        p = make_policy()
+        record = raw()
+        record['retrieved_at'] = (T0 + timedelta(days=10)).isoformat()
+        adapter = OfficialBoxScoreSnapshotAdapter(
+            provider_id='NBA_OFFICIAL', policy=p, fetcher=lambda _: [record])
+        obs = adapter.ingest(T0)[0]
+        # The historical outcome was available 3h after the event, before this cutoff.
+        validator = IngestionValidator(T0 + timedelta(days=1), trusted_source_policy=p)
+        self.assertTrue(validator.validate_observation(obs))
+
+    def test_cross_provider_feature_requires_separate_attestation(self):
+        p = make_policy()
+        record = raw()
+        record['pregame_features'][0]['source'] = 'OTHER_PROVIDER'
+        adapter = OfficialBoxScoreSnapshotAdapter(
+            provider_id='NBA_OFFICIAL', policy=p, fetcher=lambda _: [record])
+        with self.assertRaises(ValueError):
+            adapter.ingest(T0)
 
     def test_pending_result_never_becomes_verified(self):
         p = make_policy()
