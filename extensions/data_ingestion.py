@@ -114,7 +114,7 @@ class IngestionValidator:
         canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'), default=str)
         return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
-    def validate_or_raise(self, obs: HistoricalObservation) -> HistoricalObservation:
+    def validate_or_raise(self, obs: HistoricalObservation) -> ValidatedObservation:
         if not isinstance(obs, HistoricalObservation):
             raise ObservationValidationError('HistoricalObservation required')
         for field_name in ('event_id', 'player_id', 'team_id', 'stat', 'source'):
