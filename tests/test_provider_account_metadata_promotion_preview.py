@@ -122,7 +122,7 @@ class ProviderAccountMetadataPromotionPreviewTests(unittest.TestCase):
         claim,decision=claim_and_decision()
         registry=copy.deepcopy(load_registry())
         target=next(p for p in registry["providers"] if p["name"]=="Sportradar")
-        target["quota_verified"]=True
+        target["quota_verified"]=not target["quota_verified"]
         with self.assertRaisesRegex(ValueError,"drifted"):
             build_preview(
                 claim,decision,registry=registry,configs=load_configs()

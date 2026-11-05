@@ -44,8 +44,8 @@ def build_receipt(*args,**kwargs):
     return _raw_build_receipt(*args,**kwargs)
 
 def ledger():
-    with open("config/provider_evidence.json",encoding="utf-8") as handle:
-        return json.load(handle)
+    from tests.provider_test_fixtures import ledger as synthetic_fixture
+    return synthetic_fixture()
 
 def raw_decision(decision="APPROVE"):
     receipt=build_receipt(

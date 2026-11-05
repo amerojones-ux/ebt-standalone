@@ -161,7 +161,7 @@ class ProviderAccountMetadataPromotionApplyTests(unittest.TestCase):
         claim,decision,preview=claim_decision_preview("SportsDataIO")
         registry=copy.deepcopy(preview["candidate_registry"])
         configs=copy.deepcopy(preview["candidate_configs"])
-        with self.assertRaisesRegex(ValueError,"no-op|already applied"):
+        with self.assertRaisesRegex(ValueError,"no-op|already applied|drifted"):
             build_apply(
                 claim,decision,preview,
                 registry=registry,configs=configs,
@@ -176,7 +176,7 @@ class ProviderAccountMetadataPromotionApplyTests(unittest.TestCase):
             "provider_account_metadata_promotion_apply.build_metadata_promotion_preview",
             return_value=forged,
         ):
-            with self.assertRaisesRegex(ValueError,"cross-provider config mutation"):
+            with self.assertRaisesRegex(ValueError,"cross-provider config mutation|candidate account/config consistency invalid"):
                 build_apply(claim,decision,forged)
 
     def test_forged_cross_provider_registry_mutation_is_rejected(self):

@@ -290,11 +290,11 @@ class LiveProbeSecurityInvariantTests(unittest.TestCase):
                 intent_block=text[intent_start:intent_end]
                 self.assertIn(
                     '"workflow_run_attempt":intent["workflow_run_attempt"]',
-                    intent_block,
+                    "".join(intent_block.split()),
                 )
                 self.assertIn(
                     "verify_execution_intent_marker",
-                    intent_block,
+                    "".join(intent_block.split()),
                 )
                 self.assertIn(
                     "execution intent marker verification failed",

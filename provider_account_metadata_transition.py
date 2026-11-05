@@ -6,6 +6,7 @@ configs. It never reads credentials, performs network I/O, writes files, or
 permits forecast/provider execution.
 """
 import copy
+import hashlib
 import json
 import re
 import urllib.parse
@@ -294,6 +295,7 @@ def build_transition(provider,facts,*,registry=None,configs=None):
     result=_base_result(provider,errors)
     if errors:
         return result
+    result["base_state_sha256"]=hashlib.sha256(json.dumps({"registry":registry,"configs":configs},sort_keys=True,separators=(",",":")).encode()).hexdigest()
     result["candidate_registry"]=next_registry
     result["candidate_configs"]=next_configs
     result["source_type"]=facts.get("source_type")
