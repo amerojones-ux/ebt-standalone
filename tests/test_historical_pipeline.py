@@ -107,7 +107,7 @@ class HistoricalPipelineTests(unittest.TestCase):
         validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
         clean = validator.validate_batch([official, secondary])['accepted']
         with self.assertRaises(ObservationValidationError):
-            reconcile_canonical_observations(clean)
+            reconcile_canonical_observations(clean, trusted_source_policy=p)
 
     def test_generic_count_can_exceed_opportunities(self):
         points, p = make_obs(stat='points', opportunity_count=10, outcome_value=24,
