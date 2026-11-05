@@ -310,3 +310,95 @@ def reconcile_canonical_observations(rows, *, trusted_source_policy):
             'crosscheck_count': max(0, len(evidence) - 1),
         })
     return reconciled
+
+
+def resolve_provider_revisions(rows, *, trusted_source_policy):
+    """Select the latest admissible revision per provider/canonical identity.
+
+    All rows must already have passed IngestionValidator for the same historical
+    cutoff. A correction whose own outcome_available_at is after that cutoff can
+    never appear here because validation rejects it first.
+
+    Returns latest rows for modeling plus an audit trail of superseded revisions.
+    """
+    if not isinstance(trusted_source_policy, TrustedSourcePolicy):
+        raise ObservationValidationError('trusted_source_policy required')
+    groups = {}
+    for validated in rows:
+        if not isinstance(validated, ValidatedObservation):
+            raise ObservationValidationError('ValidatedObservation required')
+        obs = validated.observation
+        if IngestionValidator.generate_record_hash(obs) != validated.record_hash:
+            raise ObservationValidationError('validated receipt record hash mismatch')
+        if not trusted_source_policy.verify_validation_receipt_signature(
+                validated.record_hash, validated.forecast_cutoff,
+                validated.validation_signature_hmac_sha256):
+            raise ObservationValidationError('validated receipt signature invalid')
+        if obs.outcome_available_at >= validated.forecast_cutoff:
+            raise ObservationValidationError('revision violates historical cutoff')
+        key = (*IngestionValidator.canonical_identity_key(obs), obs.source)
+        groups.setdefault(key, []).append(validated)
+
+    latest_rows = []
+    audit = []
+    for key, revisions in groups.items():
+        revisions = sorted(
+            revisions,
+            key=lambda x: (
+                x.observation.outcome_available_at,
+                x.observation.verification_attestation.verified_at,
+                x.observation.source_record_id or '',
+            ),
+        )
+        # Equal availability + retrieval timestamps with different substantive
+        # values are ambiguous rather than silently resolved.
+        by_clock = {}
+        for item in revisions:
+            obs = item.observation
+            clock = (
+                obs.outcome_available_at,
+                obs.verification_attestation.verified_at,
+            )
+            substantive = (
+                obs.outcome_semantics,
+                obs.opportunity_count,
+                float(obs.outcome_value),
+                None if obs.minutes is None else float(obs.minutes),
+            )
+            previous = by_clock.get(clock)
+            if previous is not None and previous != substantive:
+                raise ObservationValidationError(
+                    f'ambiguous same-time provider revisions for {key}')
+            by_clock[clock] = substantive
+
+        latest = revisions[-1]
+        latest_obs = latest.observation
+        latest_substantive = (
+            latest_obs.outcome_semantics,
+            latest_obs.opportunity_count,
+            float(latest_obs.outcome_value),
+            None if latest_obs.minutes is None else float(latest_obs.minutes),
+        )
+        prior_substantive = {
+            (
+                x.observation.outcome_semantics,
+                x.observation.opportunity_count,
+                float(x.observation.outcome_value),
+                None if x.observation.minutes is None else float(x.observation.minutes),
+            )
+            for x in revisions[:-1]
+        }
+        corrected = bool(prior_substantive and (
+            len(prior_substantive) > 1 or latest_substantive not in prior_substantive
+        ))
+        latest_rows.append(latest)
+        audit.append({
+            'provider_identity': key,
+            'revision_count': len(revisions),
+            'correction_observed': corrected,
+            'selected_record_hash': latest.record_hash,
+            'selected_outcome_available_at': latest_obs.outcome_available_at,
+            'selected_verified_at': latest_obs.verification_attestation.verified_at,
+            'superseded_record_hashes': tuple(x.record_hash for x in revisions[:-1]),
+        })
+    return {'rows': latest_rows, 'audit': audit}
