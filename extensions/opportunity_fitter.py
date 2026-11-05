@@ -34,7 +34,7 @@ class OpportunityEfficiencyFitter:
             raise ValueError('beta-binomial fitter only accepts successes_of_opportunities rows')
         return rows
 
-    def fit_opportunity_pmf(self, observations: Iterable[HistoricalObservation]) -> Dict[str, float]:
+    def fit_opportunity_pmf(self, observations: Iterable[ValidatedObservation]) -> Dict[str, float]:
         rows = self._conversion_rows(observations)
         empirical = {}
         for row in rows:
@@ -57,7 +57,7 @@ class OpportunityEfficiencyFitter:
             raise ValueError('opportunity fit has no probability mass')
         return {k: v / total for k, v in out.items()}
 
-    def efficiency_counts(self, observations: Iterable[HistoricalObservation]) -> Tuple[int, int]:
+    def efficiency_counts(self, observations: Iterable[ValidatedObservation]) -> Tuple[int, int]:
         rows = self._conversion_rows(observations)
         successes = sum(int(v.observation.outcome_value) for v in rows)
         opportunities = sum(v.observation.opportunity_count for v in rows)
@@ -66,7 +66,7 @@ class OpportunityEfficiencyFitter:
             raise ValueError('invalid conversion history')
         return successes, failures
 
-    def fit_predictive_pmf(self, observations: Iterable[HistoricalObservation]):
+    def fit_predictive_pmf(self, observations: Iterable[ValidatedObservation]):
         rows = self._conversion_rows(observations)
         opportunity_pmf = self.fit_opportunity_pmf(rows)
         successes, failures = self.efficiency_counts(rows)
@@ -84,5 +84,5 @@ class OpportunityEfficiencyFitter:
             'posterior_alpha': str(self.prior_alpha + successes),
             'posterior_beta': str(self.prior_beta + failures),
             'predictive_pmf': predictive,
-            'warning': 'Input validation and source provenance remain external obligations.',
+            'warning': 'Provider semantics and trusted-source policy configuration remain external obligations.',
         }
