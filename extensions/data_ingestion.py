@@ -68,8 +68,13 @@ class IngestionValidator:
         self._seen_identities = set()
 
     @staticmethod
-    def identity_key(obs: HistoricalObservation) -> Tuple[str, str, str, str]:
+    def canonical_identity_key(obs: HistoricalObservation) -> Tuple[str, str, str, str]:
         return (obs.event_id, obs.player_id, obs.team_id, obs.stat)
+
+    @staticmethod
+    def evidence_identity_key(obs: HistoricalObservation) -> Tuple[str, str, str, str, str, str]:
+        source_record = obs.source_record_id or obs.provenance_sha256
+        return (obs.event_id, obs.player_id, obs.team_id, obs.stat, obs.source, source_record)
 
     @staticmethod
     def generate_record_hash(obs: HistoricalObservation) -> str:
@@ -125,8 +130,8 @@ class IngestionValidator:
         if attestation.purpose != 'results':
             raise ObservationValidationError('historical outcome requires results attestation')
         _require_aware(attestation.verified_at, 'verification_attestation.verified_at')
-        if attestation.verified_at >= self.forecast_cutoff:
-            raise ObservationValidationError('verification attestation is after forecast cutoff')
+        if attestation.verified_at < obs.outcome_available_at:
+            raise ObservationValidationError('source retrieval cannot precede outcome availability')
 
         _require_aware(obs.event_time, 'event_time')
         _require_aware(obs.outcome_available_at, 'outcome_available_at')
@@ -171,9 +176,9 @@ class IngestionValidator:
                 raise ObservationValidationError(f'duplicate pregame feature: {feature.name}')
             feature_names.add(feature.name)
 
-        identity = self.identity_key(obs)
+        identity = self.evidence_identity_key(obs)
         if identity in self._seen_identities:
-            raise ObservationValidationError('duplicate event/player/team/stat identity')
+            raise ObservationValidationError('duplicate provider evidence record')
         self._seen_identities.add(identity)
         return obs
 
@@ -192,3 +197,45 @@ class IngestionValidator:
             except ObservationValidationError as exc:
                 rejected.append({'observation': obs, 'reason': str(exc)})
         return {'accepted': accepted, 'rejected': rejected}
+
+
+def reconcile_canonical_observations(rows):
+    """Collapse cross-source evidence into one canonical row without double counting.
+
+    Requires already validated rows. Conflicting results fail closed. A1 evidence
+    is preferred as primary; all evidence provenance hashes remain in metadata.
+    """
+    groups = {}
+    for obs in rows:
+        if not isinstance(obs, HistoricalObservation):
+            raise ObservationValidationError('HistoricalObservation required')
+        key = IngestionValidator.canonical_identity_key(obs)
+        groups.setdefault(key, []).append(obs)
+
+    reconciled = []
+    for key, evidence in groups.items():
+        semantics = {x.outcome_semantics for x in evidence}
+        outcomes = {float(x.outcome_value) for x in evidence}
+        opportunities = {x.opportunity_count for x in evidence}
+        if len(semantics) != 1 or len(outcomes) != 1 or len(opportunities) != 1:
+            raise ObservationValidationError(
+                f'conflicting cross-source evidence for canonical identity {key}')
+        ordered = sorted(
+            evidence,
+            key=lambda x: (
+                0 if x.verification_attestation.tier == 'A1' else 1,
+                x.outcome_available_at,
+                x.source,
+            ))
+        primary = ordered[0]
+        reconciled.append({
+            'observation': primary,
+            'canonical_identity': key,
+            'evidence_count': len(evidence),
+            'sources': tuple(x.source for x in ordered),
+            'provenance_sha256': tuple(x.provenance_sha256 for x in ordered),
+            'primary_tier': primary.verification_attestation.tier,
+            'has_a1': any(x.verification_attestation.tier == 'A1' for x in evidence),
+            'crosscheck_count': max(0, len(evidence) - 1),
+        })
+    return reconciled
