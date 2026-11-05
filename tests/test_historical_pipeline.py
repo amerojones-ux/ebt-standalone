@@ -94,7 +94,7 @@ class HistoricalPipelineTests(unittest.TestCase):
         validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
         clean = validator.validate_batch([official, secondary])['accepted']
         self.assertEqual(len(clean), 2)
-        reconciled = reconcile_canonical_observations(clean)
+        reconciled = reconcile_canonical_observations(clean, trusted_source_policy=p)
         self.assertEqual(len(reconciled), 1)
         self.assertEqual(reconciled[0]['evidence_count'], 2)
         self.assertTrue(reconciled[0]['has_a1'])
