@@ -58,7 +58,8 @@ def quantile(pmf, fraction):
 def evaluate_count_under(pmf, line, *, normal_baseline=None, severe_fraction='0.8', over_friendly_pmf=None):
     """Market under P(Y<L) differs from below-normal and severe underperformance.
 
-    Default severe_fraction=0.8 means a 20% shortfall from normal baseline.\n    Any whole-number push remains a distinct outcome; DNP/void are not modeled.
+    Default severe_fraction=0.8 means a 20% shortfall from normal baseline.
+    Any whole-number push remains a distinct outcome; DNP/void are not modeled.
     Results are modeled from caller-supplied distribution, never calibrated.
     """
     p = validated_pmf(pmf)
