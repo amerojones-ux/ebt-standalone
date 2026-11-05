@@ -10,7 +10,7 @@ import json
 import math
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from .trusted_sources import VerificationAttestation
+from .trusted_sources import TrustedSourcePolicy, VerificationAttestation
 
 
 class ObservationValidationError(ValueError):
@@ -46,6 +46,7 @@ class HistoricalObservation:
     outcome_available_at: datetime
     verification_status: str
     verification_attestation: Optional[VerificationAttestation]
+    provenance_sha256: str
     opportunity_count: int
     outcome_value: float
     outcome_semantics: str = 'count'
@@ -58,9 +59,12 @@ class IngestionValidator:
     """Fail-closed temporal/data-integrity gate."""
     VALID_SEMANTICS = {'count', 'successes_of_opportunities'}
 
-    def __init__(self, forecast_cutoff: datetime):
+    def __init__(self, forecast_cutoff: datetime, *, trusted_source_policy: TrustedSourcePolicy):
         _require_aware(forecast_cutoff, 'forecast_cutoff')
+        if not isinstance(trusted_source_policy, TrustedSourcePolicy):
+            raise ObservationValidationError('trusted_source_policy required')
         self.forecast_cutoff = forecast_cutoff
+        self.trusted_source_policy = trusted_source_policy
         self._seen_identities = set()
 
     @staticmethod
@@ -76,6 +80,7 @@ class IngestionValidator:
             'event_time': obs.event_time.isoformat(),
             'outcome_available_at': obs.outcome_available_at.isoformat(),
             'verification_status': obs.verification_status,
+            'provenance_sha256': obs.provenance_sha256,
             'verification_attestation': None if obs.verification_attestation is None else {
                 'status': obs.verification_attestation.status,
                 'provider_id': obs.verification_attestation.provider_id,
@@ -106,11 +111,17 @@ class IngestionValidator:
             _require_text(obs.source_record_id, 'source_record_id')
         if obs.verification_status != 'VERIFIED':
             raise ObservationValidationError('verification_status must be VERIFIED')
+        if not isinstance(obs.provenance_sha256, str) or len(obs.provenance_sha256) != 64:
+            raise ObservationValidationError('64-character provenance_sha256 required')
         attestation = obs.verification_attestation
         if not isinstance(attestation, VerificationAttestation) or attestation.status != 'VERIFIED':
             raise ObservationValidationError('policy-issued VERIFIED attestation required')
+        if not self.trusted_source_policy.verify_attestation(attestation):
+            raise ObservationValidationError('verification attestation signature/policy invalid')
         if attestation.provider_id != obs.source:
             raise ObservationValidationError('attestation provider/source mismatch')
+        if attestation.provenance_sha256 != obs.provenance_sha256:
+            raise ObservationValidationError('attestation provenance mismatch')
         if attestation.purpose != 'results':
             raise ObservationValidationError('historical outcome requires results attestation')
         _require_aware(attestation.verified_at, 'verification_attestation.verified_at')
