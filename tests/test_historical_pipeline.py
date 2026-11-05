@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from extensions.data_ingestion import (
     HistoricalObservation, IngestionValidator, ObservationValidationError, PregameFeature,
-    reconcile_canonical_observations)
+    reconcile_canonical_observations, canonical_historical_payload)
 from extensions.opportunity_fitter import OpportunityEfficiencyFitter
 from extensions.trusted_sources import SourceRule, TrustedSourcePolicy
 
@@ -22,26 +22,43 @@ def policy():
 
 
 def make_obs(**changes):
-    raw_for_attestation = {'record': changes.get('event_id', 'EV-001'), 'version': 1,
-                           'source': changes.get('source', 'official')}
     p = changes.pop('_policy', policy())
     available = changes.get('outcome_available_at', BASE + timedelta(hours=4))
     source = changes.get('source', 'official')
-    att = p.evaluate(provider_id=source, purpose='results',
-                     raw_record=raw_for_attestation, retrieved_at=available, finalized=True)
-    raw = dict(
-        event_id='EV-001', player_id='PL-01', team_id='TM-01', stat='made_fg',
-        source=source, event_time=BASE, outcome_available_at=available,
-        verification_status='VERIFIED', verification_attestation=att,
-        provenance_sha256=att.provenance_sha256,
-        opportunity_count=10, outcome_value=4,
-        outcome_semantics='successes_of_opportunities', minutes=32.0,
-        pregame_features=(PregameFeature(
+    normalized = dict(
+        event_id=changes.get('event_id', 'EV-001'),
+        player_id=changes.get('player_id', 'PL-01'),
+        team_id=changes.get('team_id', 'TM-01'),
+        stat=changes.get('stat', 'made_fg'),
+        source=source,
+        event_time=changes.get('event_time', BASE),
+        outcome_available_at=available,
+        opportunity_count=changes.get('opportunity_count', 10),
+        outcome_value=changes.get('outcome_value', 4),
+        outcome_semantics=changes.get('outcome_semantics', 'successes_of_opportunities'),
+        minutes=changes.get('minutes', 32.0),
+        source_record_id=changes.get('source_record_id'),
+        pregame_features=changes.get('pregame_features', (PregameFeature(
             name='availability', value='ACTIVE',
-            available_at=BASE - timedelta(hours=1), source='official'),),
+            available_at=BASE - timedelta(hours=1), source=source),)),
     )
-    raw.update(changes)
-    return HistoricalObservation(**raw), p
+    canonical = canonical_historical_payload(**normalized)
+    raw_for_attestation = {
+        'record': normalized['event_id'], 'version': 1, 'source': source,
+        'canonical': canonical,
+    }
+    retrieved_at = changes.get('retrieved_at', available)
+    att = p.evaluate(
+        provider_id=source, purpose='results', raw_record=raw_for_attestation,
+        canonical_record=canonical, retrieved_at=retrieved_at, finalized=True)
+    return HistoricalObservation(
+        **normalized,
+        verification_status='VERIFIED',
+        verification_attestation=att,
+        provenance_sha256=att.provenance_sha256,
+        canonical_sha256=att.canonical_sha256,
+    ), p
+
 
 
 class HistoricalPipelineTests(unittest.TestCase):
