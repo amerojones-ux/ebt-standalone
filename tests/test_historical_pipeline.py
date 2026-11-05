@@ -3,7 +3,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from extensions.data_ingestion import (
-    HistoricalObservation, IngestionValidator, ObservationValidationError, PregameFeature)
+    HistoricalObservation, IngestionValidator, ObservationValidationError, PregameFeature,
+    reconcile_canonical_observations)
 from extensions.opportunity_fitter import OpportunityEfficiencyFitter
 from extensions.trusted_sources import SourceRule, TrustedSourcePolicy
 
@@ -15,19 +16,22 @@ KEY = 'unit-test-attestation-key-32-bytes'
 
 def policy():
     return TrustedSourcePolicy(
-        [SourceRule('official', 'A1', ('results', 'availability', 'identity', 'historical_stats'))],
+        [SourceRule('official', 'A1', ('results', 'availability', 'identity', 'historical_stats')),
+         SourceRule('secondary', 'B1', ('results', 'historical_stats'))],
         attestation_key=KEY)
 
 
 def make_obs(**changes):
-    raw_for_attestation = {'record': changes.get('event_id', 'EV-001'), 'version': 1}
+    raw_for_attestation = {'record': changes.get('event_id', 'EV-001'), 'version': 1,
+                           'source': changes.get('source', 'official')}
     p = changes.pop('_policy', policy())
     available = changes.get('outcome_available_at', BASE + timedelta(hours=4))
-    att = p.evaluate(provider_id='official', purpose='results',
+    source = changes.get('source', 'official')
+    att = p.evaluate(provider_id=source, purpose='results',
                      raw_record=raw_for_attestation, retrieved_at=available, finalized=True)
     raw = dict(
         event_id='EV-001', player_id='PL-01', team_id='TM-01', stat='made_fg',
-        source='official', event_time=BASE, outcome_available_at=available,
+        source=source, event_time=BASE, outcome_available_at=available,
         verification_status='VERIFIED', verification_attestation=att,
         provenance_sha256=att.provenance_sha256,
         opportunity_count=10, outcome_value=4,
@@ -57,13 +61,35 @@ class HistoricalPipelineTests(unittest.TestCase):
         validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
         self.assertFalse(validator.validate_observation(obs))
 
-    def test_duplicate_identity_rejected_even_across_sources(self):
+    def test_duplicate_provider_evidence_rejected(self):
         p = policy()
         first, _ = make_obs(_policy=p)
         second, _ = make_obs(_policy=p)
         validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
         self.assertTrue(validator.validate_observation(first))
         self.assertFalse(validator.validate_observation(second))
+
+    def test_cross_source_evidence_is_preserved_then_reconciled_once(self):
+        p = policy()
+        official, _ = make_obs(_policy=p)
+        secondary, _ = make_obs(_policy=p, source='secondary')
+        validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
+        clean = validator.validate_batch([official, secondary])['accepted']
+        self.assertEqual(len(clean), 2)
+        reconciled = reconcile_canonical_observations(clean)
+        self.assertEqual(len(reconciled), 1)
+        self.assertEqual(reconciled[0]['evidence_count'], 2)
+        self.assertTrue(reconciled[0]['has_a1'])
+        self.assertEqual(reconciled[0]['observation'].source, 'official')
+
+    def test_cross_source_result_conflict_fails_closed(self):
+        p = policy()
+        official, _ = make_obs(_policy=p)
+        secondary, _ = make_obs(_policy=p, source='secondary', outcome_value=5)
+        validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
+        clean = validator.validate_batch([official, secondary])['accepted']
+        with self.assertRaises(ObservationValidationError):
+            reconcile_canonical_observations(clean)
 
     def test_generic_count_can_exceed_opportunities(self):
         points, p = make_obs(stat='points', opportunity_count=10, outcome_value=24,
