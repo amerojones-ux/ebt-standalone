@@ -109,6 +109,7 @@ class OfficialBoxScoreSnapshotAdapter(IProviderAdapter):
             outcome_available_at=outcome_available_at,
             verification_status=attestation.status,
             verification_attestation=attestation,
+            provenance_sha256=attestation.provenance_sha256,
             opportunity_count=int(raw_record['opportunity_count']),
             outcome_value=float(raw_record['outcome_value']),
             outcome_semantics=str(raw_record['outcome_semantics']),
