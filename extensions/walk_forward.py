@@ -28,6 +28,8 @@ class WalkForwardValidator(IWalkForwardValidator):
             raise ValueError('end_time must follow start_time')
         if type(step_days) is not int or step_days <= 0:
             raise ValueError('step_days must be a positive integer')
+        if step_days < self.test_days:
+            raise ValueError('step_days must be >= test_days to avoid overlapping test windows')
 
         first_test = start_time + timedelta(days=self.train_days)
         windows = []
