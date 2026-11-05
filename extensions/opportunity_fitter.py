@@ -7,13 +7,18 @@ IngestionValidator for the relevant forecast cutoff.
 from decimal import Decimal
 from typing import Dict, Iterable, List, Tuple
 
-from .data_ingestion import ValidatedObservation
+from .data_ingestion import IngestionValidator, ValidatedObservation
+from .trusted_sources import TrustedSourcePolicy
 from .opportunity_efficiency import mixture_opportunity_pmf
 from .underperformance import num, validated_pmf
 
 
 class OpportunityEfficiencyFitter:
-    def __init__(self, global_opportunity_pmf, *, prior_alpha='1', prior_beta='1', shrinkage_games=8):
+    def __init__(self, global_opportunity_pmf, *, trusted_source_policy,
+                 prior_alpha='1', prior_beta='1', shrinkage_games=8):
+        if not isinstance(trusted_source_policy, TrustedSourcePolicy):
+            raise ValueError('TrustedSourcePolicy required')
+        self.trusted_source_policy = trusted_source_policy
         self.global_opportunity_pmf = validated_pmf(global_opportunity_pmf)
         self.prior_alpha = num(prior_alpha)
         self.prior_beta = num(prior_beta)
@@ -23,15 +28,20 @@ class OpportunityEfficiencyFitter:
             raise ValueError('shrinkage_games must be a nonnegative integer')
         self.shrinkage_games = shrinkage_games
 
-    @staticmethod
-    def _conversion_rows(observations: Iterable[ValidatedObservation]) -> List[ValidatedObservation]:
+    def _conversion_rows(self, observations: Iterable[ValidatedObservation]) -> List[ValidatedObservation]:
         rows = list(observations)
         if any(not isinstance(v, ValidatedObservation) for v in rows):
             raise ValueError('ValidatedObservation rows required')
-        if any(v.observation.outcome_available_at >= v.forecast_cutoff for v in rows):
-            raise ValueError('validated observation violates historical cutoff')
-        if any(v.observation.outcome_semantics != 'successes_of_opportunities' for v in rows):
-            raise ValueError('beta-binomial fitter only accepts successes_of_opportunities rows')
+        for v in rows:
+            if IngestionValidator.generate_record_hash(v.observation) != v.record_hash:
+                raise ValueError('validated observation record hash mismatch')
+            if not self.trusted_source_policy.verify_validation_receipt_signature(
+                    v.record_hash, v.forecast_cutoff, v.validation_signature_hmac_sha256):
+                raise ValueError('validated observation receipt signature invalid')
+            if v.observation.outcome_available_at >= v.forecast_cutoff:
+                raise ValueError('validated observation violates historical cutoff')
+            if v.observation.outcome_semantics != 'successes_of_opportunities':
+                raise ValueError('beta-binomial fitter only accepts successes_of_opportunities rows')
         return rows
 
     def fit_opportunity_pmf(self, observations: Iterable[ValidatedObservation]) -> Dict[str, float]:
