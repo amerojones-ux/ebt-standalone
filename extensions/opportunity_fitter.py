@@ -7,7 +7,7 @@ IngestionValidator for the relevant forecast cutoff.
 from decimal import Decimal
 from typing import Dict, Iterable, List, Tuple
 
-from .data_ingestion import HistoricalObservation
+from .data_ingestion import ValidatedObservation
 from .opportunity_efficiency import mixture_opportunity_pmf
 from .underperformance import num, validated_pmf
 
@@ -24,11 +24,13 @@ class OpportunityEfficiencyFitter:
         self.shrinkage_games = shrinkage_games
 
     @staticmethod
-    def _conversion_rows(observations: Iterable[HistoricalObservation]) -> List[HistoricalObservation]:
+    def _conversion_rows(observations: Iterable[ValidatedObservation]) -> List[ValidatedObservation]:
         rows = list(observations)
-        if any(not isinstance(o, HistoricalObservation) for o in rows):
-            raise ValueError('HistoricalObservation rows required')
-        if any(o.outcome_semantics != 'successes_of_opportunities' for o in rows):
+        if any(not isinstance(v, ValidatedObservation) for v in rows):
+            raise ValueError('ValidatedObservation rows required')
+        if any(v.observation.outcome_available_at >= v.forecast_cutoff for v in rows):
+            raise ValueError('validated observation violates historical cutoff')
+        if any(v.observation.outcome_semantics != 'successes_of_opportunities' for v in rows):
             raise ValueError('beta-binomial fitter only accepts successes_of_opportunities rows')
         return rows
 
@@ -36,7 +38,8 @@ class OpportunityEfficiencyFitter:
         rows = self._conversion_rows(observations)
         empirical = {}
         for row in rows:
-            empirical[row.opportunity_count] = empirical.get(row.opportunity_count, 0) + 1
+            n = row.observation.opportunity_count
+            empirical[n] = empirical.get(n, 0) + 1
 
         n = len(rows)
         if n == 0:
@@ -56,8 +59,8 @@ class OpportunityEfficiencyFitter:
 
     def efficiency_counts(self, observations: Iterable[HistoricalObservation]) -> Tuple[int, int]:
         rows = self._conversion_rows(observations)
-        successes = sum(int(o.outcome_value) for o in rows)
-        opportunities = sum(o.opportunity_count for o in rows)
+        successes = sum(int(v.observation.outcome_value) for v in rows)
+        opportunities = sum(v.observation.opportunity_count for v in rows)
         failures = opportunities - successes
         if failures < 0:
             raise ValueError('invalid conversion history')
