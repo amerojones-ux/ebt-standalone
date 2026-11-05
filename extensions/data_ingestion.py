@@ -55,6 +55,13 @@ class HistoricalObservation:
     pregame_features: Tuple[PregameFeature, ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True)
+class ValidatedObservation:
+    observation: HistoricalObservation
+    forecast_cutoff: datetime
+    record_hash: str
+
+
 class IngestionValidator:
     """Fail-closed temporal/data-integrity gate."""
     VALID_SEMANTICS = {'count', 'successes_of_opportunities'}
@@ -180,7 +187,11 @@ class IngestionValidator:
         if identity in self._seen_identities:
             raise ObservationValidationError('duplicate provider evidence record')
         self._seen_identities.add(identity)
-        return obs
+        return ValidatedObservation(
+            observation=obs,
+            forecast_cutoff=self.forecast_cutoff,
+            record_hash=self.generate_record_hash(obs),
+        )
 
     def validate_observation(self, obs: HistoricalObservation) -> bool:
         try:
@@ -206,36 +217,42 @@ def reconcile_canonical_observations(rows):
     is preferred as primary; all evidence provenance hashes remain in metadata.
     """
     groups = {}
-    for obs in rows:
-        if not isinstance(obs, HistoricalObservation):
-            raise ObservationValidationError('HistoricalObservation required')
+    for validated in rows:
+        if not isinstance(validated, ValidatedObservation):
+            raise ObservationValidationError('ValidatedObservation required')
+        obs = validated.observation
+        if obs.outcome_available_at >= validated.forecast_cutoff:
+            raise ObservationValidationError('validated receipt violates historical cutoff')
         key = IngestionValidator.canonical_identity_key(obs)
-        groups.setdefault(key, []).append(obs)
+        groups.setdefault(key, []).append(validated)
 
     reconciled = []
     for key, evidence in groups.items():
-        semantics = {x.outcome_semantics for x in evidence}
-        outcomes = {float(x.outcome_value) for x in evidence}
-        opportunities = {x.opportunity_count for x in evidence}
+        observations = [x.observation for x in evidence]
+        semantics = {x.outcome_semantics for x in observations}
+        outcomes = {float(x.outcome_value) for x in observations}
+        opportunities = {x.opportunity_count for x in observations}
         if len(semantics) != 1 or len(outcomes) != 1 or len(opportunities) != 1:
             raise ObservationValidationError(
                 f'conflicting cross-source evidence for canonical identity {key}')
         ordered = sorted(
             evidence,
             key=lambda x: (
-                0 if x.verification_attestation.tier == 'A1' else 1,
-                x.outcome_available_at,
-                x.source,
+                0 if x.observation.verification_attestation.tier == 'A1' else 1,
+                x.observation.outcome_available_at,
+                x.observation.source,
             ))
-        primary = ordered[0]
+        primary_validated = ordered[0]
+        primary = primary_validated.observation
         reconciled.append({
+            'validated_observation': primary_validated,
             'observation': primary,
             'canonical_identity': key,
             'evidence_count': len(evidence),
-            'sources': tuple(x.source for x in ordered),
-            'provenance_sha256': tuple(x.provenance_sha256 for x in ordered),
+            'sources': tuple(x.observation.source for x in ordered),
+            'provenance_sha256': tuple(x.observation.provenance_sha256 for x in ordered),
             'primary_tier': primary.verification_attestation.tier,
-            'has_a1': any(x.verification_attestation.tier == 'A1' for x in evidence),
+            'has_a1': any(x.observation.verification_attestation.tier == 'A1' for x in evidence),
             'crosscheck_count': max(0, len(evidence) - 1),
         })
     return reconciled
