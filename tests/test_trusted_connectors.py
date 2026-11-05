@@ -101,6 +101,15 @@ class TrustedConnectorTests(unittest.TestCase):
         validator = IngestionValidator(T0 + timedelta(days=1), trusted_source_policy=p)
         self.assertFalse(validator.validate_observation(tampered_obs))
 
+    def test_mapped_outcome_tampering_is_rejected(self):
+        p = make_policy()
+        adapter = OfficialBoxScoreSnapshotAdapter(
+            provider_id='NBA_OFFICIAL', policy=p, fetcher=lambda _: [raw()])
+        obs = adapter.ingest(T0)[0]
+        tampered = replace(obs, outcome_value=6.0)
+        validator = IngestionValidator(T0 + timedelta(days=1), trusted_source_policy=p)
+        self.assertFalse(validator.validate_observation(tampered))
+
     def test_untrusted_provider_cannot_issue_verified_result(self):
         p = make_policy()
         adapter = OfficialBoxScoreSnapshotAdapter(
