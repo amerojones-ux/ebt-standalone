@@ -68,13 +68,10 @@ def _content_length(headers):
     raw=headers.get("content-length")
     if raw is None or not str(raw).strip():
         return None
-    try:
-        value=int(str(raw).strip())
-    except ValueError:
+    text=str(raw).strip()
+    if not text.isascii() or not text.isdecimal():
         raise ValueError("invalid content length")
-    if value<0:
-        raise ValueError("invalid content length")
-    return value
+    return int(text)
 
 def _datapoint_charge(headers):
     raw=headers.get("x-datapoints")
@@ -131,7 +128,7 @@ def probe(confirm,account_review,opener=None):
         try:
             declared_length=_content_length(headers)
         except ValueError:
-            return _safe_result("HOLD","response_too_large",MAX_BODY+1)
+            return _safe_result("HOLD","content_length_invalid")
         if declared_length is not None and declared_length>MAX_BODY:
             return _safe_result("HOLD","response_too_large",declared_length)
 

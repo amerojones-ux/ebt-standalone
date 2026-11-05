@@ -11,6 +11,7 @@ ALLOWED_CATEGORIES={
     "endpoint_mismatch",
     "http_status",
     "response_too_large",
+    "content_length_invalid",
     "malformed_json",
     "empty_sample",
     "redirect_blocked",
