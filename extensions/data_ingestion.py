@@ -1,0 +1,161 @@
+"""Leakage-resistant historical observation contract for offline sports research.
+
+Provider adapters must translate into this schema and pass validation before any
+record reaches fitting, simulation, backtesting, or certification code.
+"""
+from dataclasses import dataclass, field
+from datetime import datetime
+import hashlib
+import json
+import math
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+
+
+class ObservationValidationError(ValueError):
+    pass
+
+
+def _require_aware(value: datetime, field_name: str) -> None:
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise ObservationValidationError(f'{field_name} must be timezone-aware')
+
+
+def _require_text(value: str, field_name: str) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise ObservationValidationError(f'{field_name} must be non-empty text')
+
+
+@dataclass(frozen=True)
+class PregameFeature:
+    name: str
+    value: Any
+    available_at: datetime
+    source: str
+
+
+@dataclass(frozen=True)
+class HistoricalObservation:
+    event_id: str
+    player_id: str
+    team_id: str
+    stat: str
+    source: str
+    event_time: datetime
+    outcome_available_at: datetime
+    verification_status: str
+    opportunity_count: int
+    outcome_value: float
+    outcome_semantics: str = 'count'
+    minutes: Optional[float] = None
+    source_record_id: Optional[str] = None
+    pregame_features: Tuple[PregameFeature, ...] = field(default_factory=tuple)
+
+
+class IngestionValidator:
+    """Fail-closed temporal/data-integrity gate."""
+    VALID_SEMANTICS = {'count', 'successes_of_opportunities'}
+
+    def __init__(self, forecast_cutoff: datetime):
+        _require_aware(forecast_cutoff, 'forecast_cutoff')
+        self.forecast_cutoff = forecast_cutoff
+        self._seen_identities = set()
+
+    @staticmethod
+    def identity_key(obs: HistoricalObservation) -> Tuple[str, str, str, str]:
+        return (obs.event_id, obs.player_id, obs.team_id, obs.stat)
+
+    @staticmethod
+    def generate_record_hash(obs: HistoricalObservation) -> str:
+        payload = {
+            'event_id': obs.event_id, 'player_id': obs.player_id,
+            'team_id': obs.team_id, 'stat': obs.stat, 'source': obs.source,
+            'source_record_id': obs.source_record_id,
+            'event_time': obs.event_time.isoformat(),
+            'outcome_available_at': obs.outcome_available_at.isoformat(),
+            'verification_status': obs.verification_status,
+            'minutes': obs.minutes, 'opportunity_count': obs.opportunity_count,
+            'outcome_value': obs.outcome_value,
+            'outcome_semantics': obs.outcome_semantics,
+            'pregame_features': [
+                {'name': f.name, 'value': f.value,
+                 'available_at': f.available_at.isoformat(), 'source': f.source}
+                for f in obs.pregame_features
+            ],
+        }
+        canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'), default=str)
+        return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+    def validate_or_raise(self, obs: HistoricalObservation) -> HistoricalObservation:
+        if not isinstance(obs, HistoricalObservation):
+            raise ObservationValidationError('HistoricalObservation required')
+        for field_name in ('event_id', 'player_id', 'team_id', 'stat', 'source'):
+            _require_text(getattr(obs, field_name), field_name)
+        if obs.source_record_id is not None:
+            _require_text(obs.source_record_id, 'source_record_id')
+        if obs.verification_status != 'VERIFIED':
+            raise ObservationValidationError('verification_status must be VERIFIED')
+
+        _require_aware(obs.event_time, 'event_time')
+        _require_aware(obs.outcome_available_at, 'outcome_available_at')
+        if obs.outcome_available_at <= obs.event_time:
+            raise ObservationValidationError('outcome cannot be knowable before or at event start')
+        if obs.outcome_available_at >= self.forecast_cutoff:
+            raise ObservationValidationError('outcome is not safely available before forecast cutoff')
+
+        if obs.minutes is not None:
+            if isinstance(obs.minutes, bool) or not isinstance(obs.minutes, (int, float)):
+                raise ObservationValidationError('minutes must be numeric or None')
+            if not math.isfinite(float(obs.minutes)) or obs.minutes < 0:
+                raise ObservationValidationError('minutes must be finite and nonnegative')
+        if type(obs.opportunity_count) is not int or obs.opportunity_count < 0:
+            raise ObservationValidationError('opportunity_count must be a nonnegative integer')
+        if isinstance(obs.outcome_value, bool) or not isinstance(obs.outcome_value, (int, float)):
+            raise ObservationValidationError('outcome_value must be numeric')
+        if not math.isfinite(float(obs.outcome_value)) or obs.outcome_value < 0:
+            raise ObservationValidationError('outcome_value must be finite and nonnegative')
+        if obs.outcome_semantics not in self.VALID_SEMANTICS:
+            raise ObservationValidationError('unsupported outcome_semantics')
+        if obs.outcome_semantics == 'successes_of_opportunities':
+            if int(obs.outcome_value) != obs.outcome_value:
+                raise ObservationValidationError('conversion successes must be integer-valued')
+            if obs.outcome_value > obs.opportunity_count:
+                raise ObservationValidationError('conversion successes cannot exceed opportunities')
+
+        feature_names = set()
+        for feature in obs.pregame_features:
+            if not isinstance(feature, PregameFeature):
+                raise ObservationValidationError('PregameFeature required')
+            _require_text(feature.name, 'feature.name')
+            _require_text(feature.source, 'feature.source')
+            _require_aware(feature.available_at, f'feature[{feature.name}].available_at')
+            if feature.available_at >= obs.event_time:
+                raise ObservationValidationError(
+                    f'pregame feature {feature.name} was not available before event start')
+            if feature.available_at >= self.forecast_cutoff:
+                raise ObservationValidationError(
+                    f'pregame feature {feature.name} is after forecast cutoff')
+            if feature.name in feature_names:
+                raise ObservationValidationError(f'duplicate pregame feature: {feature.name}')
+            feature_names.add(feature.name)
+
+        identity = self.identity_key(obs)
+        if identity in self._seen_identities:
+            raise ObservationValidationError('duplicate event/player/team/stat identity')
+        self._seen_identities.add(identity)
+        return obs
+
+    def validate_observation(self, obs: HistoricalObservation) -> bool:
+        try:
+            self.validate_or_raise(obs)
+            return True
+        except ObservationValidationError:
+            return False
+
+    def validate_batch(self, rows: Iterable[HistoricalObservation]) -> Dict[str, List[Any]]:
+        accepted, rejected = [], []
+        for obs in rows:
+            try:
+                accepted.append(self.validate_or_raise(obs))
+            except ObservationValidationError as exc:
+                rejected.append({'observation': obs, 'reason': str(exc)})
+        return {'accepted': accepted, 'rejected': rejected}
