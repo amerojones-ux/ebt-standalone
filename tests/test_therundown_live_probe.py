@@ -124,6 +124,20 @@ class TheRundownLiveProbeTests(unittest.TestCase):
         self.assertEqual(result["category"],"response_too_large")
         self.assertEqual(result["detail"],therundown_live_probe.MAX_BODY+1)
 
+    def test_invalid_content_length_is_not_reported_as_observed_oversize(self):
+        from therundown_probe_receipt import build_receipt, verify_receipt
+        class NeverRead(FakeResponse):
+            def read(self, n=-1):
+                raise AssertionError('Invalid header must be rejected before body read')
+        for value in ('bad', '-1', '+12', '1_000', '１２'):
+            with self.subTest(value=value), patch.dict(os.environ, {"EBT_THERUNDOWN_API_KEY": "synthetic"}):
+                result = probe(REQUEST_APPROVAL, ACCOUNT_REVIEW_APPROVAL,
+                               opener=lambda req, timeout: NeverRead(headers={"Content-Length": value}))
+                self.assertEqual(result, {"status": "HOLD", "category": "content_length_invalid"})
+                receipt = build_receipt(result, '2026-11-04T00:00:00Z', execution_intent_sha256='a'*64)
+                self.assertIsNone(receipt['detail'])
+                self.assertTrue(verify_receipt(receipt))
+
     def test_malformed_or_empty_json_holds(self):
         class Bad(FakeResponse):
             def read(self,n=-1): return b"{"

@@ -131,6 +131,7 @@ def execution_intent(max_requests_override=None):
         provider="WeatherAPI",
         repository=REPO,
         workflow_run_id=str(RUN),
+        workflow_run_attempt=1,
         source_commit=COMMIT,
         source_ref="refs/heads/main",
         signer_workflow=".github/workflows/weatherapi-live-probe.yml",
@@ -174,11 +175,12 @@ def intent_verification_marker(
         else intent_bundle_bytes
     )
     body={
-        "schema_version":1,
+        "schema_version":2,
         "provider":"WeatherAPI",
         "verification_status":"VERIFIED",
         "repository":REPO,
         "workflow_run_id":str(RUN),
+        "workflow_run_attempt":1,
         "source_commit":COMMIT,
         "source_ref":"refs/heads/main",
         "signer_workflow":".github/workflows/weatherapi-live-probe.yml",

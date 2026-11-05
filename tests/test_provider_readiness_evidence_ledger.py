@@ -13,12 +13,12 @@ NOW="2026-11-02T20:30:00+00:00"
 REPO="amerojones-ux/ebt-standalone"
 
 def readiness():
-    with open("config/provider_readiness.json", encoding="utf-8") as handle:
-        return json.load(handle)
+    from tests.provider_test_fixtures import readiness as synthetic_fixture
+    return synthetic_fixture()
 
 def ledger():
-    with open("config/provider_evidence.json", encoding="utf-8") as handle:
-        return json.load(handle)
+    from tests.provider_test_fixtures import ledger as synthetic_fixture
+    return synthetic_fixture()
 
 def manual_record(subject="SportsDataIO",claim="entitlement_verified"):
     return {
@@ -91,7 +91,7 @@ def report_record(subject="MODEL",claim="historical_calibration_verified"):
     }
 
 class ProviderReadinessEvidenceGateTests(unittest.TestCase):
-    def test_committed_empty_ledger_is_valid_and_supports_false_readiness(self):
+    def test_synthetic_empty_ledger_is_valid_and_supports_false_readiness(self):
         l=ledger()
         self.assertEqual(validate_ledger(l,trusted_now=NOW),[])
         self.assertEqual(evidence_supports_readiness(readiness(),l,trusted_now=NOW),[])

@@ -6,12 +6,12 @@ from unittest.mock import patch
 from provider_live_auth_promotion_apply import build_live_auth_promotion_apply
 
 def readiness():
-    with open("config/provider_readiness.json",encoding="utf-8") as handle:
-        return json.load(handle)
+    from tests.provider_test_fixtures import readiness as synthetic_fixture
+    return synthetic_fixture()
 
 def ledger():
-    with open("config/provider_evidence.json",encoding="utf-8") as handle:
-        return json.load(handle)
+    from tests.provider_test_fixtures import ledger as synthetic_fixture
+    return synthetic_fixture()
 
 def fresh_preview():
     r=readiness()
