@@ -10,6 +10,8 @@ import json
 import math
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
+from .trusted_sources import VerificationAttestation
+
 
 class ObservationValidationError(ValueError):
     pass
@@ -43,6 +45,7 @@ class HistoricalObservation:
     event_time: datetime
     outcome_available_at: datetime
     verification_status: str
+    verification_attestation: Optional[VerificationAttestation]
     opportunity_count: int
     outcome_value: float
     outcome_semantics: str = 'count'
@@ -73,6 +76,15 @@ class IngestionValidator:
             'event_time': obs.event_time.isoformat(),
             'outcome_available_at': obs.outcome_available_at.isoformat(),
             'verification_status': obs.verification_status,
+            'verification_attestation': None if obs.verification_attestation is None else {
+                'status': obs.verification_attestation.status,
+                'provider_id': obs.verification_attestation.provider_id,
+                'tier': obs.verification_attestation.tier,
+                'purpose': obs.verification_attestation.purpose,
+                'provenance_sha256': obs.verification_attestation.provenance_sha256,
+                'policy_version': obs.verification_attestation.policy_version,
+                'verified_at': obs.verification_attestation.verified_at.isoformat(),
+            },
             'minutes': obs.minutes, 'opportunity_count': obs.opportunity_count,
             'outcome_value': obs.outcome_value,
             'outcome_semantics': obs.outcome_semantics,
@@ -94,6 +106,16 @@ class IngestionValidator:
             _require_text(obs.source_record_id, 'source_record_id')
         if obs.verification_status != 'VERIFIED':
             raise ObservationValidationError('verification_status must be VERIFIED')
+        attestation = obs.verification_attestation
+        if not isinstance(attestation, VerificationAttestation) or attestation.status != 'VERIFIED':
+            raise ObservationValidationError('policy-issued VERIFIED attestation required')
+        if attestation.provider_id != obs.source:
+            raise ObservationValidationError('attestation provider/source mismatch')
+        if attestation.purpose != 'results':
+            raise ObservationValidationError('historical outcome requires results attestation')
+        _require_aware(attestation.verified_at, 'verification_attestation.verified_at')
+        if attestation.verified_at >= self.forecast_cutoff:
+            raise ObservationValidationError('verification attestation is after forecast cutoff')
 
         _require_aware(obs.event_time, 'event_time')
         _require_aware(obs.outcome_available_at, 'outcome_available_at')
