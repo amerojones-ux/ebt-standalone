@@ -26,6 +26,7 @@ class VerificationAttestation:
     tier: str
     purpose: str
     provenance_sha256: str
+    canonical_sha256: str
     policy_version: str
     verified_at: datetime
     reason: str
@@ -65,23 +66,25 @@ class TrustedSourcePolicy:
             self.rules[rule.provider_id] = rule
 
     def _signature(self, *, status, provider_id, tier, purpose, provenance_sha256,
-                   verified_at, reason):
+                   canonical_sha256, verified_at, reason):
         body = {
             'status': status, 'provider_id': provider_id, 'tier': tier,
             'purpose': purpose, 'provenance_sha256': provenance_sha256,
+            'canonical_sha256': canonical_sha256,
             'policy_version': self.policy_version,
             'verified_at': verified_at.isoformat(), 'reason': reason,
         }
         encoded = json.dumps(body, sort_keys=True, separators=(',', ':')).encode('utf-8')
         return hmac.new(self._key, encoded, hashlib.sha256).hexdigest()
 
-    def _attest(self, *, status, provider_id, tier, purpose, digest, verified_at, reason):
+    def _attest(self, *, status, provider_id, tier, purpose, digest, canonical_digest, verified_at, reason):
         signature = self._signature(
             status=status, provider_id=provider_id, tier=tier, purpose=purpose,
-            provenance_sha256=digest, verified_at=verified_at, reason=reason)
+            provenance_sha256=digest, canonical_sha256=canonical_digest,
+            verified_at=verified_at, reason=reason)
         return VerificationAttestation(
-            status, provider_id, tier, purpose, digest, self.policy_version,
-            verified_at, reason, signature)
+            status, provider_id, tier, purpose, digest, canonical_digest,
+            self.policy_version, verified_at, reason, signature)
 
     def verify_attestation(self, attestation: VerificationAttestation) -> bool:
         if not isinstance(attestation, VerificationAttestation):
@@ -97,36 +100,38 @@ class TrustedSourcePolicy:
             status=attestation.status, provider_id=attestation.provider_id,
             tier=attestation.tier, purpose=attestation.purpose,
             provenance_sha256=attestation.provenance_sha256,
+            canonical_sha256=attestation.canonical_sha256,
             verified_at=attestation.verified_at, reason=attestation.reason)
         return hmac.compare_digest(expected, attestation.signature_hmac_sha256)
 
     def evaluate(self, *, provider_id, purpose, raw_record, retrieved_at,
-                 source_conflict=False, finalized=None):
+                 canonical_record=None, source_conflict=False, finalized=None):
         if not isinstance(retrieved_at, datetime) or retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
             raise ValueError('timezone-aware retrieved_at required')
         digest = canonical_payload_sha256(raw_record)
+        canonical_digest = canonical_payload_sha256(raw_record if canonical_record is None else canonical_record)
         rule = self.rules.get(provider_id)
         if rule is None or not rule.active:
             return self._attest(
                 status='UNVERIFIED', provider_id=provider_id, tier='UNKNOWN',
-                purpose=purpose, digest=digest, verified_at=retrieved_at,
+                purpose=purpose, digest=digest, canonical_digest=canonical_digest, verified_at=retrieved_at,
                 reason='provider not active in trusted-source policy')
         if purpose not in self.VALID_PURPOSES or purpose not in rule.allowed_purposes:
             return self._attest(
                 status='UNVERIFIED', provider_id=provider_id, tier=rule.tier,
-                purpose=purpose, digest=digest, verified_at=retrieved_at,
+                purpose=purpose, digest=digest, canonical_digest=canonical_digest, verified_at=retrieved_at,
                 reason='purpose not allowed for provider')
         if source_conflict:
             return self._attest(
                 status='CONFLICTING', provider_id=provider_id, tier=rule.tier,
-                purpose=purpose, digest=digest, verified_at=retrieved_at,
+                purpose=purpose, digest=digest, canonical_digest=canonical_digest, verified_at=retrieved_at,
                 reason='critical source conflict requires HOLD')
         if purpose == 'results' and finalized is not True:
             return self._attest(
                 status='PENDING', provider_id=provider_id, tier=rule.tier,
-                purpose=purpose, digest=digest, verified_at=retrieved_at,
+                purpose=purpose, digest=digest, canonical_digest=canonical_digest, verified_at=retrieved_at,
                 reason='result not finalized')
         return self._attest(
             status='VERIFIED', provider_id=provider_id, tier=rule.tier,
-            purpose=purpose, digest=digest, verified_at=retrieved_at,
+            purpose=purpose, digest=digest, canonical_digest=canonical_digest, verified_at=retrieved_at,
             reason='policy checks passed')
