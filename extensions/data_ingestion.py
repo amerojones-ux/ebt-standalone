@@ -93,6 +93,7 @@ class ValidatedObservation:
     observation: HistoricalObservation
     forecast_cutoff: datetime
     record_hash: str
+    validation_signature_hmac_sha256: str
 
 
 class IngestionValidator:
@@ -229,10 +230,13 @@ class IngestionValidator:
         if identity in self._seen_identities:
             raise ObservationValidationError('duplicate provider evidence record')
         self._seen_identities.add(identity)
+        record_hash = self.generate_record_hash(obs)
         return ValidatedObservation(
             observation=obs,
             forecast_cutoff=self.forecast_cutoff,
-            record_hash=self.generate_record_hash(obs),
+            record_hash=record_hash,
+            validation_signature_hmac_sha256=self.trusted_source_policy.issue_validation_receipt_signature(
+                record_hash, self.forecast_cutoff),
         )
 
     def validate_observation(self, obs: HistoricalObservation) -> bool:
@@ -263,6 +267,8 @@ def reconcile_canonical_observations(rows):
         if not isinstance(validated, ValidatedObservation):
             raise ObservationValidationError('ValidatedObservation required')
         obs = validated.observation
+        if IngestionValidator.generate_record_hash(obs) != validated.record_hash:
+            raise ObservationValidationError('validated receipt record hash mismatch')
         if obs.outcome_available_at >= validated.forecast_cutoff:
             raise ObservationValidationError('validated receipt violates historical cutoff')
         key = IngestionValidator.canonical_identity_key(obs)
