@@ -10,7 +10,7 @@ import json
 import math
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from .trusted_sources import TrustedSourcePolicy, VerificationAttestation
+from .trusted_sources import TrustedSourcePolicy, VerificationAttestation, canonical_payload_sha256
 
 
 class ObservationValidationError(ValueError):
@@ -47,12 +47,45 @@ class HistoricalObservation:
     verification_status: str
     verification_attestation: Optional[VerificationAttestation]
     provenance_sha256: str
+    canonical_sha256: str
     opportunity_count: int
     outcome_value: float
     outcome_semantics: str = 'count'
     minutes: Optional[float] = None
     source_record_id: Optional[str] = None
     pregame_features: Tuple[PregameFeature, ...] = field(default_factory=tuple)
+
+
+def canonical_historical_payload(*, event_id, player_id, team_id, stat, source,
+                                 event_time, outcome_available_at, opportunity_count,
+                                 outcome_value, outcome_semantics, minutes,
+                                 source_record_id, pregame_features):
+    return {
+        'event_id': event_id, 'player_id': player_id, 'team_id': team_id,
+        'stat': stat, 'source': source,
+        'event_time': event_time.isoformat(),
+        'outcome_available_at': outcome_available_at.isoformat(),
+        'opportunity_count': opportunity_count,
+        'outcome_value': outcome_value,
+        'outcome_semantics': outcome_semantics,
+        'minutes': minutes,
+        'source_record_id': source_record_id,
+        'pregame_features': [
+            {'name': f.name, 'value': f.value,
+             'available_at': f.available_at.isoformat(), 'source': f.source}
+            for f in pregame_features
+        ],
+    }
+
+
+def canonical_observation_payload(obs: HistoricalObservation):
+    return canonical_historical_payload(
+        event_id=obs.event_id, player_id=obs.player_id, team_id=obs.team_id,
+        stat=obs.stat, source=obs.source, event_time=obs.event_time,
+        outcome_available_at=obs.outcome_available_at,
+        opportunity_count=obs.opportunity_count, outcome_value=obs.outcome_value,
+        outcome_semantics=obs.outcome_semantics, minutes=obs.minutes,
+        source_record_id=obs.source_record_id, pregame_features=obs.pregame_features)
 
 
 @dataclass(frozen=True)
@@ -93,12 +126,14 @@ class IngestionValidator:
             'outcome_available_at': obs.outcome_available_at.isoformat(),
             'verification_status': obs.verification_status,
             'provenance_sha256': obs.provenance_sha256,
+            'canonical_sha256': obs.canonical_sha256,
             'verification_attestation': None if obs.verification_attestation is None else {
                 'status': obs.verification_attestation.status,
                 'provider_id': obs.verification_attestation.provider_id,
                 'tier': obs.verification_attestation.tier,
                 'purpose': obs.verification_attestation.purpose,
                 'provenance_sha256': obs.verification_attestation.provenance_sha256,
+                'canonical_sha256': obs.verification_attestation.canonical_sha256,
                 'policy_version': obs.verification_attestation.policy_version,
                 'verified_at': obs.verification_attestation.verified_at.isoformat(),
             },
@@ -125,6 +160,8 @@ class IngestionValidator:
             raise ObservationValidationError('verification_status must be VERIFIED')
         if not isinstance(obs.provenance_sha256, str) or len(obs.provenance_sha256) != 64:
             raise ObservationValidationError('64-character provenance_sha256 required')
+        if not isinstance(obs.canonical_sha256, str) or len(obs.canonical_sha256) != 64:
+            raise ObservationValidationError('64-character canonical_sha256 required')
         attestation = obs.verification_attestation
         if not isinstance(attestation, VerificationAttestation) or attestation.status != 'VERIFIED':
             raise ObservationValidationError('policy-issued VERIFIED attestation required')
@@ -134,6 +171,11 @@ class IngestionValidator:
             raise ObservationValidationError('attestation provider/source mismatch')
         if attestation.provenance_sha256 != obs.provenance_sha256:
             raise ObservationValidationError('attestation provenance mismatch')
+        if attestation.canonical_sha256 != obs.canonical_sha256:
+            raise ObservationValidationError('attestation canonical digest mismatch')
+        recomputed_canonical = canonical_payload_sha256(canonical_observation_payload(obs))
+        if recomputed_canonical != obs.canonical_sha256:
+            raise ObservationValidationError('canonical observation changed after attestation')
         if attestation.purpose != 'results':
             raise ObservationValidationError('historical outcome requires results attestation')
         _require_aware(attestation.verified_at, 'verification_attestation.verified_at')
