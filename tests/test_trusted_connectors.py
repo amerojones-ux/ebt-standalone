@@ -112,8 +112,10 @@ class TrustedConnectorTests(unittest.TestCase):
 
     def test_untrusted_provider_cannot_issue_verified_result(self):
         p = make_policy()
+        record = raw()
+        record['pregame_features'][0]['source'] = 'UNKNOWN_FEED'
         adapter = OfficialBoxScoreSnapshotAdapter(
-            provider_id='UNKNOWN_FEED', policy=p, fetcher=lambda _: [raw()])
+            provider_id='UNKNOWN_FEED', policy=p, fetcher=lambda _: [record])
         obs = adapter.ingest(T0)[0]
         self.assertEqual(obs.verification_status, 'UNVERIFIED')
 
