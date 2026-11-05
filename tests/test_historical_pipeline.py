@@ -1,5 +1,6 @@
 """Historical ingestion and opportunity fitting invariants."""
 import unittest
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from extensions.data_ingestion import (
@@ -121,12 +122,25 @@ class HistoricalPipelineTests(unittest.TestCase):
 
     def test_sparse_fitter_falls_back_to_global_distribution(self):
         fitter = OpportunityEfficiencyFitter({'8': '0.25', '10': '0.75'},
+                                             trusted_source_policy=policy(),
                                              prior_alpha='2', prior_beta='3')
         fit = fitter.fit_predictive_pmf([])
         self.assertAlmostEqual(sum(fit['predictive_pmf'].values()), 1.0)
         self.assertEqual(fit['posterior_alpha'], '2')
         self.assertEqual(fit['posterior_beta'], '3')
         self.assertFalse(fit['calibration_verified'])
+
+    def test_forged_validation_receipt_is_rejected_by_fitter(self):
+        p = policy()
+        obs, _ = make_obs(_policy=p)
+        validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
+        validated = validator.validate_or_raise(obs)
+        forged = replace(validated, validation_signature_hmac_sha256='0' * 64)
+        fitter = OpportunityEfficiencyFitter(
+            {'8': '0.5', '10': '0.5'}, trusted_source_policy=p,
+            prior_alpha='2', prior_beta='3')
+        with self.assertRaises(ValueError):
+            fitter.fit_predictive_pmf([forged])
 
     def test_valid_history_updates_efficiency_posterior(self):
         p = policy()
@@ -141,6 +155,7 @@ class HistoricalPipelineTests(unittest.TestCase):
         validator = IngestionValidator(CUTOFF, trusted_source_policy=p)
         clean = validator.validate_batch([first, second])['accepted']
         fitter = OpportunityEfficiencyFitter({'8': '0.5', '10': '0.5'},
+                                             trusted_source_policy=p,
                                              prior_alpha='2', prior_beta='3',
                                              shrinkage_games=2)
         fit = fitter.fit_predictive_pmf(clean)
