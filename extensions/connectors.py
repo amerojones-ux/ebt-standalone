@@ -35,6 +35,47 @@ class IProviderAdapter(ABC):
 
     @abstractmethod
     def map_to_canonical(self, raw_record: Mapping[str, Any]) -> HistoricalObservation:
+        raise NotImplementedError
+
+
+class OfficialBoxScoreSnapshotAdapter(IProviderAdapter):
+    """Map finalized trusted-source box-score snapshots into canonical history.
+
+    The injected fetcher decouples network/database access and credentials from
+    the modeling package. Cross-provider features require separate attestations.
+    """
+
+    REQUIRED_FIELDS = {
+        'event_id', 'player_id', 'team_id', 'stat', 'event_time',
+        'outcome_available_at', 'retrieved_at', 'finalized', 'opportunity_count',
+        'outcome_value', 'outcome_semantics',
+    }
+
+    def __init__(self, *, provider_id: str, policy: TrustedSourcePolicy,
+                 fetcher: Callable[[datetime], List[Dict[str, Any]]]):
+        if not isinstance(provider_id, str) or not provider_id.strip():
+            raise ValueError('provider_id required')
+        if not isinstance(policy, TrustedSourcePolicy):
+            raise ValueError('TrustedSourcePolicy required')
+        if not callable(fetcher):
+            raise ValueError('callable fetcher required')
+        self._provider_id = provider_id
+        self.policy = policy
+        self.fetcher = fetcher
+
+    @property
+    def provider_id(self) -> str:
+        return self._provider_id
+
+    def fetch_raw_events(self, target_date: datetime) -> List[Dict[str, Any]]:
+        if not isinstance(target_date, datetime) or target_date.tzinfo is None or target_date.utcoffset() is None:
+            raise ValueError('timezone-aware target_date required')
+        rows = self.fetcher(target_date)
+        if not isinstance(rows, list) or any(not isinstance(x, dict) for x in rows):
+            raise ValueError('fetcher must return list[dict]')
+        return rows
+
+    def map_to_canonical(self, raw_record: Mapping[str, Any]) -> HistoricalObservation:
         if not isinstance(raw_record, Mapping):
             raise ValueError('raw record mapping required')
         missing = self.REQUIRED_FIELDS - set(raw_record)
@@ -55,7 +96,8 @@ class IProviderAdapter(ABC):
             if feature_source != self.provider_id:
                 raise ValueError('cross-provider pregame features require their own adapter/attestation')
             features.append(PregameFeature(
-                name=item['name'], value=item.get('value'),
+                name=item['name'],
+                value=item.get('value'),
                 available_at=_parse_dt(item['available_at']),
                 source=feature_source,
             ))
