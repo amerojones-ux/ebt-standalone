@@ -47,7 +47,7 @@ class OfficialBoxScoreSnapshotAdapter(IProviderAdapter):
 
     REQUIRED_FIELDS = {
         'event_id', 'player_id', 'team_id', 'stat', 'event_time',
-        'outcome_available_at', 'finalized', 'opportunity_count',
+        'outcome_available_at', 'retrieved_at', 'finalized', 'opportunity_count',
         'outcome_value', 'outcome_semantics',
     }
 
@@ -82,11 +82,14 @@ class OfficialBoxScoreSnapshotAdapter(IProviderAdapter):
         if missing:
             raise ValueError(f'missing required fields: {sorted(missing)}')
         outcome_available_at = _parse_dt(raw_record['outcome_available_at'])
+        retrieved_at = _parse_dt(raw_record['retrieved_at'])
+        if retrieved_at < outcome_available_at:
+            raise ValueError('retrieved_at cannot precede outcome_available_at')
         attestation = self.policy.evaluate(
             provider_id=self.provider_id,
             purpose='results',
             raw_record=raw_record,
-            retrieved_at=outcome_available_at,
+            retrieved_at=retrieved_at,
             source_conflict=bool(raw_record.get('source_conflict', False)),
             finalized=raw_record['finalized'],
         )
@@ -94,10 +97,13 @@ class OfficialBoxScoreSnapshotAdapter(IProviderAdapter):
         for item in raw_record.get('pregame_features', []):
             if not isinstance(item, Mapping):
                 raise ValueError('pregame feature mapping required')
+            feature_source = item.get('source', self.provider_id)
+            if feature_source != self.provider_id:
+                raise ValueError('cross-provider pregame features require their own adapter/attestation')
             features.append(PregameFeature(
                 name=item['name'], value=item.get('value'),
                 available_at=_parse_dt(item['available_at']),
-                source=item.get('source', self.provider_id),
+                source=feature_source,
             ))
         return HistoricalObservation(
             event_id=str(raw_record['event_id']),
