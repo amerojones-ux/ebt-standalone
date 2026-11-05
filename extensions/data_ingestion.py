@@ -256,12 +256,14 @@ class IngestionValidator:
         return {'accepted': accepted, 'rejected': rejected}
 
 
-def reconcile_canonical_observations(rows):
+def reconcile_canonical_observations(rows, *, trusted_source_policy):
     """Collapse cross-source evidence into one canonical row without double counting.
 
     Requires already validated rows. Conflicting results fail closed. A1 evidence
     is preferred as primary; all evidence provenance hashes remain in metadata.
     """
+    if not isinstance(trusted_source_policy, TrustedSourcePolicy):
+        raise ObservationValidationError('trusted_source_policy required')
     groups = {}
     for validated in rows:
         if not isinstance(validated, ValidatedObservation):
@@ -269,6 +271,10 @@ def reconcile_canonical_observations(rows):
         obs = validated.observation
         if IngestionValidator.generate_record_hash(obs) != validated.record_hash:
             raise ObservationValidationError('validated receipt record hash mismatch')
+        if not trusted_source_policy.verify_validation_receipt_signature(
+                validated.record_hash, validated.forecast_cutoff,
+                validated.validation_signature_hmac_sha256):
+            raise ObservationValidationError('validated receipt signature invalid')
         if obs.outcome_available_at >= validated.forecast_cutoff:
             raise ObservationValidationError('validated receipt violates historical cutoff')
         key = IngestionValidator.canonical_identity_key(obs)
