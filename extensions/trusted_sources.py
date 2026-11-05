@@ -104,6 +104,26 @@ class TrustedSourcePolicy:
             verified_at=attestation.verified_at, reason=attestation.reason)
         return hmac.compare_digest(expected, attestation.signature_hmac_sha256)
 
+    def issue_validation_receipt_signature(self, record_hash, forecast_cutoff):
+        if not isinstance(record_hash, str) or len(record_hash) != 64:
+            raise ValueError('64-character record_hash required')
+        if not isinstance(forecast_cutoff, datetime) or forecast_cutoff.tzinfo is None or forecast_cutoff.utcoffset() is None:
+            raise ValueError('timezone-aware forecast_cutoff required')
+        body = (
+            'VALIDATION_RECEIPT|' + self.policy_version + '|' +
+            record_hash + '|' + forecast_cutoff.isoformat()
+        ).encode('utf-8')
+        return hmac.new(self._key, body, hashlib.sha256).hexdigest()
+
+    def verify_validation_receipt_signature(self, record_hash, forecast_cutoff, signature):
+        if not isinstance(signature, str):
+            return False
+        try:
+            expected = self.issue_validation_receipt_signature(record_hash, forecast_cutoff)
+        except ValueError:
+            return False
+        return hmac.compare_digest(expected, signature)
+
     def evaluate(self, *, provider_id, purpose, raw_record, retrieved_at,
                  canonical_record=None, source_conflict=False, finalized=None):
         if not isinstance(retrieved_at, datetime) or retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
