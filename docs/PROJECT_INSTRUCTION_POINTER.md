@@ -23,3 +23,6 @@
 This public repository currently provides offline research/verification code only, not an activated live multisport forecast service. Never commit licensed raw datasets, credentials, identifiable account information, private audits or the user's entire private project archive here. Any implementation change requires a reviewed versioned PR, tests and separately confirmed rights/acceptance gates.
 
 See `CROSS_THREAD_RECONCILIATION_2026-10-29.md`, `RESEARCH_EXTENSIONS_ACCEPTANCE.md` and `PROP_CARD_VISUAL_AND_OUTPUT.md`.
+## NBA game-state prop discovery process lock (2026-11-06)
+For NBA player-prop discovery, after reading the full V7/V7.1 master, also apply [`NBA_GAME_STATE_PROP_DISCOVERY_STANDARD_V7_1.md`](NBA_GAME_STATE_PROP_DISCOVERY_STANDARD_V7_1.md). It makes the game the joint simulation unit, requires a full rotation/opportunity/player matrix before market comparison, and preserves all existing V7/V7.1 evidence, calibration, price, HOLD and audit gates. It is a workflow clarification only, not a fitted weight update or guarantee.
+
