@@ -1,0 +1,25 @@
+name: Screenshot audit regression
+on:
+  pull_request:
+    paths:
+      - 'audits/**'
+      - '.github/workflows/screenshot-audit.yml'
+  push:
+    paths:
+      - 'audits/**'
+      - '.github/workflows/screenshot-audit.yml'
+jobs:
+  screenshot-audit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Execute screenshot audit tests explicitly
+        run: python -m unittest discover -s audits -p 'test_screenshot_reconcile.py' -v
+      - name: Run screenshot audit module self-check
+        run: python audits/screenshot_reconcile.py
