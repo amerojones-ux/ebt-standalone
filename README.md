@@ -90,3 +90,8 @@ Material official role evidence now has an explicit immutable decision lifecycle
 ### Beneficiary competition and opportunity share
 
 Confirmed role losses now feed a finite-pool opportunity redistribution model instead of an unconstrained replacement-player boost. Pre-event Dirichlet-style allocation evidence, beneficiary competition, hard capacity caps, explicit unassigned residuals, and multi-scenario player floors/ceilings are implemented offline. Sportsbook fields are forbidden from the allocation schema. See `docs/BENEFICIARY_OPPORTUNITY_SHARE.md`.
+
+
+### Bayesian rare-event distributions
+
+First-basket/first-TD/first-goal style markets now have a complete-universe Dirichlet competing-event model with an explicit residual category, while exact early-window binary events use a separate Beta-Bernoulli model. Each supports >=100k posterior uncertainty draws and scenario floors without confusing latent-probability uncertainty with actual game-outcome Monte Carlo or calibrated hit probability. See `docs/BAYESIAN_RARE_EVENTS.md`.
