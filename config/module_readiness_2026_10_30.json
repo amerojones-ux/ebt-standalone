@@ -193,6 +193,20 @@
       "automatic_certificate_issuance": false,
       "automatic_model_promotion": false,
       "requires_human_acceptance": true
+    },
+    "immutable_daily_audit": {
+      "code": "implemented",
+      "tests": "synthetic_lifecycle",
+      "sha256_hash_chain": true,
+      "stale_writer_protection": true,
+      "pregame_postgame_separation": true,
+      "decision_versioning": true,
+      "settlement_revision_append_only": true,
+      "postgame_backfill_forbidden": true,
+      "engine_receipt_artifact_binding": true,
+      "calibration_review_cannot_self_certify": true,
+      "learning_review_cannot_apply_model_changes": true,
+      "model_weights_changed_by_audit": false
     }
   },
   "live_integrations": {
