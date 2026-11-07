@@ -140,6 +140,38 @@ class CorrelatedJointMCTests(unittest.TestCase):
         self.assertFalse(final["individual_probabilities_multiplied"])
         self.assertEqual(final["wager_status"],"NOT APPROVED")
 
+    def test_final_joint_rejects_different_portfolio(self):
+        models={
+            "baseline":model(.4),
+            "adversarial":model(-.2),
+            "scenario":model(0),
+        }
+        three=run_three_scenario_joint_mc(
+            models,PARLAY,trials=100000,
+            seeds={"baseline":61,"adversarial":62,"scenario":63})
+        different=[
+            {"leg_id":"X_1PLUS","terms":{"X":"1"},"comparator":"GE","threshold":"1"},
+            {"leg_id":"Y_UNDER_1","terms":{"Y":"1"},"comparator":"LT","threshold":"1"},
+        ]
+        with self.assertRaises(ValueError):
+            run_final_joint_parlay_mc(
+                model(.1),different,three,trials=100000,seed=64)
+
+    def test_tampered_scenario_receipt_is_rejected(self):
+        models={
+            "baseline":model(.4),
+            "adversarial":model(-.2),
+            "scenario":model(0),
+        }
+        three=run_three_scenario_joint_mc(
+            models,PARLAY,trials=100000,
+            seeds={"baseline":71,"adversarial":72,"scenario":73})
+        tampered=dict(three)
+        tampered["scenario_floor_joint_probability"]=.999
+        with self.assertRaises(ValueError):
+            run_final_joint_parlay_mc(
+                model(.1),PARLAY,tampered,trials=100000,seed=74)
+
     def test_failure_clusters_and_dominant_failure_leg_are_recorded(self):
         out=simulate_joint_model(
             model(.2),PARLAY,trials=100000,seed=99,label="FAILURES")
