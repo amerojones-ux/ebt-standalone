@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "source": "NBA Official Injury Report",
+  "authority": "A1_OFFICIAL",
+  "index_url": "https://official.nba.com/nba-injury-report-2026-27-season/",
+  "pdf_host": "ak-static.cms.nba.com",
+  "pdf_path_prefix": "/referee/injury/",
+  "index_link_resolver_implemented": true,
+  "normalized_pdf_row_validator_implemented": true,
+  "canonical_identity_binding_implemented": true,
+  "official_schedule_reconciliation_required": true,
+  "status_delta_rerun_engine_implemented": true,
+  "team_not_yet_submitted_forces_hold": true,
+  "pdf_byte_to_text_extractor_verified": false,
+  "canonical_identity_mapping_verified": false,
+  "freshness_sample_verified": false,
+  "network_enabled": false,
+  "forecast_enabled": false,
+  "notes": "The repository resolves official report links and validates structured extraction output, but PDF byte-to-text extraction remains an external provenance boundary. No fuzzy player identity or injury-report time-of-day inference is allowed."
+}
