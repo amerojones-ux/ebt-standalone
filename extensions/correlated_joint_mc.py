@@ -222,6 +222,23 @@ def _canonical_legs(legs):
     ]
 
 
+def _leg_definition_sha(legs):
+    return hashlib.sha256(
+        json.dumps(
+            _canonical_legs(legs),sort_keys=True,separators=(",",":"),allow_nan=False
+        ).encode()
+    ).hexdigest()
+
+
+def _scenario_receipt_body(receipt):
+    keys=(
+        "trials_each","seeds","joint_probability_by_scenario",
+        "scenario_floor_joint_probability","leg_hit_probability_floor",
+        "dominant_failure_leg_by_scenario","leg_definition_sha256","variable_ids",
+    )
+    return {key:receipt.get(key) for key in keys}
+
+
 def decompose_combo_leg(
     raw_model: Mapping[str,Any],
     raw_leg: Mapping[str,Any],
@@ -458,7 +475,7 @@ def run_three_scenario_joint_mc(
     leg_floor={}
     for lid in canonical_leg_ids:
         leg_floor[lid]=min(runs[name]["legs"][lid]["hit_rate"] for name in SCENARIOS)
-    return {
+    receipt={
         "mode":"THREE_SCENARIO_DEPENDENCY_PRESERVING_JOINT_MC",
         "trials_each":trials,
         "seeds":dict(seeds),
@@ -469,11 +486,20 @@ def run_three_scenario_joint_mc(
         "dominant_failure_leg_by_scenario":{
             name:runs[name]["dominant_failure_leg"] for name in SCENARIOS
         },
+        "leg_definition_sha256":_leg_definition_sha(legs),
+        "variable_ids":sorted(variable_set),
         "final_joint_parlay_mc_still_required":True,
         "calibration_verified":False,
         "forecast_status":"HOLD",
         "wager_status":"NOT APPROVED",
     }
+    receipt["scenario_receipt_sha256"]=hashlib.sha256(
+        json.dumps(
+            _scenario_receipt_body(receipt),
+            sort_keys=True,separators=(",",":"),allow_nan=False
+        ).encode()
+    ).hexdigest()
+    return receipt
 
 
 def run_final_joint_parlay_mc(
@@ -490,9 +516,24 @@ def run_final_joint_parlay_mc(
         or scenario_receipt.get("mode")!="THREE_SCENARIO_DEPENDENCY_PRESERVING_JOINT_MC"
     ):
         raise ValueError("three-scenario joint MC receipt required")
+    _sha(scenario_receipt.get("scenario_receipt_sha256"),"scenario_receipt_sha256")
+    expected_receipt_sha=hashlib.sha256(
+        json.dumps(
+            _scenario_receipt_body(scenario_receipt),
+            sort_keys=True,separators=(",",":"),allow_nan=False
+        ).encode()
+    ).hexdigest()
+    if expected_receipt_sha!=scenario_receipt.get("scenario_receipt_sha256"):
+        raise ValueError("scenario receipt hash mismatch")
     prior_seeds=scenario_receipt.get("seeds")
     if not isinstance(prior_seeds,Mapping) or seed in prior_seeds.values():
         raise ValueError("final joint MC seed must be distinct from MC-1/2/3")
+    final_model=_joint_model(raw_model)
+    final_legs=_legs(raw_legs,set(final_model["variable_order"]))
+    if sorted(final_model["variable_order"])!=scenario_receipt.get("variable_ids"):
+        raise ValueError("final variable universe differs from MC-1/2/3")
+    if _leg_definition_sha(final_legs)!=scenario_receipt.get("leg_definition_sha256"):
+        raise ValueError("final leg definitions differ from MC-1/2/3")
     run=simulate_joint_model(
         raw_model,raw_legs,trials=trials,seed=seed,label="FINAL_JOINT_PARLAY")
     return {
