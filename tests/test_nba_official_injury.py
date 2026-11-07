@@ -123,6 +123,32 @@ class NBAOfficialInjuryTests(unittest.TestCase):
         self.assertTrue(out["full_rerun_required"])
         self.assertTrue(any(x["kind"]=="TEAM_REPORT_SUBMITTED" for x in out["changes"]))
 
+    def test_report_cannot_be_captured_before_filename_publication_time(self):
+        with self.assertRaises(ValueError):
+            validate_extracted_report(
+                rows(),report_url=URL_415,captured_at="2026-11-07T09:14:59Z")
+
+    def test_removed_player_requires_confirmation_and_hold(self):
+        previous=canonical(rows(),url=URL_400)
+        current_rows=[rows()[0]]
+        current=canonical(current_rows,url=URL_415)
+        out=diff_official_reports(previous,current)
+        self.assertTrue(out["full_rerun_required"])
+        self.assertTrue(out["hold_for_confirmation"])
+        self.assertTrue(any(
+            x["kind"]=="PLAYER_REMOVED_REQUIRES_CONFIRMATION"
+            for x in out["changes"]
+        ))
+
+    def test_report_time_label_does_not_define_event_start(self):
+        normalized=validate_extracted_report(rows(),report_url=URL_415,captured_at=CAPTURE)
+        self.assertNotIn("event_start_utc",normalized["rows"][0])
+        bound=bind_canonical_identities(
+            normalized,team_ids=TEAM_IDS,player_ids=PLAYER_IDS,event_schedule=SCHEDULE)
+        self.assertEqual(
+            bound["rows"][0]["event_start_utc"],
+            "2026-11-07T23:00:00+00:00")
+
     def test_not_submitted_team_forces_game_hold(self):
         current=canonical(rows(beta_submission="NOT_YET_SUBMITTED"))
         out=assess_game_injury_gate(
