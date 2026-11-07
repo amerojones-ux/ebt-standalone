@@ -23,3 +23,6 @@
 This public repository currently provides offline research/verification code only, not an activated live multisport forecast service. Never commit licensed raw datasets, credentials, identifiable account information, private audits or the user's entire private project archive here. Any implementation change requires a reviewed versioned PR, tests and separately confirmed rights/acceptance gates.
 
 See `CROSS_THREAD_RECONCILIATION_2026-10-29.md`, `RESEARCH_EXTENSIONS_ACCEPTANCE.md` and `PROP_CARD_VISUAL_AND_OUTPUT.md`.
+## NBA bench explosion forecast lock (2026-11-06)
+After the player matchup dossier, apply [NBA_BENCH_EXPLOSION_STANDARD_V7_1.md](NBA_BENCH_EXPLOSION_STANDARD_V7_1.md) to every eligible reserve. Model minutes elasticity, substitution/closing role, starter-out beneficiary share, on/off opportunity transfer, second-unit matchup, blowout/foul/garbage-time branches, per-minute production and market-specific opportunity. BES/OEI are screening diagnostics only, never probabilities. Preserve branch outputs and audit opportunity realization separately from stat conversion.
+
