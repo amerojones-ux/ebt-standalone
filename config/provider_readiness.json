@@ -34,7 +34,7 @@
       "role": "market_comparison_only",
       "contract_ready": true,
       "live_auth_verified": true,
-      "entitlement_verified": false,
+      "entitlement_verified": true,
       "identity_verified": false,
       "freshness_verified": false,
       "model_evidence_allowed": false

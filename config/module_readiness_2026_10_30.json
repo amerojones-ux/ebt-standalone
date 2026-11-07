@@ -66,6 +66,18 @@
       "auth_alone_establishes_coverage": false,
       "complete_realtime_prop_ladder_required": true,
       "approved_for_live_forecasts": false
+    },
+    "theoddsapi_prop_ladder": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "official_route_docs_verified": true,
+      "account_plan_verified": true,
+      "entitlement_verified": true,
+      "identity_mapping_verified": false,
+      "freshness_verified": false,
+      "live_event_ladder_sample_verified": false,
+      "runtime_event_completeness_required": true,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {

@@ -19,7 +19,7 @@ def main():
             load("config/provider_readiness.json"),
             load("config/module_readiness_2026_10_30.json"),
             therundown_access=load("config/therundown_access.json"),
-            theoddsapi_auth=load("config/theoddsapi_auth.json"),
+            theoddsapi_prop_ladder=load("config/theoddsapi_prop_ladder.json"),
             rapidapi_routing=load("config/rapidapi_routing.json"),
         )
         print(json.dumps(result,indent=2,allow_nan=False))
