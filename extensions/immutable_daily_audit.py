@@ -9,6 +9,7 @@ This module does not fetch data, forecast, settle a wager, or change model
 weights.
 """
 import fcntl
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -293,6 +294,28 @@ def _validate_type_data(record_type: str, data: Mapping[str, Any]):
 
     else:
         raise ValueError("unsupported audit record type")
+
+
+def artifact_ref_from_receipt(kind: str, receipt: Mapping[str, Any]) -> Dict[str, str]:
+    """Bind any JSON-safe engine receipt into the audit ledger by canonical SHA-256."""
+    label = _nonblank(kind, "artifact kind")
+    if not isinstance(receipt, Mapping):
+        raise ValueError("engine receipt object required")
+    digest = hashlib.sha256(
+        json.dumps(
+            receipt, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode()
+    ).hexdigest()
+    return {"kind": label, "sha256": digest}
+
+
+def verify_artifact_ref(ref: Mapping[str, Any], receipt: Mapping[str, Any]) -> bool:
+    if not isinstance(ref, Mapping) or set(ref) != {"kind", "sha256"}:
+        raise ValueError("exact artifact_ref schema required")
+    expected = artifact_ref_from_receipt(ref["kind"], receipt)
+    if expected["sha256"] != ref["sha256"]:
+        raise ValueError("artifact receipt hash mismatch")
+    return True
 
 
 def validate_audit_payload(payload: Mapping[str, Any]) -> Dict[str, Any]:
