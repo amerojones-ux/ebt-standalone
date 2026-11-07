@@ -7,6 +7,7 @@ from extensions.latent_correlation_estimator import (
     build_joint_model_from_correlation_estimate,
     estimate_latent_correlation,
 )
+from extensions.correlated_joint_mc import decompose_combo_leg
 
 CUTOFF="2026-11-07T18:00:00Z"
 VARIABLES=["X","Y"]
@@ -160,6 +161,12 @@ class LatentCorrelationEstimatorTests(unittest.TestCase):
         })
         self.assertEqual(model["source_evidence_sha256"],receipt["matrix_sha256"])
         self.assertEqual(model["variable_order"],VARIABLES)
+        combo=decompose_combo_leg(
+            model,{
+                "leg_id":"XY","terms":{"X":"1","Y":"1"},
+                "comparator":"GE","threshold":"1",
+            })
+        self.assertAlmostEqual(combo["max_absolute_latent_correlation"],.9)
 
     def test_hold_matrix_cannot_feed_joint_model(self):
         receipt=estimate_latent_correlation(
