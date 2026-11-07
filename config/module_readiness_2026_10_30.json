@@ -78,6 +78,20 @@
       "live_event_ladder_sample_verified": false,
       "runtime_event_completeness_required": true,
       "approved_for_live_forecasts": false
+    },
+    "nba_official_injury_role_feed": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "source_authority": "A1_OFFICIAL",
+      "index_link_resolver_implemented": true,
+      "normalized_pdf_row_validator_implemented": true,
+      "official_schedule_reconciliation_required": true,
+      "canonical_identity_mapping_verified": false,
+      "pdf_byte_to_text_extractor_verified": false,
+      "freshness_sample_verified": false,
+      "team_not_yet_submitted_forces_hold": true,
+      "status_delta_forces_rerun": true,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {

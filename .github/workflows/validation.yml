@@ -63,3 +63,4 @@ jobs:
           python ebt_prop_card_cli.py --help
           python ebt_opportunity_discovery_cli.py --help
           python opportunity_discovery_readiness_cli.py
+          python nba_official_injury_cli.py --help
