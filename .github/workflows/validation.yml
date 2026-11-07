@@ -69,3 +69,4 @@ jobs:
           python bayesian_rare_events_cli.py --help
           python correlated_joint_mc_cli.py --help
           python latent_correlation_cli.py --help
+          python learning_change_governance_cli.py --help
