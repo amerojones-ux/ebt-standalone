@@ -115,3 +115,8 @@ Model weights and thresholds now have an explicit review-only evidence gate impl
 ### Calibration certification review
 
 Temporal isotonic calibration now has a predeclared market-specific certification-review layer. It evaluates held-out calibrated Brier, ECE, max reliability gap, minimum isotonic block size, raw-vs-calibrated Brier policy, and immutable training/validation/map hashes. Eligible calibration maps can also produce a >=100k-draw Jeffreys local uncertainty diagnostic for the modeled 87% point / 80% lower-bound gates. The strongest state remains `CALIBRATION_CERTIFICATION_REVIEW_ELIGIBLE`; calibration is not self-certified and model promotion remains off. See `docs/CALIBRATION_CERTIFICATION_REVIEW.md`.
+
+
+### Immutable daily audit ledger
+
+All major research and forecast artifacts can now be bound into one append-only SHA-256 daily audit chain with strict V7 lifecycle controls. Pregame evidence/forecasts/decisions, role revalidation, market snapshots, MC receipts, shadow/rejected candidates, official settlement revisions, postgame reverse audits, calibration reviews and learning reviews remain separate record types. Stale writers are rejected, decision and settlement revisions append new versions, postgame records can never become pregame evidence, and review records cannot claim production model changes. See `docs/IMMUTABLE_DAILY_AUDIT.md`.
