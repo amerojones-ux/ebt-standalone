@@ -339,6 +339,8 @@ def evaluate_rare_event_quotes(
         quoted, ingested = _clock(q["quoted_at"], "quoted_at"), _clock(q["ingested_at"], "ingested_at")
         if quoted > ingested or ingested < lock:
             raise ValueError("rare-event price chronology violates projection-before-market")
+        if type(q["price_verified"]) is not bool:
+            raise ValueError("price_verified boolean required")
         implied = raw_implied_probability(q["american_odds"])
         p = probs[cid]
         d = american_decimal_odds(q["american_odds"])
@@ -391,7 +393,12 @@ def reconcile_result_claim(claim: Dict[str, Any], official: Dict[str, Any]) -> D
     return {
         "mode": "POSTGAME_RESULT_CLAIM_FIREWALL",
         "status": status,
-        "eligible_for_model_learning": status == "RECONCILED",
+        "eligible_for_audit_storage": status == "RECONCILED",
+        "eligible_for_model_weight_update": False,
+        "learning_status": "RESEARCH_HYPOTHESIS_ONLY" if status == "RECONCILED" else "BLOCKED",
         "conflicts": conflicts,
-        "rule": "Screenshot/ticket evidence cannot override verified official settlement.",
+        "rule": (
+            "Screenshot/ticket evidence cannot override verified official settlement "
+            "and cannot authorize model-weight changes by itself."
+        ),
     }
