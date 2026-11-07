@@ -99,7 +99,15 @@
           "status": "VERIFIED",
           "subject": "The Odds API"
         },
-        "entitlement_verified": null,
+        "entitlement_verified": {
+          "status": "VERIFIED",
+          "subject": "The Odds API",
+          "claim": "entitlement_verified",
+          "source_type": "manual_review",
+          "reference": "review:theoddsapi-starter-plan-current-markets-2026-11-07",
+          "reviewed_at": "2026-11-07T09:35:00+00:00",
+          "reviewer": "github:amerojones-ux#262097315"
+        },
         "identity_verified": null,
         "freshness_verified": null,
         "model_evidence_allowed": null
