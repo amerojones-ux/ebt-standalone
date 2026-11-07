@@ -43,11 +43,11 @@ class DiscoveryReadinessTests(unittest.TestCase):
         providers=json.loads((ROOT/"config/provider_readiness.json").read_text())
         modules=json.loads((ROOT/"config/module_readiness_2026_10_30.json").read_text())
         rundown=json.loads((ROOT/"config/therundown_access.json").read_text())
-        odds=json.loads((ROOT/"config/theoddsapi_auth.json").read_text())
+        odds=json.loads((ROOT/"config/theoddsapi_prop_ladder.json").read_text())
         rapid=json.loads((ROOT/"config/rapidapi_routing.json").read_text())
         out=assess_discovery_readiness(
             providers,modules,therundown_access=rundown,
-            theoddsapi_auth=odds,rapidapi_routing=rapid)
+            theoddsapi_prop_ladder=odds,rapidapi_routing=rapid)
         self.assertEqual(out["status"],"SAFE_HOLD")
         self.assertFalse(out["market_ladder_ready"])
         self.assertEqual(out["eligible_market_sources"],[])
@@ -62,15 +62,15 @@ class DiscoveryReadinessTests(unittest.TestCase):
         }
         odds={
             "network_enabled":True,"forecast_enabled":True,"path":"/v4/sports",
-            "market_ladder_verified":False,"complete_player_prop_ladder_verified":False,
+            "account_plan_verified":False,"quota_cost_reviewed":False,"entitlement_verified":False,"identity_mapping_verified":False,"freshness_verified":False,"market_ladder_route_verified":True,"complete_posted_player_prop_ladder_verified":False,
         }
         rapid={
             "network_enabled":True,"forecast_enabled":True,"probe_endpoint":"/odds",
-            "market_ladder_verified":False,"complete_player_prop_ladder_verified":False,
+            "account_plan_verified":False,"quota_cost_reviewed":False,"entitlement_verified":False,"identity_mapping_verified":False,"freshness_verified":False,"market_ladder_route_verified":True,"complete_posted_player_prop_ladder_verified":False,
         }
         out=assess_discovery_readiness(
             providers,module_state(quotes=True,role=True,stats=True),
-            therundown_access=rundown,theoddsapi_auth=odds,rapidapi_routing=rapid)
+            therundown_access=rundown,theoddsapi_prop_ladder=odds,rapidapi_routing=rapid)
         self.assertEqual(out["eligible_market_sources"],[])
         self.assertFalse(out["market_ladder_ready"])
 
@@ -80,11 +80,11 @@ class DiscoveryReadinessTests(unittest.TestCase):
             if row["name"]=="TheRundown":
                 row.update(entitlement_verified=True,identity_verified=True,freshness_verified=True)
         rundown={"plan_name":"FREE","network_enabled":True,"forecast_enabled":True}
-        odds={"network_enabled":False,"forecast_enabled":False,"path":"/v4/sports"}
+        odds={"network_enabled":False,"forecast_enabled":False,"event_odds_path_template":"/v4/sports/{sport}/events/{eventId}/odds","event_markets_path_template":"/v4/sports/{sport}/events/{eventId}/markets"}
         rapid={"network_enabled":False,"forecast_enabled":False,"probe_endpoint":""}
         out=assess_discovery_readiness(
             providers,module_state(quotes=True,role=True,stats=True),
-            therundown_access=rundown,theoddsapi_auth=odds,rapidapi_routing=rapid)
+            therundown_access=rundown,theoddsapi_prop_ladder=odds,rapidapi_routing=rapid)
         diag=next(x for x in out["market_source_diagnostics"] if x["provider"]=="TheRundown")
         self.assertFalse(diag["eligible"])
         self.assertIn("configured plan does not include props",diag["blockers"])
@@ -95,11 +95,11 @@ class DiscoveryReadinessTests(unittest.TestCase):
             if row["name"]=="TheRundown":
                 row.update(entitlement_verified=True,identity_verified=True,freshness_verified=True)
         rundown={"plan_name":"ULTRA","network_enabled":True,"forecast_enabled":True}
-        odds={"network_enabled":False,"forecast_enabled":False,"path":"/v4/sports"}
+        odds={"network_enabled":False,"forecast_enabled":False,"event_odds_path_template":"/v4/sports/{sport}/events/{eventId}/odds","event_markets_path_template":"/v4/sports/{sport}/events/{eventId}/markets"}
         rapid={"network_enabled":False,"forecast_enabled":False,"probe_endpoint":""}
         out=assess_discovery_readiness(
             providers,module_state(quotes=True,role=True,stats=True,calibration=True),
-            therundown_access=rundown,theoddsapi_auth=odds,rapidapi_routing=rapid)
+            therundown_access=rundown,theoddsapi_prop_ladder=odds,rapidapi_routing=rapid)
         self.assertEqual(out["eligible_market_sources"],["TheRundown"])
         self.assertTrue(out["market_ladder_ready"])
         self.assertTrue(all(row["automated_input_ready"] for row in out["lanes"].values()))
@@ -114,17 +114,21 @@ class DiscoveryReadinessTests(unittest.TestCase):
                 row.update(entitlement_verified=True,identity_verified=True,freshness_verified=True)
         odds={
             "network_enabled":True,"forecast_enabled":True,
-            "path":"/v4/sports/basketball_nba/events/E/odds",
-            "market_ladder_verified":True,"complete_player_prop_ladder_verified":False,
+            "event_odds_path_template":"/v4/sports/{sport}/events/{eventId}/odds",
+            "event_markets_path_template":"/v4/sports/{sport}/events/{eventId}/markets",
+            "account_plan_verified":True,"quota_cost_reviewed":True,
+            "entitlement_verified":True,"identity_mapping_verified":True,
+            "freshness_verified":True,"market_ladder_route_verified":True,
+            "complete_posted_player_prop_ladder_verified":False,
         }
         rundown={"plan_name":"FREE","network_enabled":False,"forecast_enabled":False}
         rapid={"network_enabled":False,"forecast_enabled":False,"probe_endpoint":""}
         out=assess_discovery_readiness(
             providers,module_state(quotes=True,role=True,stats=True),
-            therundown_access=rundown,theoddsapi_auth=odds,rapidapi_routing=rapid)
+            therundown_access=rundown,theoddsapi_prop_ladder=odds,rapidapi_routing=rapid)
         diag=next(x for x in out["market_source_diagnostics"] if x["provider"]=="The Odds API")
         self.assertFalse(diag["eligible"])
-        self.assertIn("complete player-prop ladder not verified",diag["blockers"])
+        self.assertIn("complete posted player-prop ladder not verified",diag["blockers"])
 
     def test_ready_inputs_do_not_equal_candidate_approval(self):
         providers=provider_state()
@@ -134,7 +138,7 @@ class DiscoveryReadinessTests(unittest.TestCase):
         out=assess_discovery_readiness(
             providers,module_state(quotes=True,role=True,stats=True,calibration=True),
             therundown_access={"plan_name":"ULTRA","network_enabled":True,"forecast_enabled":True},
-            theoddsapi_auth={"network_enabled":False,"forecast_enabled":False,"path":"/v4/sports"},
+            theoddsapi_prop_ladder={"network_enabled":False,"forecast_enabled":False,"event_odds_path_template":"/v4/sports/{sport}/events/{eventId}/odds","event_markets_path_template":"/v4/sports/{sport}/events/{eventId}/markets"},
             rapidapi_routing={"network_enabled":False,"forecast_enabled":False,"probe_endpoint":""})
         self.assertEqual(out["forecast_status"],"HOLD")
         self.assertEqual(out["wager_status"],"NOT APPROVED")
