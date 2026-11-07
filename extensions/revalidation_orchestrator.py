@@ -129,6 +129,16 @@ def plan_event_revalidation(
         status="PRIOR_DECISION_REMAINS_ELIGIBLE"
 
     next_version=prior["decision_version"]+1 if revoke else prior["decision_version"]
+    required_steps=[] if not revoke else [
+        "CONFIRM_ROLE_GATE_FOUND",
+        "REBUILD_INDEPENDENT_PROJECTION",
+        "RUN_MC1_BASELINE_100K_PLUS",
+        "RUN_MC2_ADVERSARIAL_100K_PLUS",
+        "RUN_MC3_SCENARIO_CORRELATION_100K_PLUS",
+        "INGEST_FRESH_COMPLETE_MARKET_LADDER_AFTER_MODEL_LOCK",
+        "RECALCULATE_PRICE_EV_UNCERTAINTY_SCENARIO_SURVIVAL",
+        "RUN_FINAL_V7_REVALIDATION",
+    ]
     plan_body={
         "prior_decision_id":prior["decision_id"],
         "event_id":prior["event_id"],
@@ -141,24 +151,14 @@ def plan_event_revalidation(
         "provenance_conflict":provenance_conflict,
         "status":status,
         "reasons":reasons,
+        "affected_player_ids":list(current["affected_player_ids"]),
+        "required_steps":required_steps,
     }
     plan_sha=_canonical_sha(plan_body)
-    required_steps=[] if not revoke else [
-        "CONFIRM_ROLE_GATE_FOUND",
-        "REBUILD_INDEPENDENT_PROJECTION",
-        "RUN_MC1_BASELINE_100K_PLUS",
-        "RUN_MC2_ADVERSARIAL_100K_PLUS",
-        "RUN_MC3_SCENARIO_CORRELATION_100K_PLUS",
-        "INGEST_FRESH_COMPLETE_MARKET_LADDER_AFTER_MODEL_LOCK",
-        "RECALCULATE_PRICE_EV_UNCERTAINTY_SCENARIO_SURVIVAL",
-        "RUN_FINAL_V7_REVALIDATION",
-    ]
     return {
         "mode":"IMMUTABLE_ROLE_MARKET_REVALIDATION_PLAN",
         **plan_body,
         "plan_sha256":plan_sha,
-        "affected_player_ids":list(current["affected_player_ids"]),
-        "required_steps":required_steps,
         "prior_market_snapshot_revoked":revoke,
         "forecast_status":"HOLD" if revoke else prior["decision_status"],
         "wager_status":"NOT APPROVED" if revoke else "UNCHANGED_BY_THIS_MODULE",
@@ -244,6 +244,8 @@ def _verify_plan_hash(plan: Mapping[str,Any]) -> None:
         "provenance_conflict":plan.get("provenance_conflict"),
         "status":plan.get("status"),
         "reasons":plan.get("reasons"),
+        "affected_player_ids":plan.get("affected_player_ids"),
+        "required_steps":plan.get("required_steps"),
     }
     if _canonical_sha(body)!=plan.get("plan_sha256"):
         raise ValueError("revalidation plan hash mismatch")
