@@ -239,6 +239,7 @@ def assess_learning_change_review(
     """Return review eligibility only; never apply or promote a change."""
     required = {
         "request_id", "market_key", "settled_market_count", "settled_model_count",
+        "settled_market_sample_sha256", "settled_model_sample_sha256",
         "review_cutoff", "degraded_windows", "root_cause", "backtest",
         "versioning", "proposed_change_summary",
     }
@@ -253,6 +254,14 @@ def assess_learning_change_review(
         raise ValueError("settled_market_count must be nonnegative integer")
     if type(model_count) is not int or model_count < 0:
         raise ValueError("settled_model_count must be nonnegative integer")
+    market_sample_sha = _sha(
+        request["settled_market_sample_sha256"],
+        "settled_market_sample_sha256",
+    )
+    model_sample_sha = _sha(
+        request["settled_model_sample_sha256"],
+        "settled_model_sample_sha256",
+    )
     cutoff = _clock(request["review_cutoff"], "review_cutoff")
     windows = _validate_windows(request["degraded_windows"], cutoff)
     root = _root_cause(request["root_cause"], cutoff)
@@ -337,6 +346,8 @@ def assess_learning_change_review(
         "market_key": request["market_key"].strip(),
         "settled_market_count": market_count,
         "settled_model_count": model_count,
+        "settled_market_sample_sha256": market_sample_sha,
+        "settled_model_sample_sha256": model_sample_sha,
         "review_cutoff": cutoff.isoformat(),
         "degraded_windows": window_rows,
         "root_cause": root_out,
@@ -393,6 +404,7 @@ def verify_learning_review_receipt(receipt: Mapping[str, Any]) -> bool:
     supplied = _sha(receipt.get("review_sha256"), "review_sha256")
     body_keys = {
         "request_id", "market_key", "settled_market_count", "settled_model_count",
+        "settled_market_sample_sha256", "settled_model_sample_sha256",
         "review_cutoff", "degraded_windows", "root_cause", "backtest",
         "versioning", "proposed_change_summary",
         "eligible_for_model_change_review", "reasons",
