@@ -115,6 +115,20 @@
       "sportsbook_inputs_forbidden": true,
       "calibration_certified": false,
       "approved_for_live_forecasts": false
+    },
+    "bayesian_rare_event_distributions": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "competing_event_model": "dirichlet",
+      "binary_event_model": "beta_bernoulli",
+      "complete_candidate_universe_required": true,
+      "residual_category_required": true,
+      "posterior_uncertainty_trials_minimum": 100000,
+      "three_scenario_uncertainty_supported": true,
+      "sportsbook_inputs_forbidden": true,
+      "game_outcome_mc_separate": true,
+      "calibration_certified": false,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {
