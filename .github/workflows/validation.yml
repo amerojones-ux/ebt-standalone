@@ -66,3 +66,4 @@ jobs:
           python nba_official_injury_cli.py --help
           python revalidation_orchestrator_cli.py --help
           python opportunity_reallocation_cli.py --help
+          python bayesian_rare_events_cli.py --help
