@@ -158,6 +158,24 @@
       "market_inputs_forbidden": true,
       "calibration_certified": false,
       "approved_for_live_forecasts": false
+    },
+    "v7_learning_change_governance": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "minimum_settled_per_market": 30,
+      "minimum_settled_per_model": 50,
+      "minimum_degraded_windows": 2,
+      "brier_worsening_trigger": 0.02,
+      "calibration_gap_trigger": 0.05,
+      "root_cause_review_required": true,
+      "heldout_backtest_required": true,
+      "new_version_required": true,
+      "rollback_required": true,
+      "isolated_screenshot_ticket_change_forbidden": true,
+      "automatic_weight_change": false,
+      "automatic_threshold_change": false,
+      "automatic_model_promotion": false,
+      "requires_human_acceptance": true
     }
   },
   "live_integrations": {
