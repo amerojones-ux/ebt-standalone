@@ -67,3 +67,4 @@ jobs:
           python revalidation_orchestrator_cli.py --help
           python opportunity_reallocation_cli.py --help
           python bayesian_rare_events_cli.py --help
+          python correlated_joint_mc_cli.py --help
