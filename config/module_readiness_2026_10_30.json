@@ -56,7 +56,8 @@
       "code": "implemented",
       "tests": "synthetic",
       "official_result_anchor_required": true,
-      "eligible_for_learning_only_after_reconciliation": true
+      "audit_storage_only_after_reconciliation": true,
+      "screenshot_can_authorize_weight_update": false
     }
   },
   "live_integrations": {
