@@ -165,6 +165,87 @@ def plan_event_revalidation(
     }
 
 
+def role_state_from_nba_injury(
+    canonical_report: Mapping[str,Any],
+    injury_diff: Mapping[str,Any],
+    game_gate: Mapping[str,Any],
+    *,
+    event_key: str,
+) -> Dict[str,Any]:
+    """Bridge canonical NBA official injury evidence into the immutable trigger."""
+    if not isinstance(canonical_report,Mapping) or not isinstance(canonical_report.get("rows"),list):
+        raise ValueError("canonical NBA injury report required")
+    if not isinstance(injury_diff,Mapping) or not isinstance(injury_diff.get("changes"),list):
+        raise ValueError("NBA injury diff required")
+    if not isinstance(game_gate,Mapping) or game_gate.get("event_key")!=event_key:
+        raise ValueError("matching NBA injury game gate required")
+    event_rows=[row for row in canonical_report["rows"] if row.get("event_key")==event_key]
+    if not event_rows:
+        raise ValueError("event absent from canonical NBA injury report")
+    event_ids={row.get("event_id") for row in event_rows}
+    if len(event_ids)!=1 or None in event_ids:
+        raise ValueError("single canonical event_id required")
+    report_times={row.get("report_time_utc") for row in event_rows}
+    if len(report_times)!=1:
+        raise ValueError("single report timestamp required")
+    role_hash=_canonical_sha({
+        "event_key":event_key,
+        "rows":[{
+            key:row.get(key) for key in (
+                "event_id","team_id","player_id","row_type","current_status",
+                "reason","submission_status","report_time_utc","captured_at",
+            )
+        } for row in sorted(
+            event_rows,
+            key=lambda x:(str(x.get("team_id")),str(x.get("player_id")),x.get("row_type",""))
+        )],
+    })
+    event_changes=[]
+    affected=[]
+    for change in injury_diff["changes"]:
+        if not isinstance(change,Mapping):
+            raise ValueError("injury diff changes must be objects")
+        key=change.get("key")
+        if not isinstance(key,list) or not key or key[0]!=event_key:
+            continue
+        event_changes.append(change)
+        if len(key)>=3 and isinstance(key[2],str) and key[2].strip():
+            affected.append(key[2])
+    affected=sorted(set(affected))
+    return {
+        "event_id":next(iter(event_ids)),
+        "event_key":event_key,
+        "role_evidence_sha256":role_hash,
+        "role_evidence_available_at":next(iter(report_times)),
+        "game_gate_status":game_gate.get("status"),
+        "full_rerun_required":bool(event_changes) or injury_diff.get("full_rerun_required") is True,
+        "hold_for_confirmation":(
+            game_gate.get("status")!="FOUND"
+            or injury_diff.get("hold_for_confirmation") is True
+        ),
+        "change_count":len(event_changes),
+        "affected_player_ids":affected,
+    }
+
+
+def _verify_plan_hash(plan: Mapping[str,Any]) -> None:
+    body={
+        "prior_decision_id":plan.get("prior_decision_id"),
+        "event_id":plan.get("event_id"),
+        "event_key":plan.get("event_key"),
+        "prior_decision_version":plan.get("prior_decision_version"),
+        "replacement_decision_version":plan.get("replacement_decision_version"),
+        "current_role_evidence_sha256":plan.get("current_role_evidence_sha256"),
+        "current_role_evidence_available_at":plan.get("current_role_evidence_available_at"),
+        "prior_decision_revoked":plan.get("prior_decision_revoked"),
+        "provenance_conflict":plan.get("provenance_conflict"),
+        "status":plan.get("status"),
+        "reasons":plan.get("reasons"),
+    }
+    if _canonical_sha(body)!=plan.get("plan_sha256"):
+        raise ValueError("revalidation plan hash mismatch")
+
+
 def assess_revalidation_completion(
     plan: Mapping[str,Any],
     *,
@@ -178,6 +259,7 @@ def assess_revalidation_completion(
     if plan.get("prior_decision_revoked") is not True:
         raise ValueError("completion only applies to revoked decisions")
     _sha(plan.get("plan_sha256"),"plan_sha256")
+    _verify_plan_hash(plan)
     if plan.get("provenance_conflict") is True:
         return {
             "mode":"ROLE_MARKET_REVALIDATION_COMPLETION",
