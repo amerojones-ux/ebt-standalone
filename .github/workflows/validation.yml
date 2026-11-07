@@ -71,3 +71,4 @@ jobs:
           python latent_correlation_cli.py --help
           python learning_change_governance_cli.py --help
           python calibration_certification_cli.py --help
+          python immutable_daily_audit_cli.py --help
