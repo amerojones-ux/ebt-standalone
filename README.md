@@ -100,3 +100,8 @@ First-basket/first-TD/first-goal style markets now have a complete-universe Diri
 ### Correlated combo props and joint Monte Carlo
 
 Combo props and parlays now have a dependency-preserving discrete Gaussian-copula simulator. Locked component PMFs are simulated jointly under an explicit pre-event latent correlation matrix; PRA/PR/RA-style combo hit rates can be compared against an independence diagnostic, and parlay joint probability is measured directly from all-legs-hit trials rather than multiplying marginal probabilities. MC-1/2/3 require separate >=100k runs and the final joint parlay simulation is separately portfolio-bound. See `docs/CORRELATED_COMBO_JOINT_MC.md`.
+
+
+### Leakage-safe latent correlation estimation
+
+The dependence matrix for combo/joint MC can now be estimated from pre-cutoff complete-case historical events using midrank normal scores, explicit shrinkage toward identity, positive-definite validation, Fisher-z uncertainty bands, and previous-vs-recent temporal drift gates. Eligible receipts bridge directly into the exact joint-MC model schema via a matrix evidence hash. See `docs/LATENT_CORRELATION_ESTIMATOR.md`.
