@@ -103,6 +103,18 @@
       "fresh_market_after_relock_required": true,
       "final_v7_qualification_still_required": true,
       "approved_for_live_forecasts": false
+    },
+    "beneficiary_opportunity_share": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "finite_shared_pool": true,
+      "posterior_competition_model": "dirichlet_style_prior_plus_context",
+      "player_capacity_caps": true,
+      "explicit_unassigned_residual": true,
+      "scenario_floors_and_ceilings": true,
+      "sportsbook_inputs_forbidden": true,
+      "calibration_certified": false,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {

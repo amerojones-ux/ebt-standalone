@@ -85,3 +85,8 @@ The repository now resolves the NBA's official injury-report PDF index, validate
 ### Immutable role/market revalidation
 
 Material official role evidence now has an explicit immutable decision lifecycle: the prior decision and market snapshot are revoked, the independent projection is rebuilt against the new role-evidence fingerprint, all three >=100k MC runs must be regenerated, and only then may a fresh complete market ladder be ingested. The completion state is only a handoff to final V7 qualification, never wager approval. See `docs/ROLE_MARKET_REVALIDATION.md`.
+
+
+### Beneficiary competition and opportunity share
+
+Confirmed role losses now feed a finite-pool opportunity redistribution model instead of an unconstrained replacement-player boost. Pre-event Dirichlet-style allocation evidence, beneficiary competition, hard capacity caps, explicit unassigned residuals, and multi-scenario player floors/ceilings are implemented offline. Sportsbook fields are forbidden from the allocation schema. See `docs/BENEFICIARY_OPPORTUNITY_SHARE.md`.
