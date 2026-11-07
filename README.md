@@ -95,3 +95,8 @@ Confirmed role losses now feed a finite-pool opportunity redistribution model in
 ### Bayesian rare-event distributions
 
 First-basket/first-TD/first-goal style markets now have a complete-universe Dirichlet competing-event model with an explicit residual category, while exact early-window binary events use a separate Beta-Bernoulli model. Each supports >=100k posterior uncertainty draws and scenario floors without confusing latent-probability uncertainty with actual game-outcome Monte Carlo or calibrated hit probability. See `docs/BAYESIAN_RARE_EVENTS.md`.
+
+
+### Correlated combo props and joint Monte Carlo
+
+Combo props and parlays now have a dependency-preserving discrete Gaussian-copula simulator. Locked component PMFs are simulated jointly under an explicit pre-event latent correlation matrix; PRA/PR/RA-style combo hit rates can be compared against an independence diagnostic, and parlay joint probability is measured directly from all-legs-hit trials rather than multiplying marginal probabilities. MC-1/2/3 require separate >=100k runs and the final joint parlay simulation is separately portfolio-bound. See `docs/CORRELATED_COMBO_JOINT_MC.md`.
