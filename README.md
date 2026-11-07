@@ -59,3 +59,9 @@ These modules are separate from the live-qualified-single registry, do not
 fetch restricted/unknown sources, do not fit/calibrate player models, and
 never approve bets. Successful synthetic checks do not establish forecast
 accuracy or permitted source rights. Deployment and live wagering stay OFF.
+
+## Opportunity Discovery Matrix (November 7, 2026)
+
+The offline research layer now separates high-survival alternate thresholds from asymmetric tail value instead of forcing both through one probability board. New fail-closed modules cover complete alternate-line ladder comparison after projection lock, confirmed pregame role/opportunity reallocation triggers, rare-event competing-risk value research, and screenshot/ticket result-conflict quarantine. See docs/OPPORTUNITY_DISCOVERY_MATRIX.md and config/opportunity_discovery_policy_template.json.
+
+These additions do **not lower the V7/V7.1 Black Diamond requirements**. They do not hard-code a universal discovery threshold, do not calibrate probabilities, do not calculate no-vig probability, do not establish live EV, and do not approve wagers. Sport/market-specific discovery rules must be predeclared before candidate results are inspected. Confirmed material role changes require a fresh independent model rerun; rare-event value remains outside the Black Diamond survival lane; conflicting screenshot outcomes are quarantined from learning until reconciled to official results.

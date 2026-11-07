@@ -1,17 +1,74 @@
 {
-  "schema_version":"1.1",
-  "scope":"sports-analytics-only",
-  "authority":"full Project V7 specification with appended V7.1",
-  "extensions":{
-    "count_under_research":{"code":"implemented","tests":"synthetic","enabled_for_offline_research":true,"approved_for_live_forecasts":false},
-    "under_hindsight_firewall":{"code":"implemented","tests":"synthetic","calibration_certified":false},
-    "licensed_streak_csv":{"code":"implemented","tests":"synthetic","operator_manifest_is_external_proof":false,"actual_provider_rights_verified":false},
-    "three_purpose_count_mc":{"code":"implemented","minimum_trials_each":100000,"actual_real_candidate_runs_certified":false,"correlated_joint_parlay_simulator":false},
-    "electric_static_prop_card":{"code":"implemented","status":"research-only hold","actual_live_card_ui":false}
+  "schema_version": "1.2",
+  "scope": "sports-analytics-only",
+  "authority": "full Project V7 specification with appended V7.1",
+  "extensions": {
+    "count_under_research": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "enabled_for_offline_research": true,
+      "approved_for_live_forecasts": false
+    },
+    "under_hindsight_firewall": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "calibration_certified": false
+    },
+    "licensed_streak_csv": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "operator_manifest_is_external_proof": false,
+      "actual_provider_rights_verified": false
+    },
+    "three_purpose_count_mc": {
+      "code": "implemented",
+      "minimum_trials_each": 100000,
+      "actual_real_candidate_runs_certified": false,
+      "correlated_joint_parlay_simulator": false
+    },
+    "electric_static_prop_card": {
+      "code": "implemented",
+      "status": "research-only hold",
+      "actual_live_card_ui": false
+    },
+    "alternate_line_opportunity_discovery": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "projection_before_price_enforced": true,
+      "calibration_certified": false,
+      "approved_for_live_forecasts": false
+    },
+    "role_reallocation_trigger": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "confirmed_material_change_forces_full_rerun": true,
+      "beneficiary_shares_must_be_model_supplied": true,
+      "approved_for_live_forecasts": false
+    },
+    "rare_event_asymmetric_value": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "black_diamond_survival_lane": false,
+      "calibration_certified": false,
+      "approved_for_live_forecasts": false
+    },
+    "result_claim_quarantine": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "official_result_anchor_required": true,
+      "audit_storage_only_after_reconciliation": true,
+      "screenshot_can_authorize_weight_update": false
+    }
   },
-  "live_integrations":{"sportsbook_quote":false,"official_slate_and_role":false,"licensed_player_and_team_stats":false,"calibrated_models":false,"production_api":false},
-  "forecast_mode":"HOLD_RESEARCH_ONLY",
-  "wager_mode":"NOT_APPROVED",
-  "deployment_enabled":false,
-  "requires_human_acceptance":true
+  "live_integrations": {
+    "sportsbook_quote": false,
+    "official_slate_and_role": false,
+    "licensed_player_and_team_stats": false,
+    "calibrated_models": false,
+    "production_api": false
+  },
+  "forecast_mode": "HOLD_RESEARCH_ONLY",
+  "wager_mode": "NOT_APPROVED",
+  "deployment_enabled": false,
+  "requires_human_acceptance": true
 }
