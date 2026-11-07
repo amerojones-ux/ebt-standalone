@@ -9,16 +9,21 @@ from extensions.calibration_certification import (
     verify_calibration_review_receipt,
 )
 
-SCOPE="NBA_PLAYER_POINTS"
+SCOPE={
+    "competition":"NBA",
+    "market":"PLAYER_POINTS",
+    "threshold_type":"ALTERNATE",
+    "model_version":"M-1",
+}
 FIT_AT="2026-10-01T00:00:00Z"
 ASSESSED_AT="2026-11-01T00:00:00Z"
 
 RESEARCH_POLICY={
+    "version":"1.0",
     "min_training_rows":20,
     "min_training_events":20,
     "min_validation_rows":10,
     "min_validation_events":10,
-    "reliability_bins":5,
 }
 
 ACCEPTANCE_POLICY={
@@ -34,7 +39,10 @@ ACCEPTANCE_POLICY={
 
 def row(event_id,p,hit,issued,event,outcome):
     return {
-        "scope":SCOPE,
+        "competition":SCOPE["competition"],
+        "market":SCOPE["market"],
+        "threshold_type":SCOPE["threshold_type"],
+        "model_version":SCOPE["model_version"],
         "event_id":event_id,
         "forecast_id":"F-"+event_id,
         "p":str(p),
@@ -223,11 +231,11 @@ class CalibrationCertificationTests(unittest.TestCase):
     def test_candidate_diagnostic_exposes_modeled_87_80_gates_without_certifying(self):
         training,validation=high_confidence_cohorts()
         research={
+            "version":"1.0",
             "min_training_rows":100,
             "min_training_events":100,
             "min_validation_rows":20,
             "min_validation_events":20,
-            "reliability_bins":5,
         }
         acceptance={
             "policy_id":"CAL-HIGH-V1",
