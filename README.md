@@ -80,3 +80,8 @@ A fail-closed per-event player-prop adapter now plans the documented event-marke
 ### NBA official injury/role revalidation
 
 The repository now resolves the NBA's official injury-report PDF index, validates provenance-preserving structured report rows, requires exact team/player identity plus separate official schedule reconciliation, and diffs report versions into deterministic full-rerun/HOLD triggers. `NOT_YET_SUBMITTED`, stale reports, missing canonical identity, ambiguous removals and post-cutoff captures fail closed. PDF byte-to-text extraction remains an explicit unverified boundary, so `live_integrations.official_slate_and_role` remains false. See `docs/NBA_OFFICIAL_INJURY_ROLE_FEED.md`.
+
+
+### Immutable role/market revalidation
+
+Material official role evidence now has an explicit immutable decision lifecycle: the prior decision and market snapshot are revoked, the independent projection is rebuilt against the new role-evidence fingerprint, all three >=100k MC runs must be regenerated, and only then may a fresh complete market ladder be ingested. The completion state is only a handoff to final V7 qualification, never wager approval. See `docs/ROLE_MARKET_REVALIDATION.md`.
