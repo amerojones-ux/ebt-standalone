@@ -121,17 +121,53 @@ class OpportunityDiscoveryMatrixTests(unittest.TestCase):
         }
         out = reconcile_result_claim(claim, official)
         self.assertEqual(out["status"], "QUARANTINED")
-        self.assertFalse(out["eligible_for_model_learning"])
+        self.assertFalse(out["eligible_for_audit_storage"])
+        self.assertFalse(out["eligible_for_model_weight_update"])
+        self.assertEqual(out["learning_status"], "BLOCKED")
         self.assertGreaterEqual(len(out["conflicts"]), 2)
 
-    def test_reconciled_claim_is_only_learning_eligible(self):
+    def test_reconciled_claim_can_enter_audit_but_not_change_weights(self):
         official = {
             "event_id":"G1","participant_a_id":"A","participant_b_id":"B",
             "score_a":119,"score_b":95,"player_stats":{"P:assists":2},
         }
         out = reconcile_result_claim(dict(official), official)
         self.assertEqual(out["status"], "RECONCILED")
-        self.assertTrue(out["eligible_for_model_learning"])
+        self.assertTrue(out["eligible_for_audit_storage"])
+        self.assertFalse(out["eligible_for_model_weight_update"])
+        self.assertEqual(out["learning_status"], "RESEARCH_HYPOTHESIS_ONLY")
+
+    def test_rare_event_price_verified_must_be_boolean(self):
+        quotes = [{
+            "candidate_id":"A","book":"Synthetic","american_odds":700,
+            "quoted_at":"2026-11-07T00:01:00-06:00",
+            "ingested_at":"2026-11-07T00:02:00-06:00","price_verified":"yes",
+        }]
+        with self.assertRaises(ValueError):
+            evaluate_rare_event_quotes(
+                {"A":"0.20","B":"0.15"}, quotes, model_locked_at=LOCK,
+                minimum_probability_edge="0.03", minimum_modeled_probability="0.10")
+
+    def test_inclusive_and_strict_thresholds_do_not_collapse(self):
+        quotes = [
+            {
+                "market_id":"ge-4","book":"Synthetic","comparator":"GE","threshold":"4",
+                "american_odds":-110,"quoted_at":"2026-11-07T00:01:00-06:00",
+                "ingested_at":"2026-11-07T00:02:00-06:00","price_verified":True,
+            },
+            {
+                "market_id":"gt-4","book":"Synthetic","comparator":"GT","threshold":"4",
+                "american_odds":-110,"quoted_at":"2026-11-07T00:01:00-06:00",
+                "ingested_at":"2026-11-07T00:02:00-06:00","price_verified":True,
+            },
+        ]
+        out = discover_count_market_expressions(
+            PMF, quotes, projection_locked_at=LOCK, market_family_policy=POLICY)
+        by_id = {x["market_id"]:x for x in out["expressions"]}
+        self.assertGreater(
+            by_id["ge-4"]["modeled_win_probability"],
+            by_id["gt-4"]["modeled_win_probability"])
+        self.assertEqual(by_id["gt-4"]["modeled_push_probability"], 0.25)
 
 
 if __name__ == "__main__":
