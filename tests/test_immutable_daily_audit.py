@@ -7,8 +7,10 @@ from pathlib import Path
 from ebt_validation import record_hash
 from extensions.immutable_daily_audit import (
     append_daily_audit_record,
+    artifact_ref_from_receipt,
     summarize_daily_audit,
     validate_audit_payload,
+    verify_artifact_ref,
     validate_daily_audit_chain,
 )
 
@@ -164,6 +166,19 @@ class ImmutableDailyAuditTests(unittest.TestCase):
         self.assertEqual(summary["unsettled_decision_ids"],[])
         self.assertTrue(summary["pregame_records_immutable"])
         self.assertFalse(summary["model_weights_changed_by_audit"])
+
+    def test_engine_receipt_artifact_reference_is_canonical_and_tamper_evident(self):
+        receipt={
+            "mode":"OFFLINE_BENEFICIARY_OPPORTUNITY_REALLOCATION",
+            "status":"HOLD",
+            "players":[{"player_id":"P1","final_expected_units":"34"}],
+        }
+        ref=artifact_ref_from_receipt("BENEFICIARY_REALLOCATION",receipt)
+        self.assertEqual(len(ref["sha256"]),64)
+        self.assertTrue(verify_artifact_ref(ref,receipt))
+        tampered={**receipt,"status":"APPROVED"}
+        with self.assertRaises(ValueError):
+            verify_artifact_ref(ref,tampered)
 
     def test_pregame_record_after_start_is_rejected(self):
         with self.assertRaises(ValueError):
