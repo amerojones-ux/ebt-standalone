@@ -75,3 +75,8 @@ These additions do **not lower the V7/V7.1 Black Diamond requirements**. They do
 ### The Odds API per-event prop ladder
 
 A fail-closed per-event player-prop adapter now plans the documented event-markets and event-odds routes, normalizes player/batter/pitcher outcomes without collapsing alternate thresholds, and produces a bookmaker × market posted-ladder completeness receipt. Sanitized account-plan review supports Starter entitlement, but canonical identity, freshness and a live event sample remain HOLD; network and forecast activation remain disabled. See docs/THEODDSAPI_PROP_LADDER_EVIDENCE_2026_11_07.md.
+
+
+### NBA official injury/role revalidation
+
+The repository now resolves the NBA's official injury-report PDF index, validates provenance-preserving structured report rows, requires exact team/player identity plus separate official schedule reconciliation, and diffs report versions into deterministic full-rerun/HOLD triggers. `NOT_YET_SUBMITTED`, stale reports, missing canonical identity, ambiguous removals and post-cutoff captures fail closed. PDF byte-to-text extraction remains an explicit unverified boundary, so `live_integrations.official_slate_and_role` remains false. See `docs/NBA_OFFICIAL_INJURY_ROLE_FEED.md`.
