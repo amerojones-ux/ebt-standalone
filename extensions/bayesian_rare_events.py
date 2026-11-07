@@ -97,6 +97,7 @@ def fit_competing_event_posterior(
             cid:_fair_decimal(mean[cid]) for cid in mean
         },
         "price_inputs_used":False,
+        "source_truth_verified_by_this_module":False,
         "calibration_verified":False,
         "forecast_status":"HOLD",
         "wager_status":"NOT APPROVED",
@@ -178,7 +179,7 @@ def run_three_competing_event_scenarios(
         raise ValueError("baseline/adversarial/scenario posteriors required")
     if not isinstance(seeds,Mapping) or set(seeds)!=set(SCENARIOS):
         raise ValueError("distinct baseline/adversarial/scenario seeds required")
-    if len(set(seeds.values()))!=3 or any(type(x) is not int for x in seeds.values()):
+    if any(type(x) is not int for x in seeds.values()) or len(set(seeds.values()))!=3:
         raise ValueError("three distinct integer seeds required")
     candidate_sets=[]
     residuals=[]
@@ -261,6 +262,7 @@ def fit_binary_rare_event_posterior(
         "posterior_mean_probability":float(mean),
         "fair_decimal_odds_from_posterior_mean":_fair_decimal(mean),
         "price_inputs_used":False,
+        "source_truth_verified_by_this_module":False,
         "calibration_verified":False,
         "forecast_status":"HOLD",
         "wager_status":"NOT APPROVED",
