@@ -127,13 +127,10 @@ def latest_report_before(reports: Sequence[Mapping[str, Any]], cutoff: str) -> D
     return max(candidates, key=lambda x: x[0])[1]
 
 
-def _event_start(game_date: str, game_time_et: str) -> datetime:
-    date_iso = _date(game_date, "game_date")
-    if not isinstance(game_time_et, str) or TIME_RE.fullmatch(game_time_et.strip()) is None:
-        raise ValueError("game_time_et must be HH:MM 12-hour clock without suffix")
-    # Official report times are ET; game_time rows are also labeled ET.
-    raw = datetime.strptime(f"{date_iso} {game_time_et.strip()}", "%Y-%m-%d %I:%M")
-    return raw.replace(tzinfo=EASTERN)
+def _game_time_label(value: Any) -> str:
+    if not isinstance(value, str) or TIME_RE.fullmatch(value.strip()) is None:
+        raise ValueError("game_time_et must be HH:MM report label")
+    return value.strip()
 
 
 def validate_extracted_report(
@@ -162,8 +159,7 @@ def validate_extracted_report(
         if set(raw) != required:
             raise ValueError("exact extracted injury-row schema required")
         game_date = _date(raw["game_date"], "game_date")
-        game_time = raw["game_time_et"]
-        start = _event_start(game_date, game_time)
+        game_time = _game_time_label(raw["game_time_et"])
         matchup = raw["matchup"]
         team = raw["team"]
         submission = raw["submission_status"]
@@ -202,8 +198,7 @@ def validate_extracted_report(
         normalized.append({
             "row_type": row_type,
             "game_date": game_date,
-            "game_time_et": game_time.strip(),
-            "event_start_utc": start.astimezone(timezone.utc).isoformat(),
+            "game_time_et": game_time,
             "matchup": matchup.strip(),
             "team": team.strip(),
             "player_name": player,
@@ -213,7 +208,6 @@ def validate_extracted_report(
             "report_url": report_url,
             "report_time_utc": report_time.astimezone(timezone.utc).isoformat(),
             "captured_at": captured.isoformat(),
-            "pregame_eligible": captured < start.astimezone(timezone.utc),
         })
     if not normalized:
         raise ValueError("nonempty extracted injury report required")
@@ -236,12 +230,13 @@ def bind_canonical_identities(
     *,
     team_ids: Mapping[str, str],
     player_ids: Mapping[str, str],
+    event_schedule: Mapping[str, Mapping[str, str]],
 ) -> Dict[str, Any]:
-    """Bind exact team/player names; fuzzy matching is forbidden."""
+    """Bind exact team/player names and reconcile to the official schedule."""
     if not isinstance(normalized_report, Mapping) or not isinstance(normalized_report.get("rows"), list):
         raise ValueError("normalized report required")
-    if not isinstance(team_ids, Mapping) or not isinstance(player_ids, Mapping):
-        raise ValueError("team_ids and player_ids mappings required")
+    if not isinstance(team_ids, Mapping) or not isinstance(player_ids, Mapping) or not isinstance(event_schedule, Mapping):
+        raise ValueError("team_ids, player_ids and event_schedule mappings required")
     resolved = []
     holds = []
     for row in normalized_report["rows"]:
@@ -257,12 +252,40 @@ def bind_canonical_identities(
             if not isinstance(player_id, str) or not player_id.strip():
                 holds.append({"kind": "PLAYER_IDENTITY", "key": key})
                 player_id = None
+        event_key = f"{row['game_date']}|{row['matchup']}"
+        schedule = event_schedule.get(event_key)
+        event_id = None
+        event_start_utc = None
+        schedule_verified = False
+        if isinstance(schedule, Mapping):
+            raw_event_id = schedule.get("event_id")
+            raw_start = schedule.get("event_start_utc")
+            if isinstance(raw_event_id, str) and raw_event_id.strip():
+                try:
+                    start = _clock(raw_start, "event_start_utc")
+                    event_id = raw_event_id.strip()
+                    event_start_utc = start.isoformat()
+                    schedule_verified = True
+                except ValueError:
+                    pass
+        if not schedule_verified:
+            holds.append({"kind": "EVENT_SCHEDULE", "event_key": event_key})
+        captured = _clock(row["captured_at"], "captured_at")
+        pregame_eligible = bool(schedule_verified and captured < _clock(event_start_utc, "event_start_utc"))
         resolved.append({
             **row,
             "team_id": team_id,
             "player_id": player_id,
-            "event_key": f"{row['game_date']}|{row['matchup']}",
-            "identity_verified": bool(team_id and (row["row_type"] == "TEAM_NOT_SUBMITTED" or player_id)),
+            "event_key": event_key,
+            "event_id": event_id,
+            "event_start_utc": event_start_utc,
+            "schedule_verified": schedule_verified,
+            "pregame_eligible": pregame_eligible,
+            "identity_verified": bool(
+                team_id
+                and (row["row_type"] == "TEAM_NOT_SUBMITTED" or player_id)
+                and schedule_verified
+            ),
         })
     return {
         "mode": "NBA_OFFICIAL_INJURY_IDENTITY_BINDING",
