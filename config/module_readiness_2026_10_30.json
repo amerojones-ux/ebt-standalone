@@ -129,6 +129,20 @@
       "game_outcome_mc_separate": true,
       "calibration_certified": false,
       "approved_for_live_forecasts": false
+    },
+    "correlated_combo_joint_mc": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "dependence_model": "gaussian_copula_discrete_marginals",
+      "combo_component_decomposition": true,
+      "direct_joint_probability": true,
+      "individual_probability_multiplication": false,
+      "three_distinct_100k_scenarios": true,
+      "separate_final_joint_mc": true,
+      "portfolio_receipt_binding": true,
+      "correlation_estimation_external": true,
+      "calibration_certified": false,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {
