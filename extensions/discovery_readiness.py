@@ -121,7 +121,8 @@ def _theoddsapi_market_capability(
         ("identity_mapping_verified", "prop-ladder identity mapping not verified"),
         ("freshness_verified", "prop-ladder freshness not verified"),
         ("market_ladder_route_verified", "event prop-ladder route not verified"),
-        ("complete_posted_player_prop_ladder_verified", "complete posted player-prop ladder not verified"),
+        ("posted_ladder_coverage_gate_implemented", "posted-ladder coverage gate not implemented"),
+        ("live_event_ladder_sample_verified", "live event prop-ladder sample not verified"),
     ):
         if config.get(field) is not True:
             blockers.append(message)
