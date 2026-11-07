@@ -62,11 +62,11 @@ class DiscoveryReadinessTests(unittest.TestCase):
         }
         odds={
             "network_enabled":True,"forecast_enabled":True,"path":"/v4/sports",
-            "account_plan_verified":False,"quota_cost_reviewed":False,"entitlement_verified":False,"identity_mapping_verified":False,"freshness_verified":False,"market_ladder_route_verified":True,"complete_posted_player_prop_ladder_verified":False,
+            "account_plan_verified":False,"quota_cost_reviewed":False,"entitlement_verified":False,"identity_mapping_verified":False,"freshness_verified":False,"market_ladder_route_verified":True,"posted_ladder_coverage_gate_implemented":True,"live_event_ladder_sample_verified":False,
         }
         rapid={
             "network_enabled":True,"forecast_enabled":True,"probe_endpoint":"/odds",
-            "account_plan_verified":False,"quota_cost_reviewed":False,"entitlement_verified":False,"identity_mapping_verified":False,"freshness_verified":False,"market_ladder_route_verified":True,"complete_posted_player_prop_ladder_verified":False,
+            "account_plan_verified":False,"quota_cost_reviewed":False,"entitlement_verified":False,"identity_mapping_verified":False,"freshness_verified":False,"market_ladder_route_verified":True,"posted_ladder_coverage_gate_implemented":True,"live_event_ladder_sample_verified":False,
         }
         out=assess_discovery_readiness(
             providers,module_state(quotes=True,role=True,stats=True),
@@ -119,7 +119,7 @@ class DiscoveryReadinessTests(unittest.TestCase):
             "account_plan_verified":True,"quota_cost_reviewed":True,
             "entitlement_verified":True,"identity_mapping_verified":True,
             "freshness_verified":True,"market_ladder_route_verified":True,
-            "complete_posted_player_prop_ladder_verified":False,
+            "posted_ladder_coverage_gate_implemented":True,"live_event_ladder_sample_verified":False,
         }
         rundown={"plan_name":"FREE","network_enabled":False,"forecast_enabled":False}
         rapid={"network_enabled":False,"forecast_enabled":False,"probe_endpoint":""}
@@ -128,7 +128,31 @@ class DiscoveryReadinessTests(unittest.TestCase):
             therundown_access=rundown,theoddsapi_prop_ladder=odds,rapidapi_routing=rapid)
         diag=next(x for x in out["market_source_diagnostics"] if x["provider"]=="The Odds API")
         self.assertFalse(diag["eligible"])
-        self.assertIn("complete posted player-prop ladder not verified",diag["blockers"])
+        self.assertIn("live event prop-ladder sample not verified",diag["blockers"])
+
+    def test_verified_oddsapi_adapter_can_be_market_source_but_runtime_event_gate_still_applies(self):
+        providers=provider_state()
+        for row in providers["providers"]:
+            if row["name"]=="The Odds API":
+                row.update(entitlement_verified=True,identity_verified=True,freshness_verified=True)
+        odds={
+            "network_enabled":True,"forecast_enabled":True,
+            "event_odds_path_template":"/v4/sports/{sport}/events/{eventId}/odds",
+            "event_markets_path_template":"/v4/sports/{sport}/events/{eventId}/markets",
+            "account_plan_verified":True,"quota_cost_reviewed":True,
+            "entitlement_verified":True,"identity_mapping_verified":True,
+            "freshness_verified":True,"market_ladder_route_verified":True,
+            "posted_ladder_coverage_gate_implemented":True,
+            "live_event_ladder_sample_verified":True,
+        }
+        out=assess_discovery_readiness(
+            providers,module_state(quotes=True,role=True,stats=True,calibration=True),
+            therundown_access={"plan_name":"FREE","network_enabled":False,"forecast_enabled":False},
+            theoddsapi_prop_ladder=odds,
+            rapidapi_routing={"network_enabled":False,"forecast_enabled":False,"probe_endpoint":""})
+        self.assertIn("The Odds API",out["eligible_market_sources"])
+        self.assertTrue(out["market_ladder_ready"])
+        self.assertTrue(out["candidate_qualification_still_required"])
 
     def test_ready_inputs_do_not_equal_candidate_approval(self):
         providers=provider_state()
