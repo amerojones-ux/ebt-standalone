@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "authority": "EBT.ai Black Diamond V7 + V7.1",
+  "status": "HOLD_TEMPLATE_ONLY",
+  "rules": {
+    "projection_before_market": true,
+    "sportsbook_price_may_not_seed_projection": true,
+    "safe_survival_and_tail_value_are_separate_lanes": true,
+    "rare_event_lane_may_not_be_promoted_to_black_diamond_by_price_edge": true,
+    "confirmed_material_role_change_requires_full_rerun": true,
+    "screenshot_result_conflict_requires_quarantine": true
+  },
+  "market_family_policies": {
+    "REPLACE_WITH_MARKET_FAMILY": {
+      "safe_modeled_probability_min": null,
+      "tail_modeled_probability_min": null,
+      "minimum_probability_edge": null,
+      "note": "Predeclare sport/market-specific research thresholds before candidate results are inspected. Null values intentionally fail closed."
+    }
+  }
+}
