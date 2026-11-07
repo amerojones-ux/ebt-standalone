@@ -102,8 +102,8 @@ def _ingest(rows: Sequence[Mapping[str,Any]], variable_ids, cutoff):
         value=num(row["value"])
         event_time=_clock(row["event_time"],f"{event}.{var}.event_time")
         available=_clock(row["outcome_available_at"],f"{event}.{var}.outcome_available_at")
-        if not event_time<available<=at:
-            raise ValueError("historical outcome timing violates forecast cutoff")
+        if not event_time<available<at:
+            raise ValueError("historical outcome timing violates strict forecast cutoff")
         source_hash=_sha(row["source_record_sha256"],f"{event}.{var}.source_record_sha256")
         e=events.setdefault(event,{
             "event_time":event_time,
@@ -356,4 +356,41 @@ def estimate_latent_correlation(
         "calibration_verified":False,
         "forecast_status":"HOLD",
         "wager_status":"NOT APPROVED",
+    }
+
+
+def build_joint_model_from_correlation_estimate(
+    marginals: Mapping[str,Mapping[str,Any]],
+    correlation_receipt: Mapping[str,Any],
+    *,
+    model_locked_at: str,
+) -> Dict[str,Any]:
+    """Build the exact Phase-113 joint model schema from an eligible receipt."""
+    if (
+        not isinstance(correlation_receipt,Mapping)
+        or correlation_receipt.get("mode")!="LEAKAGE_SAFE_LATENT_CORRELATION_ESTIMATOR"
+        or correlation_receipt.get("status")!="RESEARCH_INPUT"
+        or correlation_receipt.get("positive_definite") is not True
+    ):
+        raise ValueError("eligible positive-definite correlation receipt required")
+    variables=correlation_receipt.get("variable_ids")
+    matrix=correlation_receipt.get("latent_correlation")
+    matrix_sha=_sha(correlation_receipt.get("matrix_sha256"),"matrix_sha256")
+    if not isinstance(marginals,Mapping) or set(marginals)!=set(variables or []):
+        raise ValueError("marginals must exactly match correlation variable universe")
+    from .underperformance import validated_pmf
+    normalized={}
+    for var in variables:
+        pmf=validated_pmf(marginals[var])
+        normalized[var]={str(outcome):str(mass) for outcome,mass in pmf.items()}
+    lock=_clock(model_locked_at,"model_locked_at")
+    cutoff=_clock(correlation_receipt.get("forecast_cutoff"),"correlation.forecast_cutoff")
+    if lock<cutoff:
+        raise ValueError("joint model lock cannot precede correlation forecast cutoff")
+    return {
+        "variables":normalized,
+        "variable_order":list(variables),
+        "latent_correlation":matrix,
+        "model_locked_at":lock.isoformat(),
+        "source_evidence_sha256":matrix_sha,
     }
