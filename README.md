@@ -65,3 +65,8 @@ accuracy or permitted source rights. Deployment and live wagering stay OFF.
 The offline research layer now separates high-survival alternate thresholds from asymmetric tail value instead of forcing both through one probability board. New fail-closed modules cover complete alternate-line ladder comparison after projection lock, confirmed pregame role/opportunity reallocation triggers, rare-event competing-risk value research, and screenshot/ticket result-conflict quarantine. See docs/OPPORTUNITY_DISCOVERY_MATRIX.md and config/opportunity_discovery_policy_template.json.
 
 These additions do **not lower the V7/V7.1 Black Diamond requirements**. They do not hard-code a universal discovery threshold, do not calibrate probabilities, do not calculate no-vig probability, do not establish live EV, and do not approve wagers. Sport/market-specific discovery rules must be predeclared before candidate results are inspected. Confirmed material role changes require a fresh independent model rerun; rare-event value remains outside the Black Diamond survival lane; conflicting screenshot outcomes are quarantined from learning until reconciled to official results.
+
+
+### Automated discovery readiness gate
+
+`opportunity_discovery_readiness_cli.py` now derives whether the repository can automatically search the Safe Alt, Role Dislocation, Tail Value and Rare Event lanes from the committed provider/readiness state. It fails closed when a provider is authenticated but lacks verified entitlement, identity, freshness, real-time props, a complete player-prop ladder, or when official role/stat integrations remain disabled. SAFE_HOLD is a successful safety state, not a forecast approval.

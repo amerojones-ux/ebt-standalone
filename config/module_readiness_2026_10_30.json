@@ -58,6 +58,14 @@
       "official_result_anchor_required": true,
       "audit_storage_only_after_reconciliation": true,
       "screenshot_can_authorize_weight_update": false
+    },
+    "automated_opportunity_discovery_readiness": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "enforced_in_ci": true,
+      "auth_alone_establishes_coverage": false,
+      "complete_realtime_prop_ladder_required": true,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {

@@ -61,3 +61,5 @@ jobs:
         run: |
           python ebt_extensions_cli.py --help
           python ebt_prop_card_cli.py --help
+          python ebt_opportunity_discovery_cli.py --help
+          python opportunity_discovery_readiness_cli.py
