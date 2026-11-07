@@ -92,6 +92,17 @@
       "team_not_yet_submitted_forces_hold": true,
       "status_delta_forces_rerun": true,
       "approved_for_live_forecasts": false
+    },
+    "role_market_revalidation_orchestrator": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "immutable_prior_decision": true,
+      "exact_role_evidence_binding": true,
+      "material_change_revokes_prior": true,
+      "three_100k_mc_receipts_required": true,
+      "fresh_market_after_relock_required": true,
+      "final_v7_qualification_still_required": true,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {
