@@ -218,10 +218,13 @@ def role_state_from_nba_injury(
         "role_evidence_sha256":role_hash,
         "role_evidence_available_at":next(iter(report_times)),
         "game_gate_status":game_gate.get("status"),
-        "full_rerun_required":bool(event_changes) or injury_diff.get("full_rerun_required") is True,
+        "full_rerun_required":bool(event_changes),
         "hold_for_confirmation":(
             game_gate.get("status")!="FOUND"
-            or injury_diff.get("hold_for_confirmation") is True
+            or any(
+                change.get("kind")=="PLAYER_REMOVED_REQUIRES_CONFIRMATION"
+                for change in event_changes
+            )
         ),
         "change_count":len(event_changes),
         "affected_player_ids":affected,
