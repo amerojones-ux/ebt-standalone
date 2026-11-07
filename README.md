@@ -70,3 +70,8 @@ These additions do **not lower the V7/V7.1 Black Diamond requirements**. They do
 ### Automated discovery readiness gate
 
 `opportunity_discovery_readiness_cli.py` now derives whether the repository can automatically search the Safe Alt, Role Dislocation, Tail Value and Rare Event lanes from the committed provider/readiness state. It fails closed when a provider is authenticated but lacks verified entitlement, identity, freshness, real-time props, a complete player-prop ladder, or when official role/stat integrations remain disabled. SAFE_HOLD is a successful safety state, not a forecast approval.
+
+
+### The Odds API per-event prop ladder
+
+A fail-closed per-event player-prop adapter now plans the documented event-markets and event-odds routes, normalizes player/batter/pitcher outcomes without collapsing alternate thresholds, and produces a bookmaker × market posted-ladder completeness receipt. Sanitized account-plan review supports Starter entitlement, but canonical identity, freshness and a live event sample remain HOLD; network and forecast activation remain disabled. See docs/THEODDSAPI_PROP_LADDER_EVIDENCE_2026_11_07.md.
