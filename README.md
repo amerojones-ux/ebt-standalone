@@ -110,3 +110,8 @@ The dependence matrix for combo/joint MC can now be estimated from pre-cutoff co
 ### V7 learning-change governance
 
 Model weights and thresholds now have an explicit review-only evidence gate implementing the authoritative V7 safeguards: >=30 settled observations per market, >=50 per model, two non-overlapping degraded windows, Brier worsening >=0.02 or calibration gap >=0.05, root-cause review, held-out backtest, new version, and rollback. Sample counts are bound to ledger hashes, screenshot/ticket-only evidence cannot qualify, and even a fully passing request only becomes `LEARNING_CHANGE_REVIEW_ELIGIBLE`; no weight, threshold, or model promotion is automatically applied. See `docs/V7_LEARNING_CHANGE_GOVERNANCE.md`.
+
+
+### Calibration certification review
+
+Temporal isotonic calibration now has a predeclared market-specific certification-review layer. It evaluates held-out calibrated Brier, ECE, max reliability gap, minimum isotonic block size, raw-vs-calibrated Brier policy, and immutable training/validation/map hashes. Eligible calibration maps can also produce a >=100k-draw Jeffreys local uncertainty diagnostic for the modeled 87% point / 80% lower-bound gates. The strongest state remains `CALIBRATION_CERTIFICATION_REVIEW_ELIGIBLE`; calibration is not self-certified and model promotion remains off. See `docs/CALIBRATION_CERTIFICATION_REVIEW.md`.

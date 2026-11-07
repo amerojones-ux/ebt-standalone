@@ -176,6 +176,23 @@
       "automatic_threshold_change": false,
       "automatic_model_promotion": false,
       "requires_human_acceptance": true
+    },
+    "calibration_certification_review": {
+      "code": "implemented",
+      "tests": "synthetic_end_to_end",
+      "temporal_isotonic_assessment_reused": true,
+      "predeclared_acceptance_policy_required": true,
+      "heldout_brier_gate": true,
+      "heldout_ece_gate": true,
+      "heldout_max_gap_gate": true,
+      "minimum_block_count_policy": true,
+      "separate_training_validation_hashes": true,
+      "jeffreys_candidate_uncertainty_trials_minimum": 100000,
+      "modeled_87_80_diagnostic": true,
+      "calibration_verified": false,
+      "automatic_certificate_issuance": false,
+      "automatic_model_promotion": false,
+      "requires_human_acceptance": true
     }
   },
   "live_integrations": {

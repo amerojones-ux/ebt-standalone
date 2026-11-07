@@ -70,3 +70,4 @@ jobs:
           python correlated_joint_mc_cli.py --help
           python latent_correlation_cli.py --help
           python learning_change_governance_cli.py --help
+          python calibration_certification_cli.py --help
