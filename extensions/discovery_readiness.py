@@ -101,6 +101,49 @@ def _rundown_market_capability(
     }
 
 
+def _theoddsapi_market_capability(
+    provider: Dict[str, Any] | None,
+    config: Dict[str, Any],
+) -> Dict[str, Any]:
+    blockers = []
+    if provider is None:
+        return {"provider": "The Odds API", "eligible": False, "blockers": ["provider readiness missing"]}
+    if not isinstance(config, dict):
+        raise ValueError("The Odds API prop-ladder config object required")
+    for field in ("contract_ready", "live_auth_verified", "entitlement_verified",
+                  "identity_verified", "freshness_verified"):
+        if provider[field] is not True:
+            blockers.append(field.replace("_", " ") + " not verified")
+    for field, message in (
+        ("account_plan_verified", "account plan not verified"),
+        ("quota_cost_reviewed", "quota cost not reviewed"),
+        ("entitlement_verified", "prop-ladder entitlement not verified"),
+        ("identity_mapping_verified", "prop-ladder identity mapping not verified"),
+        ("freshness_verified", "prop-ladder freshness not verified"),
+        ("market_ladder_route_verified", "event prop-ladder route not verified"),
+        ("complete_posted_player_prop_ladder_verified", "complete posted player-prop ladder not verified"),
+    ):
+        if config.get(field) is not True:
+            blockers.append(message)
+    if config.get("network_enabled") is not True:
+        blockers.append("network disabled")
+    if config.get("forecast_enabled") is not True:
+        blockers.append("forecast use disabled")
+    route = config.get("event_odds_path_template")
+    if not isinstance(route, str) or not route.strip():
+        blockers.append("event odds route missing")
+    discovery_route = config.get("event_markets_path_template")
+    if not isinstance(discovery_route, str) or not discovery_route.strip():
+        blockers.append("event markets discovery route missing")
+    return {
+        "provider": "The Odds API",
+        "eligible": not blockers,
+        "route": route if isinstance(route, str) else None,
+        "discovery_route": discovery_route if isinstance(discovery_route, str) else None,
+        "blockers": blockers,
+    }
+
+
 def _explicit_market_adapter(
     name: str,
     provider: Dict[str, Any] | None,
@@ -143,7 +186,7 @@ def assess_discovery_readiness(
     module_readiness: Dict[str, Any],
     *,
     therundown_access: Dict[str, Any],
-    theoddsapi_auth: Dict[str, Any],
+    theoddsapi_prop_ladder: Dict[str, Any],
     rapidapi_routing: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Return automated discovery coverage, never candidate or wager approval."""
@@ -152,9 +195,8 @@ def assess_discovery_readiness(
 
     market_sources = [
         _rundown_market_capability(providers.get("TheRundown"), therundown_access),
-        _explicit_market_adapter(
-            "The Odds API", providers.get("The Odds API"), theoddsapi_auth,
-            route_field="path"),
+        _theoddsapi_market_capability(
+            providers.get("The Odds API"), theoddsapi_prop_ladder),
         _explicit_market_adapter(
             "RapidAPI", providers.get("RapidAPI"), rapidapi_routing,
             route_field="probe_endpoint"),
