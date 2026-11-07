@@ -23,3 +23,6 @@
 This public repository currently provides offline research/verification code only, not an activated live multisport forecast service. Never commit licensed raw datasets, credentials, identifiable account information, private audits or the user's entire private project archive here. Any implementation change requires a reviewed versioned PR, tests and separately confirmed rights/acceptance gates.
 
 See `CROSS_THREAD_RECONCILIATION_2026-10-29.md`, `RESEARCH_EXTENSIONS_ACCEPTANCE.md` and `PROP_CARD_VISUAL_AND_OUTPUT.md`.
+## NBA per-player matchup dossier lock (2026-11-06)
+After the NBA game-state workflow, apply [NBA_PLAYER_MATCHUP_DOSSIER_STANDARD_V7_1.md](NBA_PLAYER_MATCHUP_DOSSIER_STANDARD_V7_1.md) to every market-relevant rotation player before final Monte Carlo qualification. This adds current role, L5/L10, same-season and prior H2H, opponent environment, matchup mechanics, teammate competition, game-script sensitivity, market ranking and a documented kill switch. Historical H2H is contextual and must be shrunk toward current role to prevent overfitting.
+
