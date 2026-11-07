@@ -64,3 +64,4 @@ jobs:
           python ebt_opportunity_discovery_cli.py --help
           python opportunity_discovery_readiness_cli.py
           python nba_official_injury_cli.py --help
+          python revalidation_orchestrator_cli.py --help
