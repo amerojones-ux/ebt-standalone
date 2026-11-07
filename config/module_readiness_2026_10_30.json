@@ -143,6 +143,21 @@
       "correlation_estimation_external": true,
       "calibration_certified": false,
       "approved_for_live_forecasts": false
+    },
+    "latent_correlation_estimator": {
+      "code": "implemented",
+      "tests": "synthetic",
+      "complete_case_only": true,
+      "rank_normal_transform": true,
+      "shrinkage_to_identity": true,
+      "positive_definite_gate": true,
+      "fisher_uncertainty_gate": true,
+      "temporal_drift_gate": true,
+      "strict_pre_cutoff_history": true,
+      "joint_engine_bridge": true,
+      "market_inputs_forbidden": true,
+      "calibration_certified": false,
+      "approved_for_live_forecasts": false
     }
   },
   "live_integrations": {
